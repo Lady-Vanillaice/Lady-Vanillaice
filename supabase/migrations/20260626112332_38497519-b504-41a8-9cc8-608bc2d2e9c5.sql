@@ -1,0 +1,2 @@
+REVOKE SELECT ON public.availability_slots FROM anon;
+GRANT SELECT (id, starts_at, ends_at, status, location, buffer_minutes, is_duo, is_content_shoot, duo_partner, created_at, updated_at) ON public.availability_slots TO anon;

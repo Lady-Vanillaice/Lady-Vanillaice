@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /auth
+Disallow: /_authenticated
+Disallow: /.mcp
+Disallow: /.lovable
+Disallow: /.well-known
+Disallow: /lovable
+Disallow: /api
+Disallow: /email
+
+Sitemap: https://lady-vanillaice.com/sitemap.xml

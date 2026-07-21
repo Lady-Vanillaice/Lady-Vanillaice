@@ -1,0 +1,1 @@
+ALTER TABLE public.availability_slots ADD COLUMN IF NOT EXISTS duo_partner text;

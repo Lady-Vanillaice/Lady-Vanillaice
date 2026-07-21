@@ -1,0 +1,2 @@
+ALTER TABLE public.availability_slots ALTER COLUMN location SET DEFAULT 'Studio60, Gärtnerstraße 60, 80992 München';
+UPDATE public.availability_slots SET location = 'Studio60, Gärtnerstraße 60, 80992 München' WHERE location = 'Studio60, München';

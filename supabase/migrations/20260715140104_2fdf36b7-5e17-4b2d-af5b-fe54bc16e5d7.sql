@@ -1,0 +1,1 @@
+ALTER TABLE public.cash_book_entries ADD COLUMN IF NOT EXISTS anzahlung_method text;
