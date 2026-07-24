@@ -899,6 +899,8 @@ const manualBookingInput = z.object({
   guest_contact: z.string().trim().max(200).optional().nullable(),
   source: z.string().trim().max(60).optional().nullable(),
   internal_note: z.string().max(1000).optional().nullable(),
+  booking_type: z.enum(["single", "duo", "content"]),
+  duo_partner: z.string().trim().max(120).optional().nullable(),
 });
 
 export const createManualBooking = createServerFn({ method: "POST" })
