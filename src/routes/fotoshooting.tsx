@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { PageHeader } from "../components/site/PageHeader";
 import { Camera, Mail, MessageCircle, MapPin } from "lucide-react";
 import { submitPhotoshootRequest } from "@/lib/photoshooting.functions";
-import shootImage from "@/assets/CARL0560.jpg.asset.json";
+import shootImage from "@/assets/fotoshooting.jpg";
 import { useTr } from "@/i18n";
 
 export const Route = createFileRoute("/fotoshooting")({
@@ -90,7 +90,7 @@ function Fotoshooting() {
           <figure className="relative group border-2 border-champagne/30 p-2 bg-anthracite/40 shadow-[0_0_0_1px_rgba(212,180,131,0.15),0_12px_40px_-12px_rgba(0,0,0,0.5)] overflow-hidden max-w-lg">
             <div className="relative overflow-hidden border border-champagne/15">
               <img
-                src={shootImage.url}
+                src={shootImage}
                 alt="Lady Vanilla Ice — Fotoshooting"
                 width={1280}
                 height={1920}
