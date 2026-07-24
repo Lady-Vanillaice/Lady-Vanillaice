@@ -1006,12 +1006,19 @@ export const createManualBooking = createServerFn({ method: "POST" })
     // 1. Create the slot as already-booked so the calendar hides it.
     const { data: slot, error: slotErr } = await supabaseAdmin
       .from("availability_slots")
-      .insert({
-        starts_at: data.starts_at,
-        ends_at: data.ends_at,
-        location: data.location,
-        status: "booked",
-        is_hidden: true,
+    .insert({
+  starts_at: data.starts_at,
+  ends_at: data.ends_at,
+  location: data.location,
+  status: "booked",
+  is_hidden: true,
+  is_duo: data.booking_type === "duo",
+  is_content_shoot: data.booking_type === "content",
+  duo_partner:
+    data.booking_type === "duo"
+      ? data.duo_partner?.trim() ?? null
+      : null,
+})
       })
       .select("id")
       .single();
@@ -1036,7 +1043,12 @@ export const createManualBooking = createServerFn({ method: "POST" })
         slot_id: slot.id,
         guest_name: data.guest_name,
         guest_email: guestEmail,
-        duration: `${durationMinutes} Minuten`,
+        duration:
+  data.booking_type === "duo"
+    ? "Duo Session"
+    : data.booking_type === "content"
+      ? "Content Dreh"
+      : `${durationMinutes} Minuten`,
         duration_minutes: durationMinutes,
         requested_start: data.starts_at,
         message,
