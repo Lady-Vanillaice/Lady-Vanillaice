@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { PageHeader } from "../components/site/PageHeader";
 import { Crown, Camera } from "lucide-react";
 import { submitCustomRequest } from "@/lib/custom-booking.functions";
-import customImage from "@/assets/custom.jpg.asset.json";
+import customImage from "@/assets/custom.jpg";
 import { useTr } from "@/i18n";
 
 export const Route = createFileRoute("/custom")({
@@ -14,7 +14,7 @@ export const Route = createFileRoute("/custom")({
       { name: "description", content: "Lass Dir individuelle Bilder oder Videos ganz nach Deinen Wünschen erstellen — diskret und exklusiv." },
       { property: "og:title", content: "Custom Content — Lady Vanilla Ice" },
       { property: "og:description", content: "Custom Bilder & Videos nach Deinen Vorstellungen — jetzt online anfragen." },
-      { property: "og:image", content: customImage.url },
+      { property: "og:image", content: customImage },
       { property: "og:url", content: "https://lady-vanillaice.com/custom" },
     ],
     links: [{ rel: "canonical", href: "https://lady-vanillaice.com/custom" }],
@@ -95,7 +95,7 @@ function CustomPage() {
           <figure className="relative group mb-12 mx-auto w-full border-2 border-champagne/30 p-2 bg-anthracite/40 shadow-[0_0_0_1px_rgba(212,180,131,0.15),0_12px_40px_-12px_rgba(0,0,0,0.5)] overflow-hidden" style={{ maxWidth: "28rem" }}>
             <div className="relative overflow-hidden border border-champagne/15">
               <img
-                src={customImage.url}
+                src={customImage}
                 alt="Custom Content — sinnliche, individuelle Fotografie und Videoproduktion"
                 width={1280}
                 height={1920}
