@@ -13,6 +13,8 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "Lady Vanilla Ice – Domina in München & Umgebung | Sessions & BDSM" },
       { property: "og:description", content: "Stilvolle Domina-Sessions in München und Umgebung. Diskret, intensiv, individuell auf deine Fantasien abgestimmt. Termin online buchen." },
       { property: "og:url", content: "https://lady-vanillaice.com/" },
+      { property: "og:image", content: "https://www.lady-vanillaice.com/og-image.jpg" },
+{ property: "og:type", content: "website" },
     ],
     links: [{ rel: "canonical", href: "https://lady-vanillaice.com/" }],
   }),
