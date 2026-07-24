@@ -4,7 +4,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { PageHeader } from "../components/site/PageHeader";
 import { Crown, Camera, FileDown, ImagePlus, X } from "lucide-react";
 import { submitContentdrehBooking } from "@/lib/contentdreh-booking.functions";
-import consentForm from "@/assets/CONSENT_FORM_C4S.pages.asset.json";
 import { useTr } from "@/i18n";
 
 export const Route = createFileRoute("/content-dreh")({
@@ -214,7 +213,7 @@ function ContentDreh() {
                 )}</li>
               </ul>
               <a
-                href={consentForm.url}
+                href="/CONSENT_FORM_C4S.pages"
                 download="CONSENT_FORM_C4S.pages"
                 className="btn-gold inline-flex items-center gap-2"
               >
