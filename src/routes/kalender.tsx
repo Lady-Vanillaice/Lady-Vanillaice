@@ -501,22 +501,6 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
         <span className="flex items-center gap-1.5"><MapPin size={11} className="text-champagne" />{slot.location}</span>
       </div>
 
-      {windows.length > 1 && (
-        <div className="mb-5 border border-champagne/20 bg-champagne/[0.03] p-4">
-          <div className="eyebrow mb-2 text-champagne">{tr("Verfügbare Zeitfenster", "Available time windows")}</div>
-          <div className="grid gap-2">
-            {windows.map((window) => (
-              <div key={window.id} className="flex flex-wrap items-center justify-between gap-2 border border-champagne/10 bg-anthracite/30 px-3 py-2 text-xs text-vanilla/75">
-                <span className="font-medium text-vanilla">
-                  {formatMunichTime(window.starts_at)} – {formatMunichTime(window.ends_at)}{lang === "en" ? "" : " Uhr"}
-                </span>
-                <span className="text-vanilla/45">{window.location}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {slot.is_duo && (
         <div className="mb-5 border border-champagne/30 bg-champagne/[0.04] p-4">
           <div className="eyebrow mb-2 text-champagne">{tr("Session-Art wählen", "Choose session type")}</div>
