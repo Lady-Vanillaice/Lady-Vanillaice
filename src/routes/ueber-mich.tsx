@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "../components/site/PageHeader";
-import aboutImage from "../assets/CARL1412.jpg.asset.json";
+import aboutImage from "@/assets/about.jpg";
 import { useTr } from "@/i18n";
 
 export const Route = createFileRoute("/ueber-mich")({
@@ -41,7 +41,7 @@ function UeberMich() {
           <div className="lg:col-span-5 lg:sticky lg:top-32">
             <div className="relative aspect-[4/5] overflow-hidden border border-champagne/15">
               <img
-                src={aboutImage.url}
+                src=aboutImage
                 alt="Lady Vanilla Ice Portrait"
                 className="w-full h-full object-cover"
                 loading="lazy"
