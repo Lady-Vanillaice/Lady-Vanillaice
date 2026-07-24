@@ -349,11 +349,67 @@ export const deleteBooking = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await ensureAdmin(context.supabase, context.userId);
 
-    const { error } = await context.supabase
+    const { supabaseAdmin } = await import(
+      "@/integrations/supabase/client.server"
+    );
+
+    // Zuerst den zugehörigen Slot merken.
+    const { data: booking, error: fetchErr } = await supabaseAdmin
+      .from("bookings")
+      .select("id, slot_id")
+      .eq("id", data.id)
+      .maybeSingle();
+
+    if (fetchErr) {
+      throw new Error(fetchErr.message);
+    }
+
+    if (!booking) {
+      throw new Error("Buchung nicht gefunden.");
+    }
+
+    // Buchung endgültig löschen.
+    const { error: deleteErr } = await supabaseAdmin
       .from("bookings")
       .delete()
       .eq("id", data.id);
-    if (error) throw new Error(error.message);
+
+    if (deleteErr) {
+      throw new Error(deleteErr.message);
+    }
+
+    // Prüfen, ob noch eine andere aktive Buchung denselben Slot verwendet.
+    if (booking.slot_id) {
+      const { data: remainingBookings, error: remainingErr } =
+        await supabaseAdmin
+          .from("bookings")
+          .select("id")
+          .eq("slot_id", booking.slot_id)
+          .in("status", ["pending", "waiting_deposit", "confirmed"])
+          .limit(1);
+
+      if (remainingErr) {
+        throw new Error(remainingErr.message);
+      }
+
+      // Nur freigeben, wenn keine andere aktive Buchung mehr existiert.
+      if ((remainingBookings ?? []).length === 0) {
+        const { error: slotErr } = await supabaseAdmin
+          .from("availability_slots")
+          .update({
+            status: "open",
+            is_hidden: false,
+          })
+          .eq("id", booking.slot_id);
+
+        if (slotErr) {
+          throw new Error(
+            `Die Buchung wurde gelöscht, aber der Slot konnte nicht freigegeben werden: ${slotErr.message}`,
+          );
+        }
+      }
+    }
+
     return { ok: true };
   });
 
