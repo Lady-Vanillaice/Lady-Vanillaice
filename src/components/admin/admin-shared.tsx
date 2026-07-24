@@ -426,8 +426,7 @@ export function NewSlotForm({
     </form>
   );
 }
-
-export type ManualBookingValues = {
+ export type ManualBookingValues = {
   starts_at: string;
   ends_at: string;
   location: string;
@@ -435,6 +434,8 @@ export type ManualBookingValues = {
   guest_contact?: string | null;
   source?: string | null;
   internal_note?: string | null;
+  booking_type: "single" | "duo" | "content";
+  duo_partner?: string | null;
 };
 
 export function ManualBookingForm({
@@ -447,12 +448,17 @@ export function ManualBookingForm({
   const [date, setDate] = useState("");
   const [start, setStart] = useState("18:00");
   const [end, setEnd] = useState("19:00");
-  const [location, setLocation] = useState("Studio60, Gärtnerstraße 60, 80992 München");
+  const [location, setLocation] = useState(
+    "Studio60, Gärtnerstraße 60, 80992 München",
+  );
   const [room, setRoom] = useState("");
   const [guestName, setGuestName] = useState("");
   const [source, setSource] = useState("Telegram");
   const [contact, setContact] = useState("");
   const [note, setNote] = useState("");
+  const [bookingType, setBookingType] =
+    useState<"single" | "duo" | "content">("single");
+  const [duoPartner, setDuoPartner] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
 
@@ -460,22 +466,35 @@ export function ManualBookingForm({
     e.preventDefault();
     setErr(null);
     setOk(false);
+
     if (!date) {
       setErr("Bitte ein Datum wählen.");
       return;
     }
+
     if (!guestName.trim()) {
       setErr("Bitte einen Namen oder Pseudonym angeben.");
       return;
     }
+
+    if (bookingType === "duo" && !duoPartner.trim()) {
+      setErr("Bitte die Duo-Partnerin angeben.");
+      return;
+    }
+
     const starts_at = new Date(`${date}T${start}:00`);
     const ends_at = new Date(`${date}T${end}:00`);
+
     if (ends_at <= starts_at) {
       setErr("Endzeit muss nach Startzeit liegen.");
       return;
     }
+
+    const fullLocation = room.trim()
+      ? `${location} — Raum ${room.trim()}`
+      : location;
+
     try {
-      const fullLocation = room.trim() ? `${location} — Raum ${room.trim()}` : location;
       await onCreate({
         starts_at: starts_at.toISOString(),
         ends_at: ends_at.toISOString(),
@@ -484,13 +503,19 @@ export function ManualBookingForm({
         guest_contact: contact.trim() || null,
         source: source.trim() || null,
         internal_note: note.trim() || null,
+        booking_type: bookingType,
+        duo_partner:
+          bookingType === "duo" ? duoPartner.trim() : null,
       });
+
       setOk(true);
       setDate("");
       setRoom("");
       setGuestName("");
       setContact("");
       setNote("");
+      setBookingType("single");
+      setDuoPartner("");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Fehler");
     }
@@ -499,30 +524,62 @@ export function ManualBookingForm({
   return (
     <form onSubmit={submit} className="space-y-3">
       <p className="text-[0.7rem] text-vanilla/55 leading-relaxed">
-        Trag hier Termine ein, die du außerhalb der Website (z. B. via Telegram oder E-Mail)
-        vereinbart hast. Die Zeit wird sofort im Kalender gesperrt — keine Doppelbuchungen.
+        Trag hier Termine ein, die du außerhalb der Website, zum Beispiel über
+        Telegram oder E-Mail, vereinbart hast. Die Zeit wird sofort im Kalender
+        gesperrt – keine Doppelbuchungen.
       </p>
+
       <div className="grid grid-cols-3 gap-3">
         <div className="col-span-3 sm:col-span-1">
           <label className="eyebrow block mb-1">Datum</label>
-          <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} className="input-luxe !py-2" />
+          <input
+            type="date"
+            required
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="input-luxe !py-2"
+          />
         </div>
+
         <div>
           <label className="eyebrow block mb-1">Von</label>
-          <input type="time" required value={start} onChange={(e) => setStart(e.target.value)} className="input-luxe !py-2" />
+          <input
+            type="time"
+            required
+            value={start}
+            onChange={(e) => setStart(e.target.value)}
+            className="input-luxe !py-2"
+          />
         </div>
+
         <div>
           <label className="eyebrow block mb-1">Bis</label>
-          <input type="time" required value={end} onChange={(e) => setEnd(e.target.value)} className="input-luxe !py-2" />
+          <input
+            type="time"
+            required
+            value={end}
+            onChange={(e) => setEnd(e.target.value)}
+            className="input-luxe !py-2"
+          />
         </div>
       </div>
+
       <div>
         <label className="eyebrow block mb-1">Standort</label>
-        <select value={location} onChange={(e) => setLocation(e.target.value)} className="input-luxe !py-2">
-          <option value="Studio60, Gärtnerstraße 60, 80992 München">Studio60, Gärtnerstraße 60, 80992 München</option>
-          <option value="Studio Elegance, Frankfurter Ring 139, 80807 München">Studio Elegance, Frankfurter Ring 139, 80807 München</option>
+        <select
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          className="input-luxe !py-2"
+        >
+          <option value="Studio60, Gärtnerstraße 60, 80992 München">
+            Studio60, Gärtnerstraße 60, 80992 München
+          </option>
+          <option value="Studio Elegance, Frankfurter Ring 139, 80807 München">
+            Studio Elegance, Frankfurter Ring 139, 80807 München
+          </option>
         </select>
       </div>
+
       <div>
         <label className="eyebrow block mb-1">Raum (optional)</label>
         <input
@@ -532,6 +589,70 @@ export function ManualBookingForm({
           className="input-luxe !py-2"
         />
       </div>
+
+      <div>
+        <label className="eyebrow block mb-2">Terminart</label>
+
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setBookingType("single");
+              setDuoPartner("");
+            }}
+            className={
+              bookingType === "single"
+                ? "btn-gold !py-2 !px-3 !text-[0.65rem]"
+                : "btn-outline-gold !py-2 !px-3 !text-[0.65rem]"
+            }
+          >
+            Einzel
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setBookingType("duo")}
+            className={
+              bookingType === "duo"
+                ? "btn-gold !py-2 !px-3 !text-[0.65rem]"
+                : "btn-outline-gold !py-2 !px-3 !text-[0.65rem]"
+            }
+          >
+            Duo
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setBookingType("content");
+              setDuoPartner("");
+            }}
+            className={
+              bookingType === "content"
+                ? "btn-gold !py-2 !px-3 !text-[0.65rem]"
+                : "btn-outline-gold !py-2 !px-3 !text-[0.65rem]"
+            }
+          >
+            Content
+          </button>
+        </div>
+      </div>
+
+      {bookingType === "duo" && (
+        <div>
+          <label className="eyebrow block mb-1">
+            Duo-Partnerin / Domina
+          </label>
+          <input
+            value={duoPartner}
+            onChange={(e) => setDuoPartner(e.target.value)}
+            placeholder="z. B. Lady Selena"
+            className="input-luxe !py-2"
+            required
+          />
+        </div>
+      )}
+
       <div className="grid sm:grid-cols-2 gap-3">
         <div>
           <label className="eyebrow block mb-1">Name / Pseudonym</label>
@@ -543,9 +664,14 @@ export function ManualBookingForm({
             required
           />
         </div>
+
         <div>
           <label className="eyebrow block mb-1">Quelle</label>
-          <select value={source} onChange={(e) => setSource(e.target.value)} className="input-luxe !py-2">
+          <select
+            value={source}
+            onChange={(e) => setSource(e.target.value)}
+            className="input-luxe !py-2"
+          >
             <option>WhatsApp</option>
             <option>E-Mail</option>
             <option>Telegram</option>
@@ -556,6 +682,7 @@ export function ManualBookingForm({
           </select>
         </div>
       </div>
+
       <div>
         <label className="eyebrow block mb-1">Kontakt (optional)</label>
         <input
@@ -565,29 +692,41 @@ export function ManualBookingForm({
           className="input-luxe !py-2"
         />
       </div>
+
       <div>
-        <label className="eyebrow block mb-1">Interne Notiz (optional)</label>
+        <label className="eyebrow block mb-1">
+          Interne Notiz (optional)
+        </label>
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Wünsche, Tabus, Absprachen — nur für dich sichtbar"
+          placeholder="Wünsche, Tabus, Absprachen – nur für dich sichtbar"
           rows={3}
           className="input-luxe !py-2 resize-none"
         />
       </div>
+
       {err && <div className="text-xs text-destructive">{err}</div>}
+
       {ok && (
         <div className="text-xs text-green-300">
           Termin wurde eingetragen und im Kalender gesperrt.
         </div>
       )}
-      <button type="submit" disabled={pending} className="btn-gold w-full !py-3">
-        <CalendarPlus size={14} /> {pending ? "Wird gespeichert…" : "Externen Termin eintragen"}
+
+      <button
+        type="submit"
+        disabled={pending}
+        className="btn-gold w-full !py-3"
+      >
+        <CalendarPlus size={14} />
+        {pending
+          ? "Wird gespeichert…"
+          : "Externen Termin eintragen"}
       </button>
     </form>
   );
 }
-
 export function useConfirmAmounts(
   mutate: (v: {
     id: string;
