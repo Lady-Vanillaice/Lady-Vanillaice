@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { Calendar, Crown, Instagram, Mail } from "lucide-react";
-import heroImage from "../assets/CARL0938-2.jpeg.asset.json";
+import heroImage from "../assets/CARL0938-2.jpeg";
 import { AdminLoginWidget } from "@/components/site/AdminLoginWidget";
 import { useT } from "@/i18n";
 
@@ -51,7 +51,7 @@ function Index() {
       <section className="relative min-h-[100svh] flex items-center overflow-hidden">
         <div className="absolute inset-0">
           <img
-            src={heroImage.url}
+            src={heroImage}
             alt="Lady Vanilla Ice — Domina in München & Umgebung, Portraitaufnahme in eleganter Fetisch-Ästhetik"
             className="w-full h-full object-cover object-right"
             width={1280}
