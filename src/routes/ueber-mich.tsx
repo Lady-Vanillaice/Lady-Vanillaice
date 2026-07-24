@@ -41,7 +41,8 @@ function UeberMich() {
           <div className="lg:col-span-5 lg:sticky lg:top-32">
             <div className="relative aspect-[4/5] overflow-hidden border border-champagne/15">
               <img
-                src=aboutImage
+               <img
+                src={aboutImage}
                 alt="Lady Vanilla Ice Portrait"
                 className="w-full h-full object-cover"
                 loading="lazy"
