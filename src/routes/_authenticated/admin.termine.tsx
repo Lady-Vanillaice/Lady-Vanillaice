@@ -150,24 +150,39 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
   });
 
   const manualMut = useMutation({
-    mutationFn: (input: {
-      starts_at: string;
-      ends_at: string;
-      location: string;
-      guest_name: string;
-      guest_contact?: string | null;
-      source?: string | null;
-      internal_note?: string | null;
-    }) => createManualBookingFn({ data: input }),
-    onSuccess: async () => {
-      await Promise.all([
-        qc.invalidateQueries({ queryKey: ["admin-slots"], refetchType: "all" }),
-        qc.invalidateQueries({ queryKey: ["admin-bookings"], refetchType: "all" }),
-        qc.invalidateQueries({ queryKey: ["public-slots"], refetchType: "all" }),
-        qc.invalidateQueries({ queryKey: ["slot-availability"], refetchType: "all" }),
-      ]);
-    },
-  });
+  mutationFn: (input: {
+    starts_at: string;
+    ends_at: string;
+    location: string;
+    guest_name: string;
+    guest_contact?: string | null;
+    source?: string | null;
+    internal_note?: string | null;
+    booking_type: "single" | "duo" | "content";
+    duo_partner?: string | null;
+  }) => createManualBookingFn({ data: input }),
+
+  onSuccess: async () => {
+    await Promise.all([
+      qc.invalidateQueries({
+        queryKey: ["admin-slots"],
+        refetchType: "all",
+      }),
+      qc.invalidateQueries({
+        queryKey: ["admin-bookings"],
+        refetchType: "all",
+      }),
+      qc.invalidateQueries({
+        queryKey: ["public-slots"],
+        refetchType: "all",
+      }),
+      qc.invalidateQueries({
+        queryKey: ["slot-availability"],
+        refetchType: "all",
+      }),
+    ]);
+  },
+});
 
   const confirmAmounts = useConfirmAmounts((v) => statusMut.mutate(v));
 
