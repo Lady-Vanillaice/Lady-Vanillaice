@@ -4,8 +4,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { PageHeader } from "../components/site/PageHeader";
 import { Crown, Users } from "lucide-react";
 import { submitDuoBooking } from "@/lib/duo-booking.functions";
-import duoImage from "@/assets/duo.jpg.asset.json";
-import duoImage2 from "@/assets/duo2.jpg.asset.json";
+import duoImage from "@/assets/ruby.jpg";
+import duoImage2 from "@/assets/jolie.jpg";
 import { useTr } from "@/i18n";
 
 export const Route = createFileRoute("/duo-sessions")({
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/duo-sessions")({
       { name: "description", content: "Buche eine exklusive Duo Session mit zwei Dominas — diskret, intensiv und individuell." },
       { property: "og:title", content: "Duo Sessions — Lady Vanilla Ice" },
       { property: "og:description", content: "Zwei Dominas, eine unvergessliche Session — direkt online anfragen." },
-      { property: "og:image", content: duoImage.url },
+      { property: "og:image", content: duoImage },
       { property: "og:url", content: "https://lady-vanillaice.com/duo-sessions" },
     ],
     links: [{ rel: "canonical", href: "https://lady-vanillaice.com/duo-sessions" }],
@@ -93,7 +93,7 @@ function DuoSessions() {
             <figure className="relative group border-2 border-champagne/30 p-2 bg-anthracite/40 shadow-[0_0_0_1px_rgba(212,180,131,0.15),0_12px_40px_-12px_rgba(0,0,0,0.5)] overflow-hidden">
               <div className="relative overflow-hidden border border-champagne/15">
                 <img
-                  src={duoImage.url}
+                  src={duoImage}
                   alt="Ruby June x Lady_Vanillaice — Duo Session"
                   width={1280}
                   height={896}
@@ -110,7 +110,7 @@ function DuoSessions() {
             <figure className="relative group border-2 border-champagne/30 p-2 bg-anthracite/40 shadow-[0_0_0_1px_rgba(212,180,131,0.15),0_12px_40px_-12px_rgba(0,0,0,0.5)] overflow-hidden">
               <div className="relative overflow-hidden border border-champagne/15">
                 <img
-                  src={duoImage2.url}
+                  src={duoImage2}
                   alt="Lady_Vanillaice x Jolie Berrie — Duo Session"
                   width={1280}
                   height={1707}
