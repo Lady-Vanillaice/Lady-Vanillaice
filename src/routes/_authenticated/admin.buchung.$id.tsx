@@ -401,9 +401,16 @@ setDuoPartner(b.availability_slots?.duo_partner ?? "");
   if (!detailQ.data) return null;
 
   const { booking, emails, photoUrl, photoPath } = detailQ.data;
-  const slot = booking.availability_slots as
-    | { starts_at: string; ends_at: string; location: string; is_duo?: boolean; duo_partner?: string | null }
-    | null;
+ const slot = booking.availability_slots as
+  | {
+      starts_at: string;
+      ends_at: string;
+      location: string;
+      is_duo?: boolean;
+      is_content_shoot?: boolean;
+      duo_partner?: string | null;
+    }
+  | null;
   const isDuoBooking = !!slot?.is_duo;
 
   // Price calc — same logic as the confirmation email (300 €/h, 50% deposit).
