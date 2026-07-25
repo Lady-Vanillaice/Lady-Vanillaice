@@ -750,7 +750,6 @@ if (
 ) {
   daySlots.push(currentSlot);
 }
-}
 
       const containingSlot = (daySlots ?? []).find((slot) => {
         const slotStart = new Date(slot.starts_at).getTime();
