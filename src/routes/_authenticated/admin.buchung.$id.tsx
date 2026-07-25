@@ -411,7 +411,7 @@ setDuoPartner(b.availability_slots?.duo_partner ?? "");
       duo_partner?: string | null;
     }
   | null;
-  const isDuoBooking = !!slot?.is_duo;
+  const isDuoBooking = bookingType === "duo";
 
   // Price calc — same logic as the confirmation email (300 €/h, 50% deposit).
   const minutes = booking.duration_minutes ?? null;
