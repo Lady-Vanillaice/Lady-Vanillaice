@@ -802,7 +802,47 @@ if (
   });
 
 /* ---------- ADMIN: override payment amounts ---------- */
+export const updateBookingType = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({
+      booking_id: z.string().uuid(),
+      booking_type: z.enum(["single", "duo", "content"]),
+      duo_partner: z.string().trim().max(120).optional().nullable(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await ensureAdmin(context.supabase, context.userId);
 
+    const { data: booking, error: bookingErr } = await context.supabase
+      .from("bookings")
+      .select("id, slot_id")
+      .eq("id", data.booking_id)
+      .maybeSingle();
+
+    if (bookingErr) throw new Error(bookingErr.message);
+    if (!booking) throw new Error("Buchung nicht gefunden.");
+
+    if (!booking.slot_id) {
+      throw new Error("Diese Buchung hat keinen verknüpften Termin-Slot.");
+    }
+
+    const { error: slotErr } = await context.supabase
+      .from("availability_slots")
+      .update({
+        is_duo: data.booking_type === "duo",
+        is_content_shoot: data.booking_type === "content",
+        duo_partner:
+          data.booking_type === "duo"
+            ? data.duo_partner?.trim() || null
+            : null,
+      })
+      .eq("id", booking.slot_id);
+
+    if (slotErr) throw new Error(slotErr.message);
+
+    return { ok: true };
+  });
 export const updateBookingPayment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
