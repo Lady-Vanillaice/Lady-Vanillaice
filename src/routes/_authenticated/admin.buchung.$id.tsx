@@ -2,7 +2,20 @@ import { createFileRoute, Link, useRouter, useNavigate } from "@tanstack/react-r
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { getBookingDetail, updateBookingStatus, updateBookingNote, updateBookingSchedule, updateBookingPayment, deleteBooking, markDepositPaid, sendPaymentReminder, sendPersonalMessage, sendContentdrehReply, previewPersonalMessage } from "@/lib/booking.functions";
+import {
+  getBookingDetail,
+  updateBookingStatus,
+  updateBookingNote,
+  updateBookingSchedule,
+  updateBookingType,
+  updateBookingPayment,
+  deleteBooking,
+  markDepositPaid,
+  sendPaymentReminder,
+  sendPersonalMessage,
+  sendContentdrehReply,
+  previewPersonalMessage,
+} from "@/lib/booking.functions";
 import { PageHeader } from "../../components/site/PageHeader";
 import {
   ArrowLeft,
@@ -57,6 +70,7 @@ function BookingDetailPage() {
   const updateStatus = useServerFn(updateBookingStatus);
   const saveNote = useServerFn(updateBookingNote);
   const saveSchedule = useServerFn(updateBookingSchedule);
+  const saveBookingType = useServerFn(updateBookingType);
   const savePayment = useServerFn(updateBookingPayment);
   const markDepositPaidFn = useServerFn(markDepositPaid);
   const sendPaymentReminderFn = useServerFn(sendPaymentReminder);
@@ -84,8 +98,14 @@ function BookingDetailPage() {
   const [noteSaved, setNoteSaved] = useState(false);
   const [confirmationNote, setConfirmationNote] = useState("");
 
-  // Termin-Überschreibung
-  const [overrideDate, setOverrideDate] = useState(""); // yyyy-mm-dd
+// Terminart
+const [bookingType, setBookingType] =
+  useState<"single" | "duo" | "content">("single");
+const [duoPartner, setDuoPartner] = useState("");
+const [bookingTypeSaved, setBookingTypeSaved] = useState(false);
+
+// Termin-Überschreibung
+const [overrideDate, setOverrideDate] = useState("");
   const [overrideTime, setOverrideTime] = useState(""); // hh:mm
   const [overrideDuration, setOverrideDuration] = useState<string>(""); // minutes as string
   const [scheduleSaved, setScheduleSaved] = useState(false);
@@ -109,16 +129,30 @@ function BookingDetailPage() {
   useEffect(() => {
     if (detailQ.data?.booking) {
       const b = detailQ.data.booking as {
-        admin_note: string | null;
-        confirmation_note: string | null;
-        requested_start: string | null;
-        duration_minutes: number | null;
-        anzahlung: number | string | null;
-        anzahlung_method: string | null;
-        bar: number | string | null;
-      };
+  admin_note: string | null;
+  confirmation_note: string | null;
+  requested_start: string | null;
+  duration_minutes: number | null;
+  anzahlung: number | string | null;
+  anzahlung_method: string | null;
+  bar: number | string | null;
+  availability_slots?: {
+    is_duo?: boolean | null;
+    is_content_shoot?: boolean | null;
+    duo_partner?: string | null;
+  } | null;
+};
       setNote(b.admin_note ?? "");
       setConfirmationNote(b.confirmation_note ?? "");
+      if (b.availability_slots?.is_content_shoot) {
+  setBookingType("content");
+} else if (b.availability_slots?.is_duo) {
+  setBookingType("duo");
+} else {
+  setBookingType("single");
+}
+
+setDuoPartner(b.availability_slots?.duo_partner ?? "");
       if (b.requested_start) {
         const d = new Date(b.requested_start);
         const pad = (n: number) => String(n).padStart(2, "0");
@@ -167,6 +201,25 @@ function BookingDetailPage() {
       router.invalidate();
     },
   });
+  const bookingTypeMut = useMutation({
+  mutationFn: () =>
+    saveBookingType({
+      data: {
+        id,
+        booking_type: bookingType,
+        duo_partner:
+          bookingType === "duo" ? duoPartner.trim() || null : null,
+      },
+    }),
+  onSuccess: () => {
+    setBookingTypeSaved(true);
+    setTimeout(() => setBookingTypeSaved(false), 2500);
+    qc.invalidateQueries({ queryKey: ["admin-booking-detail", id] });
+    qc.invalidateQueries({ queryKey: ["admin-bookings"] });
+    qc.invalidateQueries({ queryKey: ["admin-slots"] });
+    router.invalidate();
+  },
+});
 
   const paymentMut = useMutation({
     mutationFn: () => {
@@ -951,7 +1004,70 @@ function BookingDetailPage() {
               </p>
             )}
           </div>
+{/* TERMINART */}
+<div className="bg-card border border-champagne/15 p-6 mb-6">
+  <div className="eyebrow mb-3 flex items-center justify-between gap-2">
+    <span>Terminart</span>
+    {bookingTypeSaved && (
+      <span className="text-[0.6rem] text-green-300 normal-case tracking-normal">
+        ✓ gespeichert
+      </span>
+    )}
+  </div>
 
+  <div className="grid grid-cols-3 gap-2">
+    {[
+      { value: "single" as const, label: "Single" },
+      { value: "duo" as const, label: "Duo" },
+      { value: "content" as const, label: "Content" },
+    ].map((option) => (
+      <button
+        key={option.value}
+        type="button"
+        onClick={() => setBookingType(option.value)}
+        className={`text-[0.65rem] uppercase tracking-[0.2em] px-3 py-2 border transition ${
+          bookingType === option.value
+            ? "border-champagne bg-champagne/15 text-champagne"
+            : "border-champagne/25 text-vanilla/60 hover:border-champagne/60 hover:text-vanilla"
+        }`}
+      >
+        {option.label}
+      </button>
+    ))}
+  </div>
+
+  {bookingType === "duo" && (
+    <div className="mt-3">
+      <label className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 block mb-1">
+        Duo-Partner
+      </label>
+      <input
+        type="text"
+        value={duoPartner}
+        onChange={(e) => setDuoPartner(e.target.value)}
+        placeholder="z. B. Ruby June"
+        className="input-luxe w-full"
+      />
+    </div>
+  )}
+
+  <div className="mt-4 flex items-center justify-end">
+    <button
+      type="button"
+      disabled={bookingTypeMut.isPending}
+      onClick={() => bookingTypeMut.mutate()}
+      className="text-[0.65rem] uppercase tracking-[0.2em] px-4 py-2 border border-champagne/40 text-champagne hover:bg-champagne/10 disabled:opacity-30"
+    >
+      {bookingTypeMut.isPending ? "Speichere…" : "Terminart speichern"}
+    </button>
+  </div>
+
+  {bookingTypeMut.error && (
+    <p className="mt-3 text-xs text-bordeaux">
+      {(bookingTypeMut.error as Error).message}
+    </p>
+  )}
+</div>
 
           {/* TERMIN-ÜBERSCHREIBUNG */}
           <div className="bg-card border border-champagne/15 p-6 mb-6">
