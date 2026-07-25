@@ -750,7 +750,6 @@ if (
 ) {
   daySlots.push(currentSlot);
 }
-
       const containingSlot = (daySlots ?? []).find((slot) => {
         const slotStart = new Date(slot.starts_at).getTime();
         const slotEnd = new Date(slot.ends_at).getTime();
@@ -1053,7 +1052,6 @@ export const createManualBooking = createServerFn({ method: "POST" })
       ? data.duo_partner?.trim() ?? null
       : null,
 })
-      })
       .select("id")
       .single();
     if (slotErr || !slot) {
