@@ -817,7 +817,7 @@ export const updateBookingType = createServerFn({ method: "POST" })
     const { data: booking, error: bookingErr } = await context.supabase
       .from("bookings")
       .select("id, slot_id")
-      .eq("id", data.booking_id)
+      .eq("id", data.id)
       .maybeSingle();
 
     if (bookingErr) throw new Error(bookingErr.message);
