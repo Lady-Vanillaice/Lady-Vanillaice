@@ -63,6 +63,7 @@ const RUBY_JUNE_EMAIL = "mistress.ruby.june@gmail.com";
 
 function BookingDetailPage() {
   const { id } = Route.useParams();
+  console.log("BOOKING ID:", id);
   const router = useRouter();
   const navigate = useNavigate();
   const qc = useQueryClient();
