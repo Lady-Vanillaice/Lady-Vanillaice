@@ -806,7 +806,7 @@ export const updateBookingType = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
     z.object({
-      booking_id: z.string().uuid(),
+      id: z.string().uuid(),
       booking_type: z.enum(["single", "duo", "content"]),
       duo_partner: z.string().trim().max(120).optional().nullable(),
     }).parse(d),
