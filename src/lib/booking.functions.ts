@@ -707,15 +707,50 @@ export const updateBookingSchedule = createServerFn({ method: "POST" })
       const dayEnd = new Date(dayStart);
       dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
 
-      const { data: daySlots, error: slotErr } = await supabaseAdmin
-        .from("availability_slots")
-        .select("id, starts_at, ends_at, buffer_minutes, status, is_hidden")
-        .eq("status", "open")
-        .eq("is_hidden", false)
-        .lt("starts_at", dayEnd.toISOString())
-        .gt("ends_at", dayStart.toISOString())
-        .order("starts_at", { ascending: true });
-      if (slotErr) throw new Error(slotErr.message);
+     // Offene Zeitfenster des gewählten Tages laden
+const { data: openDaySlots, error: slotErr } = await supabaseAdmin
+  .from("availability_slots")
+  .select("id, starts_at, ends_at, buffer_minutes, status, is_hidden")
+  .eq("status", "open")
+  .eq("is_hidden", false)
+  .lt("starts_at", dayEnd.toISOString())
+  .gt("ends_at", dayStart.toISOString())
+  .order("starts_at", { ascending: true });
+
+if (slotErr) throw new Error(slotErr.message);
+
+// Das bisherige Zeitfenster zusätzlich laden.
+// Dadurch kann ein bereits bestätigter Termin weiter bearbeitet werden,
+// auch wenn sein Slot inzwischen gebucht oder ausgeblendet ist.
+let currentSlot: {
+  id: string;
+  starts_at: string;
+  ends_at: string;
+  buffer_minutes: number | null;
+  status: string;
+  is_hidden: boolean;
+} | null = null;
+
+if (booking.slot_id) {
+  const { data, error: currentSlotErr } = await supabaseAdmin
+    .from("availability_slots")
+    .select("id, starts_at, ends_at, buffer_minutes, status, is_hidden")
+    .eq("id", booking.slot_id)
+    .maybeSingle();
+
+  if (currentSlotErr) throw new Error(currentSlotErr.message);
+  currentSlot = data;
+}
+
+const daySlots = [...(openDaySlots ?? [])];
+
+if (
+  currentSlot &&
+  !daySlots.some((slot) => slot.id === currentSlot.id)
+) {
+  daySlots.push(currentSlot);
+}
+}
 
       const containingSlot = (daySlots ?? []).find((slot) => {
         const slotStart = new Date(slot.starts_at).getTime();
