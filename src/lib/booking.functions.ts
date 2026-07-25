@@ -1145,7 +1145,7 @@ export const getBookingDetail = createServerFn({ method: "GET" })
     const { data: booking, error } = await context.supabase
       .from("bookings")
       .select(
-        "id, slot_id, guest_name, guest_email, guest_phone, duration, duration_minutes, requested_start, message, status, admin_note, confirmation_note, anzahlung, anzahlung_paid, anzahlung_method, bar, created_at, updated_at, availability_slots(starts_at, ends_at, location, is_duo, duo_partner)"
+        "id, slot_id, guest_name, guest_email, guest_phone, duration, duration_minutes, requested_start, message, status, admin_note, confirmation_note, anzahlung, anzahlung_paid, anzahlung_method, bar, created_at, updated_at, availability_slots(starts_at, ends_at, location, is_duo, is_content_shoot, duo_partner)"
       )
       .eq("id", data.id)
       .maybeSingle();
