@@ -244,7 +244,7 @@ function CalendarSubscribeButton() {
     const isProd = host === "lady-vanillaice.com" || host === "www.lady-vanillaice.com";
     const base = isProd ? window.location.origin : "https://lady-vanillaice.com";
     const feed = `${base}/api/public/calendar/${token}.ics`;
-    const webcalFeed = feed.replace(/^https:/, "webcal:");
+    const webcalFeed = feed.replace(/^https?:\/\//, "webcal://");
     setUrl(feed);
     setWebcalUrl(webcalFeed);
   }
