@@ -873,7 +873,7 @@ setDuoPartner(b.availability_slots?.duo_partner ?? "");
 
 
           {/* CONTENT-DREH ANTWORT — nur für Content-Dreh-Anfragen */}
-          {bookingType === "content" && (
+          {isContentShoot && (
             <div className="bg-card border border-champagne/15 p-6 mb-6">
               <div className="eyebrow mb-3 flex items-center justify-between gap-2">
                 <span>Content-Dreh · Individuelle Antwort</span>
