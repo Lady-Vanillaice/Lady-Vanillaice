@@ -117,6 +117,7 @@ const [overrideDate, setOverrideDate] = useState("");
   const [anzahlungInput, setAnzahlungInput] = useState<string>("");
   const [anzahlungMethod, setAnzahlungMethod] = useState<string>("");
   const [barInput, setBarInput] = useState<string>("");
+  const [anzahlungPaidDate, setAnzahlungPaidDate] = useState<string>("");
   const [paymentSaved, setPaymentSaved] = useState(false);
   const [depositPartnerRuby, setDepositPartnerRuby] = useState<boolean>(false);
 
@@ -241,7 +242,13 @@ setDuoPartner(b.availability_slots?.duo_partner ?? "");
   });
 
   const depositPaidMut = useMutation({
-    mutationFn: () => markDepositPaidFn({ data: { id } }),
+    mutationFn: () =>
+    markDepositPaidFn({
+      data: {
+        id,
+        anzahlung_paid_at: anzahlungPaidDate,
+      },
+    }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-booking-detail", id] });
       qc.invalidateQueries({ queryKey: ["admin-bookings"] });
@@ -1248,6 +1255,18 @@ setDuoPartner(b.availability_slots?.duo_partner ?? "");
               <p className="mt-4 text-[0.65rem] text-vanilla/40 leading-relaxed">
                 Keine Dauer hinterlegt — Betrag wird individuell vereinbart.
               </p>
+  
+<div className="mt-4">
+  <label className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 block mb-1">
+    Anzahlung eingegangen am
+  </label>
+  <input
+    type="date"
+    value={anzahlungPaidDate}
+    onChange={(e) => setAnzahlungPaidDate(e.target.value)}
+    className="input-luxe w-full"
+  />
+</div>
             )}
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               {(booking.anzahlung || 0) > 0 && (
