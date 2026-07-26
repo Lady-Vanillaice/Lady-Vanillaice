@@ -897,7 +897,10 @@ export const markDepositPaid = createServerFn({ method: "POST" })
 
     const { error } = await context.supabase
       .from("bookings")
-      .update({ anzahlung_paid: true })
+     .update({
+  anzahlung_paid: true,
+  anzahlung_paid_at: new Date().toISOString(),
+})
       .eq("id", data.id);
     if (error) throw new Error(error.message);
 
