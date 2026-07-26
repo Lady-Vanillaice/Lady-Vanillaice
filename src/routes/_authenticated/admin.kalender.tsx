@@ -257,6 +257,17 @@ function CalendarSubscribeButton() {
       setTimeout(() => setCopied(false), 2000);
     } catch {}
   }
+  if (!url) {
+  return (
+    <button
+      type="button"
+      onClick={load}
+      className="btn-outline-gold !py-2 !px-4 !text-[0.65rem]"
+    >
+      Kalender-Feed (iCal) anzeigen
+    </button>
+  );
+}
   return (
     <div className="flex-1 min-w-0 text-xs text-vanilla/70 border border-champagne/20 p-3 bg-card space-y-3">
       <div className="flex flex-wrap gap-2">
