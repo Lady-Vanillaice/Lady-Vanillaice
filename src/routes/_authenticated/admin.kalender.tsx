@@ -271,11 +271,17 @@ function CalendarSubscribeButton() {
   return (
     <div className="flex-1 min-w-0 text-xs text-vanilla/70 border border-champagne/20 p-3 bg-card space-y-3">
       <div className="flex flex-wrap gap-2">
-        {webcalUrl && (
-          <a href={webcalUrl} className="btn-gold !py-2 !px-3 !text-[0.65rem]">
-            <CalendarPlus size={13} /> In Apple Kalender öffnen
-          </a>
-        )}
+       {webcalUrl && (
+  <button
+    type="button"
+    onClick={() => {
+      window.location.href = webcalUrl;
+    }}
+    className="btn-gold !py-2 !px-3 !text-[0.65rem]"
+  >
+    <CalendarPlus size={13} /> In Apple Kalender öffnen
+  </button>
+)}
         <button onClick={copyUrl} className="btn-outline-gold !py-2 !px-3 !text-[0.65rem]">
           <Copy size={13} /> Vollständige URL kopieren
         </button>
