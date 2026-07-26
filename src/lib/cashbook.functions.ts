@@ -39,7 +39,7 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
       context.supabase
         .from("bookings")
         .select(
-          "id, guest_name, duration, status, anzahlung, anzahlung_method, bar, created_at, requested_start, availability_slots(starts_at, location)",
+          "id, guest_name, duration, status, anzahlung, anzahlung_method, anzahlung_paid, aanzahlung_paid_at, bar, created_at, requested_start, availability_slots(starts_at, location)",
         )
       .in("status", ["confirmed", "cancelled"])
     ]);
@@ -70,7 +70,9 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
         if (!startIso) return null;
         const datum = String(startIso).slice(0, 10);
         if (datum > todayISO) return null; // only past / today
-        const anzahlung = Number(b.anzahlung ?? 0);
+       const anzahlung = b.anzahlung_paid
+  ? Number(b.anzahlung ?? 0)
+  : 0;
         const bar = b.status === "cancelled" ? 0 : Number(b.bar ?? 0);
         return {
           id: `booking:${b.id}`,
