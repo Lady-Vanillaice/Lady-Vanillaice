@@ -805,11 +805,12 @@ if (
 export const updateBookingType = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
-    z.object({
-      id: z.string().uuid(),
-      booking_type: z.enum(["single", "duo", "content"]),
-      duo_partner: z.string().trim().max(120).optional().nullable(),
-    }).parse(d),
+  z.object({
+  id: z.string().uuid(),
+  booking_type: z.enum(["single", "duo"]),
+  duo_partner: z.string().trim().max(120).optional().nullable(),
+  is_content_shoot: z.boolean(),
+}).parse(d),
   )
   .handler(async ({ data, context }) => {
     await ensureAdmin(context.supabase, context.userId);
@@ -831,7 +832,7 @@ export const updateBookingType = createServerFn({ method: "POST" })
       .from("availability_slots")
       .update({
         is_duo: data.booking_type === "duo",
-        is_content_shoot: data.booking_type === "content",
+       is_content_shoot: data.is_content_shoot,
         duo_partner:
           data.booking_type === "duo"
             ? data.duo_partner?.trim() || null
