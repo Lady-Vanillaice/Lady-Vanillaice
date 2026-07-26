@@ -26,6 +26,8 @@ type Entry = {
   is_content_shoot: boolean;
   admin_note: string | null;
   anzahlung_paid: boolean | null;
+  anzahlung: number | null;
+  bar: number | null;
 };
 
 function TerminplanPage() {
@@ -35,7 +37,7 @@ function TerminplanPage() {
       const { data, error } = await supabase
         .from("bookings")
         .select(
-          "id, guest_name, guest_email, guest_phone, duration, duration_minutes, requested_start, admin_note, anzahlung_paid, message, availability_slots(starts_at, ends_at, location, is_duo, duo_partner, is_content_shoot)",
+          "id, guest_name, guest_email, guest_phone, duration, duration_minutes, requested_start, admin_note, anzahlung_paid, anzahlung, bar, message, availability_slots(starts_at, ends_at, location, is_duo, duo_partner, is_content_shoot)",
         )
         .eq("status", "confirmed");
       if (error) throw error;
@@ -72,6 +74,8 @@ function TerminplanPage() {
           is_content_shoot: slot?.is_content_shoot ?? false,
           admin_note: b.admin_note,
           anzahlung_paid: b.anzahlung_paid,
+          anzahlung: b.anzahlung != null ? Number(b.anzahlung) : null,
+bar: b.bar != null ? Number(b.bar) : null,
         } as Entry;
       });
       return rows
@@ -193,6 +197,13 @@ function EntryCard({ e }: { e: Entry }) {
                 Content
               </span>
             )}
+            <span className="text-[0.6rem] uppercase tracking-[0.2em] bg-champagne/15 text-champagne px-2 py-0.5">
+  Anzahlung: {(e.anzahlung ?? 0).toLocaleString("de-DE")} €
+</span>
+
+<span className="text-[0.6rem] uppercase tracking-[0.2em] bg-bordeaux/30 text-vanilla px-2 py-0.5">
+  Bar offen: {(e.bar ?? 0).toLocaleString("de-DE")} €
+</span>
             {e.anzahlung_paid ? (
               <span className="text-[0.6rem] uppercase tracking-[0.2em] bg-green-700/30 text-green-200 px-2 py-0.5">
                 Anzahlung ok
