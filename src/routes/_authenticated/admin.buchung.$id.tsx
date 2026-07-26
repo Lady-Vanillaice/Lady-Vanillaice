@@ -11,6 +11,7 @@ import {
   updateBookingPayment,
   deleteBooking,
   markDepositPaid,
+  updateDepositPaidDate,
   sendPaymentReminder,
   sendPersonalMessage,
   sendContentdrehReply,
@@ -74,6 +75,7 @@ function BookingDetailPage() {
   const saveBookingType = useServerFn(updateBookingType);
   const savePayment = useServerFn(updateBookingPayment);
   const markDepositPaidFn = useServerFn(markDepositPaid);
+  const updateDepositPaidDateFn = useServerFn(updateDepositPaidDate);
   const sendPaymentReminderFn = useServerFn(sendPaymentReminder);
   const sendPersonalMessageFn = useServerFn(sendPersonalMessage);
   const previewPersonalMessageFn = useServerFn(previewPersonalMessage);
@@ -139,6 +141,7 @@ const [overrideDate, setOverrideDate] = useState("");
   duration_minutes: number | null;
   anzahlung: number | string | null;
   anzahlung_method: string | null;
+  anzahlung_paid_at: string | null;
   bar: number | string | null;
   availability_slots?: {
     is_duo?: boolean | null;
@@ -169,6 +172,11 @@ setDuoPartner(b.availability_slots?.duo_partner ?? "");
       setOverrideDuration(b.duration_minutes ? String(b.duration_minutes) : "");
       setAnzahlungInput(b.anzahlung != null ? String(b.anzahlung) : "0");
       setAnzahlungMethod(b.anzahlung_method ?? "");
+      setAnzahlungPaidDate(
+  b.anzahlung_paid_at
+    ? String(b.anzahlung_paid_at).slice(0, 10)
+    : "",
+);
       setBarInput(b.bar != null ? String(b.bar) : "0");
     }
   }, [detailQ.data?.booking?.id]);
@@ -256,7 +264,20 @@ setDuoPartner(b.availability_slots?.duo_partner ?? "");
       router.invalidate();
     },
   });
-
+const depositDateMut = useMutation({
+  mutationFn: () =>
+    updateDepositPaidDateFn({
+      data: {
+        id,
+        anzahlung_paid_at: anzahlungPaidDate,
+      },
+    }),
+  onSuccess: () => {
+    qc.invalidateQueries({ queryKey: ["admin-booking-detail", id] });
+    qc.invalidateQueries({ queryKey: ["cashbook"] });
+    router.invalidate();
+  },
+});
   const reminderMut = useMutation({
     mutationFn: () => sendPaymentReminderFn({ data: { id } }),
     onSuccess: () => {
@@ -1306,6 +1327,19 @@ setDuoPartner(b.availability_slots?.duo_partner ?? "");
                     {depositPaidMut.isPending ? "Wird markiert…" : "Anzahlung eingegangen"}
                   </button>
                 )}
+                {(booking.anzahlung || 0) > 0 && booking.anzahlung_paid && (
+  <button
+    type="button"
+    disabled={!anzahlungPaidDate || depositDateMut.isPending}
+    onClick={() => depositDateMut.mutate()}
+    className="text-[0.65rem] uppercase tracking-[0.2em] px-4 py-2 border border-green-600/60 text-green-300 hover:bg-green-700/20 disabled:opacity-30"
+  >
+    {depositDateMut.isPending
+      ? "Speichere Datum…"
+      : "Datum der Anzahlung speichern"}
+  </button>
+)}
+
                 <button
                   type="button"
                   disabled={paymentMut.isPending}
