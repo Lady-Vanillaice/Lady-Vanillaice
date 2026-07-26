@@ -1026,26 +1026,35 @@ setDuoPartner(b.availability_slots?.duo_partner ?? "");
     )}
   </div>
 
-  <div className="grid grid-cols-3 gap-2">
-    {[
-      { value: "single" as const, label: "Single" },
-      { value: "duo" as const, label: "Duo" },
-      { value: "content" as const, label: "Content" },
-    ].map((option) => (
-      <button
-        key={option.value}
-        type="button"
-        onClick={() => setBookingType(option.value)}
-        className={`text-[0.65rem] uppercase tracking-[0.2em] px-3 py-2 border transition ${
-          bookingType === option.value
-            ? "border-champagne bg-champagne/15 text-champagne"
-            : "border-champagne/25 text-vanilla/60 hover:border-champagne/60 hover:text-vanilla"
-        }`}
-      >
-        {option.label}
-      </button>
-    ))}
-  </div>
+<div className="grid grid-cols-2 gap-2">
+  {[
+    { value: "single" as const, label: "Single" },
+    { value: "duo" as const, label: "Duo" },
+  ].map((option) => (
+    <button
+      key={option.value}
+      type="button"
+      onClick={() => setBookingType(option.value)}
+      className={`text-[0.65rem] uppercase tracking-[0.2em] px-3 py-2 border transition ${
+        bookingType === option.value
+          ? "border-champagne bg-champagne/15 text-champagne"
+          : "border-champagne/25 text-vanilla/60 hover:border-champagne/60 hover:text-vanilla"
+      }`}
+    >
+      {option.label}
+    </button>
+  ))}
+</div>
+
+<label className="mt-3 flex items-center gap-2 text-sm text-vanilla/80">
+  <input
+    type="checkbox"
+    checked={isContentShoot}
+    onChange={(e) => setIsContentShoot(e.target.checked)}
+    className="accent-champagne"
+  />
+  Zusätzlich Content
+</label>
 
   {bookingType === "duo" && (
     <div className="mt-3">
