@@ -104,6 +104,8 @@ const [bookingType, setBookingType] =
   useState<"single" | "duo">("single");
 
 const [isContentShoot, setIsContentShoot] = useState(false);
+  const [duoPartner, setDuoPartner] = useState("");
+const [bookingTypeSaved, setBookingTypeSaved] = useState(false);
 
 // Termin-Überschreibung
 const [overrideDate, setOverrideDate] = useState("");
@@ -145,13 +147,13 @@ const [overrideDate, setOverrideDate] = useState("");
 };
       setNote(b.admin_note ?? "");
       setConfirmationNote(b.confirmation_note ?? "");
-      if (b.availability_slots?.is_content_shoot) {
-  setBookingType("content");
-} else if (b.availability_slots?.is_duo) {
-  setBookingType("duo");
-} else {
-  setBookingType("single");
-}
+setBookingType(
+  b.availability_slots?.is_duo ? "duo" : "single"
+);
+
+setIsContentShoot(
+  b.availability_slots?.is_content_shoot ?? false
+);
 
 setDuoPartner(b.availability_slots?.duo_partner ?? "");
       if (b.requested_start) {
@@ -205,12 +207,13 @@ setDuoPartner(b.availability_slots?.duo_partner ?? "");
   const bookingTypeMut = useMutation({
   mutationFn: () =>
     saveBookingType({
-      data: {
-        id,
-        booking_type: bookingType,
-        duo_partner:
-          bookingType === "duo" ? duoPartner.trim() || null : null,
-      },
+     data: {
+  id,
+  booking_type: bookingType,
+  duo_partner:
+    bookingType === "duo" ? duoPartner.trim() || null : null,
+  is_content_shoot: isContentShoot,
+},
     }),
   onSuccess: () => {
     setBookingTypeSaved(true);
