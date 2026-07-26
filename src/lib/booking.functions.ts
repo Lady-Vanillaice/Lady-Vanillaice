@@ -972,6 +972,30 @@ export const markDepositPaid = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const updateDepositPaidDate = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({
+      id: z.string().uuid(),
+      anzahlung_paid_at: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await ensureAdmin(context.supabase, context.userId);
+
+    const { error } = await context.supabase
+      .from("bookings")
+      .update({
+        anzahlung_paid_at: `${data.anzahlung_paid_at}T12:00:00.000Z`,
+      })
+      .eq("id", data.id);
+
+    if (error) throw new Error(error.message);
+
+    return { ok: true };
+  });
 
 /* ---------- ADMIN: manual booking (e.g. from Telegram / E-Mail) ---------- */
 
@@ -1156,7 +1180,7 @@ export const getBookingDetail = createServerFn({ method: "GET" })
     const { data: booking, error } = await context.supabase
       .from("bookings")
       .select(
-        "id, slot_id, guest_name, guest_email, guest_phone, duration, duration_minutes, requested_start, message, status, admin_note, confirmation_note, anzahlung, anzahlung_paid, anzahlung_method, bar, created_at, updated_at, availability_slots(starts_at, ends_at, location, is_duo, is_content_shoot, duo_partner)"
+        "id, slot_id, guest_name, guest_email, guest_phone, duration, duration_minutes, requested_start, message, status, admin_note, confirmation_note, anzahlung, anzahlung_paid, anzahlung_paid_at, anzahlung_method, bar, created_at, updated_at, availability_slots(starts_at, ends_at, location, is_duo, is_content_shoot, duo_partner)"
       )
       .eq("id", data.id)
       .maybeSingle();
