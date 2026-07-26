@@ -1245,17 +1245,19 @@ setDuoPartner(b.availability_slots?.duo_partner ?? "");
                 Optional — nur für deine interne Übersicht (wird nicht an den Gast gesendet).
               </p>
             </div>
-            {total ? (
-              <p className="mt-4 text-[0.65rem] text-vanilla/40 leading-relaxed">
-                Standard-Rechnung: {total.toLocaleString("de-DE")} € gesamt
-                ({deposit!.toLocaleString("de-DE")} € Anzahlung + {rest!.toLocaleString("de-DE")} € Rest bar) —
-                überschreibe die Felder oben bei Sondervereinbarungen.
-              </p>
-            ) : (
-              <p className="mt-4 text-[0.65rem] text-vanilla/40 leading-relaxed">
-                Keine Dauer hinterlegt — Betrag wird individuell vereinbart.
-              </p>
-  
+      {total ? (
+  <p className="mt-4 text-[0.65rem] text-vanilla/40 leading-relaxed">
+    Standard-Rechnung: {total.toLocaleString("de-DE")} € gesamt
+    ({deposit!.toLocaleString("de-DE")} € Anzahlung +{" "}
+    {rest!.toLocaleString("de-DE")} € Rest bar) —
+    überschreibe die Felder oben bei Sondervereinbarungen.
+  </p>
+) : (
+  <p className="mt-4 text-[0.65rem] text-vanilla/40 leading-relaxed">
+    Keine Dauer hinterlegt — Betrag wird individuell vereinbart.
+  </p>
+)}
+
 <div className="mt-4">
   <label className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 block mb-1">
     Anzahlung eingegangen am
@@ -1267,7 +1269,6 @@ setDuoPartner(b.availability_slots?.duo_partner ?? "");
     className="input-luxe w-full"
   />
 </div>
-            )}
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               {(booking.anzahlung || 0) > 0 && (
                 <span className={`text-[0.65rem] uppercase tracking-[0.15em] px-3 py-1.5 ${booking.anzahlung_paid ? "bg-green-700/30 text-green-200" : "bg-champagne/15 text-champagne"}`}>
