@@ -876,7 +876,14 @@ export const updateBookingPayment = createServerFn({ method: "POST" })
 
 export const markDepositPaid = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
+  .inputValidator((d) =>
+  z.object({
+    id: z.string().uuid(),
+    anzahlung_paid_at: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/),
+  }).parse(d),
+)
   .handler(async ({ data, context }) => {
     await ensureAdmin(context.supabase, context.userId);
 
@@ -899,7 +906,7 @@ export const markDepositPaid = createServerFn({ method: "POST" })
       .from("bookings")
      .update({
   anzahlung_paid: true,
-  anzahlung_paid_at: new Date().toISOString(),
+  anzahlung_paid_at: `${data.anzahlung_paid_at}T12:00:00.000Z`,
 })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
