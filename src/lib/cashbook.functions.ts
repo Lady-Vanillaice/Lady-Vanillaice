@@ -39,7 +39,7 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
       context.supabase
         .from("bookings")
         .select(
-          "id, guest_name, duration, status, anzahlung, anzahlung_method, anzahlung_paid, aanzahlung_paid_at, bar, created_at, requested_start, availability_slots(starts_at, location)",
+          "id, guest_name, duration, status, anzahlung, anzahlung_method, anzahlung_paid, anzahlung_paid_at, bar, created_at, requested_start, availability_slots(starts_at, location)",
         )
       .in("status", ["confirmed", "cancelled"])
     ]);
@@ -62,33 +62,61 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
     }));
 
     const todayISO = new Date().toISOString().slice(0, 10);
+const bookings: CashBookEntry[] = (bookingRes.data ?? []).flatMap(
+  (b: any) => {
+    const entries: CashBookEntry[] = [];
 
-    const bookings: CashBookEntry[] = (bookingRes.data ?? [])
-      .map((b: any) => {
-        const startIso: string | null =
-          b.availability_slots?.starts_at ?? b.requested_start ?? null;
-        if (!startIso) return null;
-        const datum = String(startIso).slice(0, 10);
-        if (datum > todayISO) return null; // only past / today
-       const anzahlung = b.anzahlung_paid
-  ? Number(b.anzahlung ?? 0)
-  : 0;
-        const bar = b.status === "cancelled" ? 0 : Number(b.bar ?? 0);
-        return {
-          id: `booking:${b.id}`,
-          source: "booking" as const,
-          studio: b.availability_slots?.location ?? "—",
-          datum,
+    const studio = b.availability_slots?.location ?? "—";
+
+    // 1. Anzahlung am tatsächlichen Zahlungstag
+    const anzahlung = b.anzahlung_paid
+      ? Number(b.anzahlung ?? 0)
+      : 0;
+
+    if (anzahlung > 0 && b.anzahlung_paid_at) {
+      entries.push({
+        id: `booking-deposit:${b.id}`,
+        source: "booking",
+        studio,
+        datum: String(b.anzahlung_paid_at).slice(0, 10),
+        kunde: b.guest_name,
+        anzahlung,
+        anzahlung_method: b.anzahlung_method ?? null,
+        bar: 0,
+        gesamt: anzahlung,
+        notiz: `Anzahlung · ${b.duration ?? ""}`,
+        created_at: b.anzahlung_paid_at,
+      });
+    }
+
+    // 2. Barzahlung am Termin
+    const startIso: string | null =
+      b.availability_slots?.starts_at ?? b.requested_start ?? null;
+
+    if (startIso && b.status === "confirmed") {
+      const terminDatum = String(startIso).slice(0, 10);
+      const bar = Number(b.bar ?? 0);
+
+      if (terminDatum <= todayISO && bar > 0) {
+        entries.push({
+          id: `booking-bar:${b.id}`,
+          source: "booking",
+          studio,
+          datum: terminDatum,
           kunde: b.guest_name,
-          anzahlung,
-          anzahlung_method: b.anzahlung_method ?? null,
+          anzahlung: 0,
+          anzahlung_method: null,
           bar,
-          gesamt: anzahlung + bar,
-          notiz: b.duration ?? null,
-          created_at: b.created_at,
-        };
-      })
-      .filter(Boolean) as CashBookEntry[];
+          gesamt: bar,
+          notiz: `Barzahlung · ${b.duration ?? ""}`,
+          created_at: startIso,
+        });
+      }
+    }
+
+    return entries;
+  },
+);
 
     const all = [...manual, ...bookings].sort((a, b) => {
       if (a.datum !== b.datum) return a.datum < b.datum ? 1 : -1;
