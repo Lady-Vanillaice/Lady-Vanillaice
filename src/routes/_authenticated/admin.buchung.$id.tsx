@@ -101,9 +101,9 @@ function BookingDetailPage() {
 
 // Terminart
 const [bookingType, setBookingType] =
-  useState<"single" | "duo" | "content">("single");
-const [duoPartner, setDuoPartner] = useState("");
-const [bookingTypeSaved, setBookingTypeSaved] = useState(false);
+  useState<"single" | "duo">("single");
+
+const [isContentShoot, setIsContentShoot] = useState(false);
 
 // Termin-Überschreibung
 const [overrideDate, setOverrideDate] = useState("");
