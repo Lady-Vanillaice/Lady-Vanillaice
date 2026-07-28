@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -337,6 +337,7 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [sessionType, setSessionType] = useState<"duo" | "single">("duo");
+  const applyingProposalRef = useRef(false);
 
   const slotStartHm = formatMunichTime(slot.starts_at);
   const slotEndHm = formatMunichTime(slot.ends_at);
@@ -353,7 +354,14 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
   }, [longestWindowMinutes, slot.ends_at, slot.starts_at, windows.length]);
 
   // Reset proposal when inputs change
-  useEffect(() => { setProposed(null); setError(null); }, [slot.id, durationChoice, earliest, latest]);
+  useEffect(() => {
+    if (applyingProposalRef.current) {
+      applyingProposalRef.current = false;
+      return;
+    }
+    setProposed(null);
+    setError(null);
+  }, [slot.id, durationChoice, earliest, latest]);
 
   // For "ganztags", lock the time window to the full available slot.
   useEffect(() => {
@@ -388,6 +396,9 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
     },
     onSuccess: (res) => {
       if (res.ok) {
+        applyingProposalRef.current = true;
+        setEarliest(formatMunichTime(res.start));
+        setLatest(formatMunichTime(res.end));
         setProposed({ start: res.start, end: res.end });
         setError(null);
       } else {
