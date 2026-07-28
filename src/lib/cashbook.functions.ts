@@ -54,7 +54,7 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
       const status:CashBookEntry["status"]=b.status==="cancelled"?"cancelled":b.fully_paid||b.completed_at?"completed":"open";
       return {id:`booking:${b.id}`,source:"booking",booking_id:b.id,termin_datum:termin,studio:slot?.location??"—",kunde:b.guest_name,
         anzahlung,anzahlung_method:b.anzahlung_method??null,anzahlung_datum:dateOnly(b.anzahlung_paid_at),bar,bar_datum:dateOnly(b.cash_received_at),
-        durchgefuehrt_datum:dateOnly(b.completed_at),gesamt:anzahlung+bar,status,notiz:b.admin_note||b.duration||null,created_at:b.created_at};
+        durchgefuehrt_datum:dateOnly(b.completed_at),gesamt:anzahlung+bar,status,notiz:b.duration||null,created_at:b.created_at};
     });
     return [...manual,...bookings].sort((a,b)=>{const ad=a.anzahlung_datum||a.bar_datum||a.termin_datum;const bd=b.anzahlung_datum||b.bar_datum||b.termin_datum;return ad<bd?1:ad>bd?-1:0;});
   });
