@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
+export type DepositExemptionReason = "regular_customer" | "trust" | "exception" | "colleague_guarantees";
+
 export type CashBookEntry = {
   id: string;
   source: "manual" | "booking";
@@ -14,6 +16,8 @@ export type CashBookEntry = {
   anzahlung: number;
   anzahlung_method: string | null;
   anzahlung_datum: string | null;
+  deposit_exemption_reason: DepositExemptionReason | null;
+  deposit_guarantor: string | null;
   bar: number;
   bar_datum: string | null;
   durchgefuehrt_datum: string | null;
@@ -50,7 +54,7 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
     const [manualRes, bookingRes] = await Promise.all([
       db.from("cash_book_entries").select("id, studio, datum, kunde, anzahlung, anzahlung_method, bar, gesamt, notiz, created_at"),
       db.from("bookings")
-        .select("id, guest_name, duration, duration_minutes, status, anzahlung, anzahlung_method, anzahlung_paid, anzahlung_paid_at, bar, completed_at, cash_received_at, fully_paid, admin_note, created_at, requested_start, availability_slots(starts_at, location, is_duo, is_content_shoot)")
+        .select("id, guest_name, duration, duration_minutes, status, anzahlung, anzahlung_method, anzahlung_paid, anzahlung_paid_at, deposit_exemption_reason, deposit_guarantor, bar, completed_at, cash_received_at, fully_paid, admin_note, created_at, requested_start, availability_slots(starts_at, location, is_duo, is_content_shoot)")
         .in("status", ["confirmed", "cancelled", "rescheduling"]),
     ]);
     if (manualRes.error) throw new Error(manualRes.error.message);
@@ -68,6 +72,8 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
       anzahlung: Number(e.anzahlung),
       anzahlung_method: e.anzahlung_method ?? null,
       anzahlung_datum: Number(e.anzahlung) > 0 ? e.datum : null,
+      deposit_exemption_reason: null,
+      deposit_guarantor: null,
       bar: Number(e.bar),
       bar_datum: Number(e.bar) > 0 ? e.datum : null,
       durchgefuehrt_datum: Number(e.bar) > 0 ? e.datum : null,
@@ -110,6 +116,8 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
         anzahlung,
         anzahlung_method: b.anzahlung_method ?? null,
         anzahlung_datum: dateOnly(b.anzahlung_paid_at),
+        deposit_exemption_reason: b.deposit_exemption_reason ?? null,
+        deposit_guarantor: b.deposit_guarantor ?? null,
         bar,
         bar_datum: dateOnly(b.cash_received_at),
         durchgefuehrt_datum: dateOnly(b.completed_at),
