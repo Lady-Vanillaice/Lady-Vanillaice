@@ -10,7 +10,7 @@ function Monogram() {
         <Crown size={32} strokeWidth={1.2} />
       </div>
       <div className="leading-tight">
-        <div className="font-display text-sm gold-text tracking-[0.18em] uppercase">Lady Vanilla Ice</div>
+        <div className="font-display text-sm gold-text tracking-[0.18em] uppercase whitespace-nowrap">Lady Vanilla Ice</div>
       </div>
     </Link>
   );
@@ -26,7 +26,6 @@ export function Header() {
     { to: "/leistungen", label: t<string>("nav.services") },
     { to: "/preise", label: t<string>("nav.prices") },
     { to: "/kalender", label: t<string>("nav.calendar") },
-    { to: "/journal", label: t<string>("nav.journal") },
     { to: "/online", label: t<string>("nav.online") },
     { to: "/faq", label: t<string>("nav.faq") },
   ] as const;
@@ -66,7 +65,7 @@ export function Header() {
       <div className="container-luxe flex items-center justify-between py-4">
         <Monogram />
 
-        <nav className="hidden lg:flex items-center gap-6 xl:gap-10">
+        <nav className="hidden lg:flex items-center gap-6 xl:gap-10 ml-auto">
           {nav.map((item) => (
             <Link
               key={item.to}
@@ -77,13 +76,7 @@ export function Header() {
               {item.label}
             </Link>
           ))}
-        </nav>
-
-        <div className="hidden lg:flex items-center gap-4">
           <LanguageSwitcher />
-          <Link to="/buchung" className="btn-outline-gold !py-2.5 !px-5 !text-[0.62rem] whitespace-nowrap">
-            {t<string>("nav.requestAppointment")}
-          </Link>
           <button
             aria-label={t<string>("nav.openMenu")}
             aria-expanded={open}
@@ -92,7 +85,7 @@ export function Header() {
           >
             {open ? <X size={22} /> : <Menu size={22} />}
           </button>
-        </div>
+        </nav>
 
         <div className="flex items-center gap-2 lg:hidden">
           <LanguageSwitcher />
