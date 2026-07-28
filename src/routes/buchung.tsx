@@ -34,10 +34,15 @@ function Buchung() {
     const name = String(form.get("name") ?? "").trim();
     const email = String(form.get("email") ?? "").trim();
     const phone = String(form.get("phone") ?? "").trim();
-    const date = String(form.get("date") ?? "").trim();
-    const endDate = String(form.get("end_date") ?? "").trim();
-    const altDate = String(form.get("alt_date") ?? "").trim();
-    const altEnd = String(form.get("alt_end") ?? "").trim();
+    const combineDateTime = (dateName: string, timeName: string) => {
+      const day = String(form.get(dateName) ?? "").trim();
+      const time = String(form.get(timeName) ?? "").trim();
+      return day && time ? `${day}T${time}` : "";
+    };
+    const date = combineDateTime("date_day", "date_time");
+    const endDate = combineDateTime("end_date_day", "end_date_time");
+    const altDate = combineDateTime("alt_date_day", "alt_date_time");
+    const altEnd = combineDateTime("alt_end_day", "alt_end_time");
     const wishes = String(form.get("message") ?? "").trim();
 
     let requestedStartIso: string | undefined;
@@ -158,22 +163,34 @@ function Buchung() {
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
                   <label className="eyebrow block mb-2">{tr("Wunschtermin — Von", "Preferred date — From")}</label>
-                  <input name="date" type="datetime-local" required className="input-luxe" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input name="date_day" type="date" required className="input-luxe" aria-label={tr("Wunschtermin Datum", "Preferred date")} />
+                    <input name="date_time" type="time" required className="input-luxe" aria-label={tr("Wunschtermin Uhrzeit", "Preferred time")} />
+                  </div>
                 </div>
                 <div>
                   <label className="eyebrow block mb-2">{tr("Wunschtermin — Bis", "Preferred date — Until")}</label>
-                  <input name="end_date" type="datetime-local" required className="input-luxe" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input name="end_date_day" type="date" required className="input-luxe" aria-label={tr("Enddatum", "End date")} />
+                    <input name="end_date_time" type="time" required className="input-luxe" aria-label={tr("Endzeit", "End time")} />
+                  </div>
                 </div>
               </div>
 
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
                   <label className="eyebrow block mb-2">{tr("Ausweichtermin — Von (optional)", "Alternative date — From (optional)")}</label>
-                  <input name="alt_date" type="datetime-local" className="input-luxe" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input name="alt_date_day" type="date" className="input-luxe" aria-label={tr("Ausweichtermin Datum", "Alternative date")} />
+                    <input name="alt_date_time" type="time" className="input-luxe" aria-label={tr("Ausweichtermin Uhrzeit", "Alternative time")} />
+                  </div>
                 </div>
                 <div>
                   <label className="eyebrow block mb-2">{tr("Ausweichtermin — Bis (optional)", "Alternative date — Until (optional)")}</label>
-                  <input name="alt_end" type="datetime-local" className="input-luxe" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input name="alt_end_day" type="date" className="input-luxe" aria-label={tr("Ausweichtermin Enddatum", "Alternative end date")} />
+                    <input name="alt_end_time" type="time" className="input-luxe" aria-label={tr("Ausweichtermin Endzeit", "Alternative end time")} />
+                  </div>
                 </div>
               </div>
 
@@ -265,6 +282,15 @@ function Buchung() {
                     <div className="eyebrow mb-1">{tr("E-Mail", "Email")}</div>
                     <a href="mailto:Lady-vanillaice@gmx.net" className="text-vanilla hover:text-champagne transition">
                       Lady-vanillaice@gmx.net
+                    </a>
+                  </div>
+                </li>
+                <li className="flex items-start gap-4">
+                  <MessageCircle className="text-champagne mt-1" size={18} />
+                  <div>
+                    <div className="eyebrow mb-1">WhatsApp</div>
+                    <a href="https://wa.me/4915170568230" target="_blank" rel="noopener noreferrer" className="text-vanilla hover:text-champagne transition">
+                      +49 151 70568230
                     </a>
                   </div>
                 </li>

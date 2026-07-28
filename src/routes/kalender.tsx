@@ -777,7 +777,6 @@ function AvailabilityTimeline({ slotId }: { slotId: string }) {
       <div className="text-[0.65rem] uppercase tracking-[0.2em] text-vanilla/45 mb-2 flex items-center justify-between gap-3">
         <span>{tr("Belegung des Tages", "Occupancy of the day")}</span>
         <div className="flex items-center gap-2 normal-case tracking-normal">
-          <span className="text-vanilla/40 hidden sm:inline">{tr("Pause", "Buffer")}: {q.data.buffer_minutes} {tr("Min", "min")}</span>
           <div className="flex items-center gap-1 border border-champagne/25 bg-anthracite/40">
             <button
               type="button"
