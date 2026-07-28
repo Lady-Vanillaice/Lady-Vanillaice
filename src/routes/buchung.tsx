@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { PageHeader } from "../components/site/PageHeader";
 import { Crown, Mail, MessageCircle, MapPin, ShieldCheck, Clock, Lock } from "lucide-react";
 import { submitBooking } from "@/lib/public-booking.functions";
+import { sendBookingWhatsApp } from "@/lib/whatsapp-booking.functions";
 import { useTr } from "@/i18n";
 
 export const Route = createFileRoute("/buchung")({
@@ -25,6 +26,7 @@ function Buchung() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [agree, setAgree] = useState(false);
   const submit = useServerFn(submitBooking);
+  const notifyWhatsApp = useServerFn(sendBookingWhatsApp);
   const tr = useTr();
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
@@ -46,6 +48,7 @@ function Buchung() {
     const wishes = String(form.get("message") ?? "").trim();
 
     let requestedStartIso: string | undefined;
+    let requestedEndIso: string | undefined;
     let durationMinutes: number | undefined;
     let durationLabel: string | undefined;
     if (date) {
@@ -55,6 +58,7 @@ function Buchung() {
         if (endDate) {
           const endD = new Date(endDate);
           if (!isNaN(endD.getTime()) && endD.getTime() > startD.getTime()) {
+            requestedEndIso = endD.toISOString();
             durationMinutes = Math.round((endD.getTime() - startD.getTime()) / 60_000);
             durationLabel = `${durationMinutes} Minuten`;
           }
@@ -84,6 +88,7 @@ function Buchung() {
         data: {
           guest_name: name,
           guest_email: email,
+          guest_phone: phone,
           message,
           requested_start: requestedStartIso,
           duration_minutes: durationMinutes,
@@ -91,6 +96,22 @@ function Buchung() {
           age_confirmed: true,
         },
       });
+
+      try {
+        await notifyWhatsApp({
+          data: {
+            guest_name: name,
+            guest_email: email,
+            guest_phone: phone,
+            requested_start: requestedStartIso,
+            requested_end: requestedEndIso,
+            message: wishes,
+          },
+        });
+      } catch (whatsAppError) {
+        console.error("WhatsApp notification failed", whatsAppError);
+      }
+
       setStatus("sent");
       (e.target as HTMLFormElement).reset();
       setAgree(false);
