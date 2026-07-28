@@ -288,6 +288,15 @@ function Buchung() {
                 <li className="flex items-start gap-4">
                   <MessageCircle className="text-champagne mt-1" size={18} />
                   <div>
+                    <div className="eyebrow mb-1">WhatsApp</div>
+                    <a href="https://wa.me/4915170568230" target="_blank" rel="noopener noreferrer" className="text-vanilla hover:text-champagne transition">
+                      +49 151 70568230
+                    </a>
+                  </div>
+                </li>
+                <li className="flex items-start gap-4">
+                  <MessageCircle className="text-champagne mt-1" size={18} />
+                  <div>
                     <div className="eyebrow mb-1">Telegram</div>
                     <a href="https://t.me/ladyvanillaice" target="_blank" rel="noopener noreferrer" className="text-vanilla hover:text-champagne transition">
                       @ladyvanillaice
