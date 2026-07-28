@@ -17,7 +17,7 @@ const accountingInput = z.object({
   completed_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   cash_received_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   fully_paid: z.boolean(),
-  status: z.enum(["open", "completed", "cancelled"]),
+  status: z.enum(["open", "completed", "cancelled", "rescheduling"]),
   note: z.string().trim().max(2000).nullable().optional(),
 });
 
@@ -33,7 +33,11 @@ export const updateBookingAccounting = createServerFn({ method: "POST" })
     const completedDate = data.fully_paid ? (data.completed_at || today) : data.completed_at;
     const cashDate = data.fully_paid && data.bar > 0 ? (data.cash_received_at || completedDate || today) : data.cash_received_at;
     const depositDate = data.anzahlung > 0 ? data.anzahlung_paid_at : null;
-    const bookingStatus = data.status === "cancelled" ? "cancelled" : "confirmed";
+    const bookingStatus = data.status === "cancelled"
+      ? "cancelled"
+      : data.status === "rescheduling"
+        ? "rescheduling"
+        : "confirmed";
 
     const { error } = await db.from("bookings").update({
       anzahlung: data.anzahlung,
