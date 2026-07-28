@@ -10,6 +10,7 @@ export type CashBookEntry = {
   booking_id: string | null;
   termin_datum: string;
   studio: string;
+  studio_address: string | null;
   kunde: string;
   art: string;
   dauer: string | null;
@@ -54,7 +55,7 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
     const [manualRes, bookingRes] = await Promise.all([
       db.from("cash_book_entries").select("id, studio, datum, kunde, anzahlung, anzahlung_method, bar, gesamt, notiz, created_at"),
       db.from("bookings")
-        .select("id, guest_name, duration, duration_minutes, status, anzahlung, anzahlung_method, anzahlung_paid, anzahlung_paid_at, deposit_exemption_reason, deposit_guarantor, bar, completed_at, cash_received_at, fully_paid, admin_note, created_at, requested_start, availability_slots(starts_at, location, is_duo, is_content_shoot)")
+        .select("id, guest_name, duration, duration_minutes, status, anzahlung, anzahlung_method, anzahlung_paid, anzahlung_paid_at, deposit_exemption_reason, deposit_guarantor, bar, completed_at, cash_received_at, fully_paid, admin_note, created_at, requested_start, availability_slots(starts_at, location, location_address, is_duo, is_content_shoot)")
         .in("status", ["confirmed", "cancelled", "rescheduling"]),
     ]);
     if (manualRes.error) throw new Error(manualRes.error.message);
@@ -66,6 +67,7 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
       booking_id: null,
       termin_datum: e.datum,
       studio: e.studio,
+      studio_address: null,
       kunde: e.kunde,
       art: "Manuell",
       dauer: e.notiz || null,
@@ -87,6 +89,7 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
       const slot = (Array.isArray(b.availability_slots) ? b.availability_slots[0] : b.availability_slots) as {
         starts_at?: string;
         location?: string;
+        location_address?: string | null;
         is_duo?: boolean;
         is_content_shoot?: boolean;
       } | null;
@@ -110,6 +113,7 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
         booking_id: b.id,
         termin_datum: termin,
         studio: slot?.location ?? "—",
+        studio_address: slot?.location_address ?? null,
         kunde: b.guest_name,
         art,
         dauer: durationLabel(b.duration_minutes, b.duration),
