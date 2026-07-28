@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/site/PageHeader";
-import { ArrowLeft, MapPin, Clock, User, Phone, Mail } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { format, isSameDay, startOfDay } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -158,84 +158,40 @@ bar: b.bar != null ? Number(b.bar) : null,
 }
 
 function EntryCard({ e }: { e: Entry }) {
-  const start = new Date(e.start);
-  const end = e.end ? new Date(e.end) : null;
+  const duration = e.duration_minutes
+    ? `${e.duration_minutes} Minuten (${(e.duration_minutes / 60).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Std.)`
+    : (e.duration ?? "—");
+
   return (
     <Link
       to="/admin/buchung/$id"
       params={{ id: e.id }}
       className="block bg-card border border-champagne/15 p-4 hover:border-champagne/50 transition"
     >
-      <div className="flex flex-wrap items-start gap-4">
-        <div className="min-w-[5.5rem] font-display text-2xl text-vanilla tabular-nums">
-          {format(start, "HH:mm", { locale: de })}
-          {end && (
-            <div className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 mt-1">
-              bis {format(end, "HH:mm", { locale: de })}
-            </div>
-          )}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-medium text-lg text-vanilla">{e.guest_name}</span>
+          <span
+            className={`text-[0.5rem] uppercase tracking-[0.16em] px-1.5 py-0.5 ${
+              e.anzahlung_paid
+                ? "bg-green-700/30 text-green-200"
+                : "bg-amber-700/30 text-amber-200"
+            }`}
+          >
+            {e.anzahlung_paid ? "Anzahlung ok" : "Anzahlung offen"}
+          </span>
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium text-vanilla inline-flex items-center gap-1.5">
-              <User size={13} className="text-champagne" /> {e.guest_name}
-            </span>
-            {(e.duration_minutes || e.duration) && (
-              <span className="text-[0.6rem] uppercase tracking-[0.2em] bg-champagne/15 text-champagne px-2 py-0.5">
-                {e.duration_minutes
-                  ? `${e.duration_minutes} Minuten (${(e.duration_minutes / 60).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Std.)`
-                  : e.duration}
-              </span>
-            )}
-            {e.is_duo && (
-              <span className="text-[0.6rem] uppercase tracking-[0.2em] bg-bordeaux/40 text-vanilla px-2 py-0.5">
-                Duo{e.duo_partner ? ` · ${e.duo_partner}` : ""}
-              </span>
-            )}
-            {e.is_content_shoot && (
-              <span className="text-[0.6rem] uppercase tracking-[0.2em] bg-champagne/20 text-champagne px-2 py-0.5">
-                Content
-              </span>
-            )}
-            <span className="text-[0.6rem] uppercase tracking-[0.2em] bg-champagne/15 text-champagne px-2 py-0.5">
-  Anzahlung: {(e.anzahlung ?? 0).toLocaleString("de-DE")} €
-</span>
 
-<span className="text-[0.6rem] uppercase tracking-[0.2em] bg-bordeaux/30 text-vanilla px-2 py-0.5">
-  Bar offen: {(e.bar ?? 0).toLocaleString("de-DE")} €
-</span>
-            {e.anzahlung_paid ? (
-              <span className="text-[0.6rem] uppercase tracking-[0.2em] bg-green-700/30 text-green-200 px-2 py-0.5">
-                Anzahlung ok
-              </span>
-            ) : (
-              <span className="text-[0.6rem] uppercase tracking-[0.2em] bg-amber-700/30 text-amber-200 px-2 py-0.5">
-                Anzahlung offen
-              </span>
-            )}
-          </div>
-          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-vanilla/60">
-            {e.location && (
-              <span className="inline-flex items-center gap-1">
-                <MapPin size={11} /> {e.location}
-              </span>
-            )}
-            {e.duration_minutes && (
-              <span className="inline-flex items-center gap-1">
-                <Clock size={11} /> {e.duration_minutes} Min
-              </span>
-            )}
-            {e.guest_phone && (
-              <span className="inline-flex items-center gap-1">
-                <Phone size={11} /> {e.guest_phone}
-              </span>
-            )}
-            {e.guest_email && (
-              <span className="inline-flex items-center gap-1">
-                <Mail size={11} /> {e.guest_email}
-              </span>
-            )}
-          </div>
+        <div className="text-sm text-vanilla/75">
+          <span className="text-vanilla/50">Dauer:</span> {duration}
+        </div>
+        <div className="text-sm text-vanilla/75">
+          <span className="text-vanilla/50">Anzahlung:</span>{" "}
+          {(e.anzahlung ?? 0).toLocaleString("de-DE")} €
+        </div>
+        <div className="text-sm text-vanilla/75">
+          <span className="text-vanilla/50">Bar:</span>{" "}
+          {(e.bar ?? 0).toLocaleString("de-DE")} €
         </div>
       </div>
     </Link>
