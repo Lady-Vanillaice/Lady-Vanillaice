@@ -5,13 +5,18 @@ import { z } from "zod";
 export type CashBookEntry = {
   id: string;
   source: "manual" | "booking";
+  booking_id: string | null;
+  termin_datum: string;
   studio: string;
-  datum: string;
   kunde: string;
   anzahlung: number;
   anzahlung_method: string | null;
+  anzahlung_datum: string | null;
   bar: number;
+  bar_datum: string | null;
+  durchgefuehrt_datum: string | null;
   gesamt: number;
+  status: "open" | "completed" | "cancelled";
   notiz: string | null;
   created_at: string;
 };
@@ -27,6 +32,8 @@ async function ensureAdmin(supabase: any, userId: string) {
   if (!data) throw new Error("Forbidden");
 }
 
+const dateOnly = (value: string | null | undefined) => value ? String(value).slice(0, 10) : null;
+
 export const listCashBookEntries = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -38,10 +45,8 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
         .select("id, studio, datum, kunde, anzahlung, anzahlung_method, bar, gesamt, notiz, created_at"),
       context.supabase
         .from("bookings")
-        .select(
-          "id, guest_name, duration, status, anzahlung, anzahlung_method, anzahlung_paid, anzahlung_paid_at, bar, created_at, requested_start, availability_slots(starts_at, location)",
-        )
-      .in("status", ["confirmed", "cancelled"])
+        .select("id, guest_name, duration, status, anzahlung, anzahlung_method, anzahlung_paid, anzahlung_paid_at, bar, completed_at, cash_received_at, fully_paid, admin_note, created_at, requested_start, availability_slots(starts_at, location)")
+        .in("status", ["confirmed", "cancelled"]),
     ]);
 
     if (manualRes.error) throw new Error(manualRes.error.message);
@@ -50,80 +55,57 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
     const manual: CashBookEntry[] = (manualRes.data ?? []).map((e: any) => ({
       id: e.id,
       source: "manual",
+      booking_id: null,
+      termin_datum: e.datum,
       studio: e.studio,
-      datum: e.datum,
       kunde: e.kunde,
       anzahlung: Number(e.anzahlung),
       anzahlung_method: e.anzahlung_method ?? null,
+      anzahlung_datum: Number(e.anzahlung) > 0 ? e.datum : null,
       bar: Number(e.bar),
+      bar_datum: Number(e.bar) > 0 ? e.datum : null,
+      durchgefuehrt_datum: Number(e.bar) > 0 ? e.datum : null,
       gesamt: Number(e.gesamt),
+      status: "completed",
       notiz: e.notiz,
       created_at: e.created_at,
     }));
 
-    const todayISO = new Date().toISOString().slice(0, 10);
-const bookings: CashBookEntry[] = (bookingRes.data ?? []).flatMap(
-  (b: any) => {
-    const entries: CashBookEntry[] = [];
-
-    const studio = b.availability_slots?.location ?? "—";
-
-    // 1. Anzahlung am tatsächlichen Zahlungstag
-    const anzahlung = b.anzahlung_paid
-      ? Number(b.anzahlung ?? 0)
-      : 0;
-
-    if (anzahlung > 0 && b.anzahlung_paid_at) {
-      entries.push({
-        id: `booking-deposit:${b.id}`,
+    const bookings: CashBookEntry[] = (bookingRes.data ?? []).map((b: any) => {
+      const slot = b.availability_slots as { starts_at?: string; location?: string } | null;
+      const termin = dateOnly(b.requested_start ?? slot?.starts_at) ?? dateOnly(b.created_at)!;
+      const anzahlung = b.anzahlung_paid ? Number(b.anzahlung ?? 0) : 0;
+      const bar = b.cash_received_at || b.fully_paid ? Number(b.bar ?? 0) : 0;
+      const status: CashBookEntry["status"] = b.status === "cancelled"
+        ? "cancelled"
+        : b.fully_paid || b.completed_at
+          ? "completed"
+          : "open";
+      return {
+        id: `booking:${b.id}`,
         source: "booking",
-        studio,
-        datum: String(b.anzahlung_paid_at).slice(0, 10),
+        booking_id: b.id,
+        termin_datum: termin,
+        studio: slot?.location ?? "—",
         kunde: b.guest_name,
         anzahlung,
         anzahlung_method: b.anzahlung_method ?? null,
-        bar: 0,
-        gesamt: anzahlung,
-        notiz: `Anzahlung · ${b.duration ?? ""}`,
-        created_at: b.anzahlung_paid_at,
-      });
-    }
-
-    // 2. Barzahlung am Termin
-    const startIso: string | null =
-      b.availability_slots?.starts_at ?? b.requested_start ?? null;
-
-    if (startIso && b.status === "confirmed") {
-      const terminDatum = String(startIso).slice(0, 10);
-      const bar = Number(b.bar ?? 0);
-
-      if (terminDatum <= todayISO && bar > 0) {
-        entries.push({
-          id: `booking-bar:${b.id}`,
-          source: "booking",
-          studio,
-          datum: terminDatum,
-          kunde: b.guest_name,
-          anzahlung: 0,
-          anzahlung_method: null,
-          bar,
-          gesamt: bar,
-          notiz: `Barzahlung · ${b.duration ?? ""}`,
-          created_at: startIso,
-        });
-      }
-    }
-
-    return entries;
-  },
-);
-
-    const all = [...manual, ...bookings].sort((a, b) => {
-      if (a.datum !== b.datum) return a.datum < b.datum ? 1 : -1;
-      return a.created_at < b.created_at ? 1 : -1;
+        anzahlung_datum: dateOnly(b.anzahlung_paid_at),
+        bar,
+        bar_datum: dateOnly(b.cash_received_at),
+        durchgefuehrt_datum: dateOnly(b.completed_at),
+        gesamt: anzahlung + bar,
+        status,
+        notiz: b.admin_note || b.duration || null,
+        created_at: b.created_at,
+      };
     });
 
-    return all;
+    return [...manual, ...bookings].sort((a, b) => {
+      const aDate = a.anzahlung_datum || a.bar_datum || a.termin_datum;
+      const bDate = b.anzahlung_datum || b.bar_datum || b.termin_datum;
+      return aDate < bDate ? 1 : aDate > bDate ? -1 : 0;
+    });
   });
 
 const entrySchema = z.object({
@@ -141,7 +123,6 @@ export const createCashBookEntry = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => entrySchema.parse(data))
   .handler(async ({ data, context }) => {
     await ensureAdmin(context.supabase, context.userId);
-    const method = data.anzahlung_method?.trim() ?? "";
     const { data: row, error } = await context.supabase
       .from("cash_book_entries")
       .insert({
@@ -149,15 +130,15 @@ export const createCashBookEntry = createServerFn({ method: "POST" })
         datum: data.datum,
         kunde: data.kunde,
         anzahlung: data.anzahlung,
-        anzahlung_method: method.length ? method : null,
+        anzahlung_method: data.anzahlung_method?.trim() || null,
         bar: data.bar,
         notiz: data.notiz ?? null,
         created_by: context.userId,
       })
-      .select("id, studio, datum, kunde, anzahlung, anzahlung_method, bar, gesamt, notiz, created_at")
+      .select("id")
       .single();
     if (error) throw new Error(error.message);
-    return row as CashBookEntry;
+    return row;
   });
 
 export const deleteCashBookEntry = createServerFn({ method: "POST" })
@@ -165,10 +146,7 @@ export const deleteCashBookEntry = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => z.object({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     await ensureAdmin(context.supabase, context.userId);
-    const { error } = await context.supabase
-      .from("cash_book_entries")
-      .delete()
-      .eq("id", data.id);
+    const { error } = await context.supabase.from("cash_book_entries").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
