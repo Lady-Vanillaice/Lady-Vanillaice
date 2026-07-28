@@ -12,6 +12,8 @@ const exemptionReason = z.enum(["regular_customer", "trust", "exception", "colle
 
 const accountingInput = z.object({
   id: z.string().uuid(),
+  studio: z.string().trim().min(1).max(200),
+  studio_address: z.string().trim().max(500).nullable().optional(),
   anzahlung: z.number().min(0).max(1_000_000),
   anzahlung_method: z.string().trim().max(100).nullable().optional(),
   anzahlung_paid_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
@@ -33,20 +35,18 @@ export const updateBookingAccounting = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await ensureAdmin(context.supabase, context.userId);
     const db = context.supabase as any;
+    const { data: booking, error: bookingError } = await db.from("bookings").select("id, slot_id").eq("id", data.id).maybeSingle();
+    if (bookingError) throw new Error(bookingError.message);
+    if (!booking) throw new Error("Buchung nicht gefunden.");
+    if (!booking.slot_id) throw new Error("Diese Buchung hat keinen verknüpften Termin. Bitte zuerst Datum und Uhrzeit speichern.");
+
     const today = new Date().toISOString().slice(0, 10);
     const hasExemption = Boolean(data.deposit_exemption_reason);
     const completedDate = data.fully_paid ? (data.completed_at || today) : data.completed_at;
     const cashDate = data.fully_paid && data.bar > 0 ? (data.cash_received_at || completedDate || today) : data.cash_received_at;
     const depositDate = !hasExemption && data.anzahlung > 0 ? data.anzahlung_paid_at : null;
-    const bookingStatus = data.status === "cancelled"
-      ? "cancelled"
-      : data.status === "rescheduling"
-        ? "rescheduling"
-        : "confirmed";
-
-    const guarantor = data.deposit_exemption_reason === "colleague_guarantees"
-      ? data.deposit_guarantor?.trim() || null
-      : null;
+    const bookingStatus = data.status === "cancelled" ? "cancelled" : data.status === "rescheduling" ? "rescheduling" : "confirmed";
+    const guarantor = data.deposit_exemption_reason === "colleague_guarantees" ? data.deposit_guarantor?.trim() || null : null;
 
     const { error } = await db.from("bookings").update({
       anzahlung: hasExemption ? 0 : data.anzahlung,
@@ -62,7 +62,14 @@ export const updateBookingAccounting = createServerFn({ method: "POST" })
       status: bookingStatus,
       admin_note: data.note?.trim() || null,
     }).eq("id", data.id);
-
     if (error) throw new Error(error.message);
+
+    const { error: slotError } = await db.from("availability_slots").update({
+      location: data.studio.trim(),
+      location_address: data.studio_address?.trim() || null,
+      updated_at: new Date().toISOString(),
+    }).eq("id", booking.slot_id);
+    if (slotError) throw new Error(slotError.message);
+
     return { ok: true };
   });
