@@ -817,30 +817,61 @@ export const updateBookingType = createServerFn({ method: "POST" })
 
     const { data: booking, error: bookingErr } = await context.supabase
       .from("bookings")
-      .select("id, slot_id")
+      .select("id, slot_id, requested_start, duration_minutes")
       .eq("id", data.id)
       .maybeSingle();
 
     if (bookingErr) throw new Error(bookingErr.message);
     if (!booking) throw new Error("Buchung nicht gefunden.");
 
-    if (!booking.slot_id) {
-      throw new Error("Diese Buchung hat keinen verknüpften Termin-Slot.");
+    const classification = {
+      is_duo: data.booking_type === "duo",
+      is_content_shoot: data.is_content_shoot,
+      duo_partner:
+        data.booking_type === "duo"
+          ? data.duo_partner?.trim() || null
+          : null,
+    };
+
+    let slotId = booking.slot_id;
+    if (!slotId) {
+      if (!booking.requested_start) {
+        throw new Error("Bitte zuerst Datum und Uhrzeit des Termins speichern.");
+      }
+
+      const startsAt = new Date(booking.requested_start);
+      const durationMinutes = booking.duration_minutes ?? 60;
+      const endsAt = new Date(startsAt.getTime() + durationMinutes * 60_000);
+
+      const { data: newSlot, error: createSlotErr } = await context.supabase
+        .from("availability_slots")
+        .insert({
+          starts_at: startsAt.toISOString(),
+          ends_at: endsAt.toISOString(),
+          status: "booked",
+          is_hidden: true,
+          ...classification,
+        })
+        .select("id")
+        .single();
+
+      if (createSlotErr || !newSlot) {
+        throw new Error(createSlotErr?.message ?? "Termin-Slot konnte nicht angelegt werden.");
+      }
+
+      slotId = newSlot.id;
+      const { error: linkErr } = await context.supabase
+        .from("bookings")
+        .update({ slot_id: slotId })
+        .eq("id", booking.id);
+      if (linkErr) throw new Error(linkErr.message);
+    } else {
+      const { error: slotErr } = await context.supabase
+        .from("availability_slots")
+        .update(classification)
+        .eq("id", slotId);
+      if (slotErr) throw new Error(slotErr.message);
     }
-
-    const { error: slotErr } = await context.supabase
-      .from("availability_slots")
-      .update({
-        is_duo: data.booking_type === "duo",
-       is_content_shoot: data.is_content_shoot,
-        duo_partner:
-          data.booking_type === "duo"
-            ? data.duo_partner?.trim() || null
-            : null,
-      })
-      .eq("id", booking.slot_id);
-
-    if (slotErr) throw new Error(slotErr.message);
 
     return { ok: true };
   });
