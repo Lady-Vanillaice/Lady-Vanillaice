@@ -161,6 +161,9 @@ function EntryCard({ e }: { e: Entry }) {
   const duration = e.duration_minutes
     ? `${e.duration_minutes} Minuten (${(e.duration_minutes / 60).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Std.)`
     : (e.duration ?? "—");
+  const startTime = format(new Date(e.start), "HH:mm");
+  const endTime = e.end ? format(new Date(e.end), "HH:mm") : null;
+  const timeRange = endTime ? `${startTime}–${endTime} Uhr` : `${startTime} Uhr`;
 
   return (
     <Link
@@ -195,6 +198,9 @@ function EntryCard({ e }: { e: Entry }) {
           ) : null}
         </div>
 
+        <div className="text-sm text-vanilla/75">
+          <span className="text-vanilla/50">Zeit:</span> {timeRange}
+        </div>
         <div className="text-sm text-vanilla/75">
           <span className="text-vanilla/50">Dauer:</span> {duration}
         </div>
