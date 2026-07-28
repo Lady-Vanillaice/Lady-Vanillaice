@@ -84,6 +84,14 @@ export function Header() {
           <Link to="/buchung" className="btn-outline-gold !py-2.5 !px-5 !text-[0.62rem] whitespace-nowrap">
             {t<string>("nav.requestAppointment")}
           </Link>
+          <button
+            aria-label={t<string>("nav.openMenu")}
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
+            className="text-vanilla p-2 hover:text-champagne transition"
+          >
+            {open ? <X size={22} /> : <Menu size={22} />}
+          </button>
         </div>
 
         <div className="flex items-center gap-2 lg:hidden">
@@ -99,7 +107,7 @@ export function Header() {
       </div>
 
       {open && (
-        <div className="lg:hidden bg-anthracite/98 backdrop-blur-md border-t border-champagne/20">
+        <div className="bg-anthracite/98 backdrop-blur-md border-t border-champagne/20">
           <nav className="container-luxe flex flex-col py-4">
             {mobileNav.map((item) => (
               <Link
