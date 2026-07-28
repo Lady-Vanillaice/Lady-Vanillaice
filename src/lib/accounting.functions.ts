@@ -8,11 +8,15 @@ async function ensureAdmin(supabase: any, userId: string) {
   if (!data) throw new Error("Forbidden");
 }
 
+const exemptionReason = z.enum(["regular_customer", "trust", "exception", "colleague_guarantees"]);
+
 const accountingInput = z.object({
   id: z.string().uuid(),
   anzahlung: z.number().min(0).max(1_000_000),
   anzahlung_method: z.string().trim().max(100).nullable().optional(),
   anzahlung_paid_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  deposit_exemption_reason: exemptionReason.nullable().optional(),
+  deposit_guarantor: z.string().trim().max(120).nullable().optional(),
   bar: z.number().min(0).max(1_000_000),
   completed_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   cash_received_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
@@ -30,20 +34,27 @@ export const updateBookingAccounting = createServerFn({ method: "POST" })
     await ensureAdmin(context.supabase, context.userId);
     const db = context.supabase as any;
     const today = new Date().toISOString().slice(0, 10);
+    const hasExemption = Boolean(data.deposit_exemption_reason);
     const completedDate = data.fully_paid ? (data.completed_at || today) : data.completed_at;
     const cashDate = data.fully_paid && data.bar > 0 ? (data.cash_received_at || completedDate || today) : data.cash_received_at;
-    const depositDate = data.anzahlung > 0 ? data.anzahlung_paid_at : null;
+    const depositDate = !hasExemption && data.anzahlung > 0 ? data.anzahlung_paid_at : null;
     const bookingStatus = data.status === "cancelled"
       ? "cancelled"
       : data.status === "rescheduling"
         ? "rescheduling"
         : "confirmed";
 
+    const guarantor = data.deposit_exemption_reason === "colleague_guarantees"
+      ? data.deposit_guarantor?.trim() || null
+      : null;
+
     const { error } = await db.from("bookings").update({
-      anzahlung: data.anzahlung,
-      anzahlung_method: data.anzahlung_method?.trim() || null,
-      anzahlung_paid: Boolean(depositDate && data.anzahlung > 0),
-      anzahlung_paid_at: atNoon(depositDate),
+      anzahlung: hasExemption ? 0 : data.anzahlung,
+      anzahlung_method: hasExemption ? null : data.anzahlung_method?.trim() || null,
+      anzahlung_paid: hasExemption ? false : Boolean(depositDate && data.anzahlung > 0),
+      anzahlung_paid_at: hasExemption ? null : atNoon(depositDate),
+      deposit_exemption_reason: data.deposit_exemption_reason ?? null,
+      deposit_guarantor: guarantor,
       bar: data.bar,
       completed_at: atNoon(completedDate),
       cash_received_at: atNoon(cashDate),
