@@ -182,6 +182,19 @@ function EntryCard({ e }: { e: Entry }) {
           </span>
         </div>
 
+        <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.14em] text-champagne">
+          <span>
+            {e.is_duo
+              ? `Duo – mit ${e.duo_partner?.trim() || "Partnerin"}`
+              : "Single"}
+          </span>
+          {e.is_content_shoot ? (
+            <span className="border border-champagne/30 px-1.5 py-0.5 text-vanilla/80">
+              Content
+            </span>
+          ) : null}
+        </div>
+
         <div className="text-sm text-vanilla/75">
           <span className="text-vanilla/50">Dauer:</span> {duration}
         </div>
