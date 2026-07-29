@@ -55,7 +55,7 @@ function KassenbuchPage() {
   const totals = filtered.reduce((a, e) => { a.anzahlung += e.anzahlung; a.bar += e.bar; a.gesamt += e.gesamt; if (e.status === "cancelled") a.storno += e.anzahlung; if (e.status === "completed") a.termine += 1; return a; }, { anzahlung: 0, bar: 0, gesamt: 0, storno: 0, termine: 0 });
   const studios = [...new Set(data.map(e => e.studio))].sort();
   const methods = [...new Set(data.map(e => e.anzahlung_method).filter(Boolean) as string[])].sort();
-  const depositText = (e: CashBookEntry) => e.deposit_exemption_reason ? `${exemptionLabel[e.deposit_exemption_reason]}${e.deposit_guarantor ? ` (${e.deposit_guarantor})` : ""}` : e.anzahlung_method ?? "—";
+  const depositText = (e: CashBookEntry) => e.deposit_exemption_reason ? `${exemptionLabel[e.deposit_exemption_reason]}${e.deposit_guarantor ? `: ${e.deposit_guarantor}` : ""}` : e.anzahlung_method ?? "—";
   const studioParts = (e: CashBookEntry) => {
     const rawStudio = e.studio.trim();
     const storedAddress = e.studio_address?.trim() ?? "";
