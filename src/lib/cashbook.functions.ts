@@ -63,7 +63,8 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
 
     const manual: CashBookEntry[] = (manualRes.data ?? []).map((e: any) => ({
       id: e.id, source: "manual", booking_id: null, termin_datum: e.datum,
-      studio: e.studio, studio_address: null, kunde: e.kunde, art: "Manuell",
+      studio: e.studio, studio_address: null, kunde: e.kunde,
+      art: e.studio === "Custom Content" ? "Custom Content" : "Manuell",
       dauer: e.notiz || null, anzahlung: Number(e.anzahlung), anzahlung_method: e.anzahlung_method ?? null,
       anzahlung_datum: Number(e.anzahlung) > 0 ? e.datum : null, deposit_exemption_reason: null,
       deposit_guarantor: null, bar: Number(e.bar), bar_datum: Number(e.bar) > 0 ? e.datum : null,
