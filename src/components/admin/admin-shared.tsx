@@ -293,8 +293,7 @@ export function NewSlotForm({
     const starts_at = new Date(`${date}T${start}:00`);
     const ends_at = new Date(`${date}T${end}:00`);
     if (ends_at <= starts_at) {
-      setErr("Endzeit muss nach Startzeit liegen.");
-      return;
+      ends_at.setDate(ends_at.getDate() + 1);
     }
     if (isDuo && !duoPartner.trim()) {
       setErr("Bitte den Namen der Duo-Partnerin angeben.");
@@ -486,8 +485,7 @@ export function ManualBookingForm({
     const ends_at = new Date(`${date}T${end}:00`);
 
     if (ends_at <= starts_at) {
-      setErr("Endzeit muss nach Startzeit liegen.");
-      return;
+      ends_at.setDate(ends_at.getDate() + 1);
     }
 
     const fullLocation = room.trim()
