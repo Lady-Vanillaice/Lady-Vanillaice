@@ -55,80 +55,40 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
     const [manualRes, bookingRes] = await Promise.all([
       db.from("cash_book_entries").select("id, studio, datum, kunde, anzahlung, anzahlung_method, bar, gesamt, notiz, created_at"),
       db.from("bookings")
-        .select("id, guest_name, duration, duration_minutes, status, anzahlung, anzahlung_method, anzahlung_paid, anzahlung_paid_at, deposit_exemption_reason, deposit_guarantor, bar, completed_at, cash_received_at, fully_paid, admin_note, created_at, requested_start, availability_slots(starts_at, location, location_address, is_duo, is_content_shoot)")
+        .select("id, guest_name, duration, duration_minutes, status, anzahlung, anzahlung_method, anzahlung_paid, anzahlung_paid_at, deposit_exemption_reason, deposit_guarantor, bar, completed_at, cash_received_at, fully_paid, admin_note, created_at, requested_start, studio_override, studio_address_override, availability_slots(starts_at, location, location_address, is_duo, is_content_shoot)")
         .in("status", ["confirmed", "cancelled", "rescheduling"]),
     ]);
     if (manualRes.error) throw new Error(manualRes.error.message);
     if (bookingRes.error) throw new Error(bookingRes.error.message);
 
     const manual: CashBookEntry[] = (manualRes.data ?? []).map((e: any) => ({
-      id: e.id,
-      source: "manual",
-      booking_id: null,
-      termin_datum: e.datum,
-      studio: e.studio,
-      studio_address: null,
-      kunde: e.kunde,
-      art: "Manuell",
-      dauer: e.notiz || null,
-      anzahlung: Number(e.anzahlung),
-      anzahlung_method: e.anzahlung_method ?? null,
-      anzahlung_datum: Number(e.anzahlung) > 0 ? e.datum : null,
-      deposit_exemption_reason: null,
-      deposit_guarantor: null,
-      bar: Number(e.bar),
-      bar_datum: Number(e.bar) > 0 ? e.datum : null,
-      durchgefuehrt_datum: Number(e.bar) > 0 ? e.datum : null,
-      gesamt: Number(e.gesamt),
-      status: "completed",
-      notiz: e.notiz,
-      created_at: e.created_at,
+      id: e.id, source: "manual", booking_id: null, termin_datum: e.datum,
+      studio: e.studio, studio_address: null, kunde: e.kunde, art: "Manuell",
+      dauer: e.notiz || null, anzahlung: Number(e.anzahlung), anzahlung_method: e.anzahlung_method ?? null,
+      anzahlung_datum: Number(e.anzahlung) > 0 ? e.datum : null, deposit_exemption_reason: null,
+      deposit_guarantor: null, bar: Number(e.bar), bar_datum: Number(e.bar) > 0 ? e.datum : null,
+      durchgefuehrt_datum: Number(e.bar) > 0 ? e.datum : null, gesamt: Number(e.gesamt), status: "completed",
+      notiz: e.notiz, created_at: e.created_at,
     }));
 
     const bookings: CashBookEntry[] = (bookingRes.data ?? []).map((b: any) => {
       const slot = (Array.isArray(b.availability_slots) ? b.availability_slots[0] : b.availability_slots) as {
-        starts_at?: string;
-        location?: string;
-        location_address?: string | null;
-        is_duo?: boolean;
-        is_content_shoot?: boolean;
+        starts_at?: string; location?: string; location_address?: string | null; is_duo?: boolean; is_content_shoot?: boolean;
       } | null;
       const termin = dateOnly(b.requested_start ?? slot?.starts_at) ?? dateOnly(b.created_at)!;
       const anzahlung = b.anzahlung_paid ? Number(b.anzahlung ?? 0) : 0;
       const bar = b.cash_received_at || b.fully_paid ? Number(b.bar ?? 0) : 0;
-      const status: CashBookEntry["status"] = b.status === "cancelled"
-        ? "cancelled"
-        : b.status === "rescheduling"
-          ? "rescheduling"
-          : b.fully_paid || b.completed_at
-            ? "completed"
-            : "open";
-      const art = slot?.is_duo
-        ? (slot?.is_content_shoot ? "Duo + Content" : "Duo")
-        : (slot?.is_content_shoot ? "Single + Content" : "Single");
-
+      const status: CashBookEntry["status"] = b.status === "cancelled" ? "cancelled" : b.status === "rescheduling" ? "rescheduling" : b.fully_paid || b.completed_at ? "completed" : "open";
+      const art = slot?.is_duo ? (slot?.is_content_shoot ? "Duo + Content" : "Duo") : (slot?.is_content_shoot ? "Single + Content" : "Single");
       return {
-        id: `booking:${b.id}`,
-        source: "booking",
-        booking_id: b.id,
-        termin_datum: termin,
-        studio: slot?.location ?? "—",
-        studio_address: slot?.location_address ?? null,
-        kunde: b.guest_name,
-        art,
-        dauer: durationLabel(b.duration_minutes, b.duration),
-        anzahlung,
-        anzahlung_method: b.anzahlung_method ?? null,
-        anzahlung_datum: dateOnly(b.anzahlung_paid_at),
-        deposit_exemption_reason: b.deposit_exemption_reason ?? null,
-        deposit_guarantor: b.deposit_guarantor ?? null,
-        bar,
-        bar_datum: dateOnly(b.cash_received_at),
-        durchgefuehrt_datum: dateOnly(b.completed_at),
-        gesamt: anzahlung + bar,
-        status,
-        notiz: b.admin_note ?? null,
-        created_at: b.created_at,
+        id: `booking:${b.id}`, source: "booking", booking_id: b.id, termin_datum: termin,
+        studio: b.studio_override?.trim() || slot?.location || "—",
+        studio_address: b.studio_address_override?.trim() || slot?.location_address || null,
+        kunde: b.guest_name, art, dauer: durationLabel(b.duration_minutes, b.duration), anzahlung,
+        anzahlung_method: b.anzahlung_method ?? null, anzahlung_datum: dateOnly(b.anzahlung_paid_at),
+        deposit_exemption_reason: b.deposit_exemption_reason ?? null, deposit_guarantor: b.deposit_guarantor ?? null,
+        bar, bar_datum: dateOnly(b.cash_received_at), durchgefuehrt_datum: dateOnly(b.completed_at), gesamt: anzahlung + bar,
+        status, notiz: b.admin_note ?? null, created_at: b.created_at,
       };
     });
 
@@ -155,13 +115,8 @@ export const createCashBookEntry = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await ensureAdmin(context.supabase, context.userId);
     const { data: row, error } = await context.supabase.from("cash_book_entries").insert({
-      studio: data.studio,
-      datum: data.datum,
-      kunde: data.kunde,
-      anzahlung: data.anzahlung,
-      anzahlung_method: data.anzahlung_method?.trim() || null,
-      bar: data.bar,
-      notiz: data.notiz ?? null,
+      studio: data.studio, datum: data.datum, kunde: data.kunde, anzahlung: data.anzahlung,
+      anzahlung_method: data.anzahlung_method?.trim() || null, bar: data.bar, notiz: data.notiz ?? null,
       created_by: context.userId,
     }).select("id").single();
     if (error) throw new Error(error.message);
