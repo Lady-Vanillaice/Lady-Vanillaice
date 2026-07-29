@@ -2,11 +2,13 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
+import type { FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { updateBookingStatus, deleteBooking, createManualBooking } from "@/lib/booking.functions";
+import { createCashBookEntry } from "@/lib/cashbook.functions";
 import { PageHeader } from "@/components/site/PageHeader";
 import { BookingCard, useConfirmAmounts, ManualBookingForm, type Booking, type Slot } from "@/components/admin/admin-shared";
-import { ArrowLeft, CalendarPlus } from "lucide-react";
+import { ArrowLeft, CalendarPlus, Plus } from "lucide-react";
 
 type StatusTab = "offen" | "wartend" | "geschlossen";
 
@@ -80,6 +82,7 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
   const updateBookingFn = useServerFn(updateBookingStatus);
   const deleteBookingFn = useServerFn(deleteBooking);
   const createManualBookingFn = useServerFn(createManualBooking);
+  const createCashBookEntryFn = useServerFn(createCashBookEntry);
 
   const slotsQ = useQuery({
     queryKey: ["admin-slots"],
@@ -184,6 +187,22 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
   },
 });
 
+  const customCashbookMut = useMutation({
+    mutationFn: (input: { name: string; wish: string; amount: number }) =>
+      createCashBookEntryFn({
+        data: {
+          studio: "Custom Content",
+          datum: new Date().toISOString().slice(0, 10),
+          kunde: input.name,
+          anzahlung: 0,
+          anzahlung_method: null,
+          bar: input.amount,
+          notiz: input.wish,
+        },
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["cashbook"] }),
+  });
+
   const confirmAmounts = useConfirmAmounts((v) => statusMut.mutate(v));
 
   const [tab, setTab] = useState<StatusTab>("offen");
@@ -228,6 +247,13 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
                 />
               </div>
             </details>
+          )}
+
+          {kind === "custom" && (
+            <CustomCashbookForm
+              onCreate={(v) => customCashbookMut.mutateAsync(v)}
+              pending={customCashbookMut.isPending}
+            />
           )}
 
           <div className="mb-6 flex flex-wrap gap-2">
@@ -278,5 +304,97 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
         </div>
       </section>
     </>
+  );
+}
+
+function CustomCashbookForm({
+  onCreate,
+  pending,
+}: {
+  onCreate: (input: { name: string; wish: string; amount: number }) => Promise<unknown>;
+  pending: boolean;
+}) {
+  const [name, setName] = useState("");
+  const [wish, setWish] = useState("");
+  const [amount, setAmount] = useState("");
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setSaved(false);
+    setError("");
+    const parsedAmount = Number(amount.replace(",", "."));
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      setError("Bitte einen Betrag größer als 0 € eintragen.");
+      return;
+    }
+    try {
+      await onCreate({ name: name.trim(), wish: wish.trim(), amount: parsedAmount });
+      setName("");
+      setWish("");
+      setAmount("");
+      setSaved(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Der Eintrag konnte nicht gespeichert werden.");
+    }
+  }
+
+  return (
+    <details className="mb-6 bg-card border border-champagne/15">
+      <summary className="cursor-pointer px-5 py-3 text-sm text-vanilla/80 hover:text-champagne flex items-center gap-2">
+        <Plus size={16} className="text-champagne" />
+        Custom-Wunsch manuell eintragen
+      </summary>
+      <form onSubmit={submit} className="p-5 pt-4 border-t border-champagne/10 space-y-4">
+        <div>
+          <label className="eyebrow block mb-2" htmlFor="custom-customer-name">Name</label>
+          <input
+            id="custom-customer-name"
+            required
+            maxLength={200}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full bg-anthracite/60 border border-champagne/25 px-3 py-2.5 text-vanilla outline-none focus:border-champagne"
+            placeholder="Name des Kunden"
+          />
+        </div>
+        <div>
+          <label className="eyebrow block mb-2" htmlFor="custom-wish">Gewünschter Inhalt</label>
+          <textarea
+            id="custom-wish"
+            required
+            maxLength={2000}
+            rows={4}
+            value={wish}
+            onChange={(e) => setWish(e.target.value)}
+            className="w-full bg-anthracite/60 border border-champagne/25 px-3 py-2.5 text-vanilla outline-none focus:border-champagne resize-y"
+            placeholder="Was wurde gewünscht?"
+          />
+        </div>
+        <div>
+          <label className="eyebrow block mb-2" htmlFor="custom-amount">Betrag (€)</label>
+          <input
+            id="custom-amount"
+            required
+            inputMode="decimal"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="w-full bg-anthracite/60 border border-champagne/25 px-3 py-2.5 text-vanilla outline-none focus:border-champagne"
+            placeholder="z. B. 150,00"
+          />
+        </div>
+        {saved && <p className="text-sm text-green-300">Gespeichert und ins Kassenbuch übernommen.</p>}
+        {error && <p className="text-sm text-bordeaux">{error}</p>}
+        <button
+          type="submit"
+          disabled={pending || !name.trim() || !wish.trim() || !amount.trim()}
+          className="btn-gold inline-flex items-center gap-2 disabled:opacity-50"
+        >
+          <Plus size={15} />
+          {pending ? "Speichere…" : "Speichern & ins Kassenbuch"}
+        </button>
+      </form>
+    </details>
   );
 }
