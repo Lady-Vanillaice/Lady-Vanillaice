@@ -64,12 +64,13 @@ export const updateBookingAccounting = createServerFn({ method: "POST" })
     }).eq("id", data.id);
     if (error) throw new Error(error.message);
 
-    const { error: slotError } = await db.from("availability_slots").update({
-      location: data.studio.trim(),
-      location_address: data.studio_address?.trim() || null,
-      updated_at: new Date().toISOString(),
-    }).eq("id", booking.slot_id);
-    if (slotError) throw new Error(slotError.message);
+    const { data: studioSaved, error: studioError } = await db.rpc("admin_update_booking_studio", {
+      p_booking_id: data.id,
+      p_location: data.studio.trim(),
+      p_location_address: data.studio_address?.trim() || null,
+    });
+    if (studioError) throw new Error(studioError.message);
+    if (!studioSaved) throw new Error("Studio-Adresse konnte nicht gespeichert werden.");
 
     return { ok: true };
   });
