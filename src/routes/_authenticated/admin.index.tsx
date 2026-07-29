@@ -35,15 +35,18 @@ type DashboardBooking = {
   anzahlung_paid: boolean | null;
   anzahlung: number | null;
   anzahlung_method: string | null;
+  anzahlung_paid_at: string | null;
   deposit_exemption_reason: string | null;
   bar: number | null;
   cash_received_at: string | null;
+  completed_at: string | null;
   fully_paid: boolean | null;
   availability_slots: { starts_at: string }[] | { starts_at: string } | null;
 };
 
 type PaymentRow = { booking: DashboardBooking; start: string };
-type DetailKind = "deposit" | "cash" | null;
+type RevenueRow = { booking: DashboardBooking; kind: "Anzahlung" | "Barzahlung"; amount: number; paidAt: string };
+type DetailKind = "deposit" | "cash" | "revenue" | null;
 
 const HUB_GROUPS: HubGroup[] = [
   { label: "Termine & Kalender", hint: "Tagesgeschäft — Planung und Übersicht", cards: [
@@ -74,6 +77,7 @@ function bookingStart(booking: DashboardBooking) {
 }
 
 const eur = (value: number) => value.toLocaleString("de-DE", { style: "currency", currency: "EUR" });
+const statusLabel = (status: string) => ({ confirmed: "Bestätigt", pending: "Anfrage", cancelled: "Storniert", rescheduling: "Umplanen" }[status] ?? status);
 
 function AdminHubPage() {
   const navigate = useNavigate();
@@ -105,8 +109,8 @@ function DashboardOverview() {
     queryKey: ["admin-dashboard-bookings"],
     queryFn: async (): Promise<DashboardBooking[]> => {
       const { data, error } = await supabase.from("bookings")
-        .select("id, guest_name, requested_start, status, anzahlung_paid, anzahlung, anzahlung_method, deposit_exemption_reason, bar, cash_received_at, fully_paid, availability_slots(starts_at)")
-        .in("status", ["confirmed", "pending"]);
+        .select("id, guest_name, requested_start, status, anzahlung_paid, anzahlung, anzahlung_method, anzahlung_paid_at, deposit_exemption_reason, bar, cash_received_at, completed_at, fully_paid, availability_slots(starts_at)")
+        .in("status", ["confirmed", "pending", "cancelled", "rescheduling"]);
       if (error) throw error;
       return (data ?? []) as DashboardBooking[];
     },
@@ -118,18 +122,31 @@ function DashboardOverview() {
   const month = { start: startOfMonth(now), end: endOfMonth(now) };
   const bookings = (q.data ?? []).map(booking => ({ booking, start: bookingStart(booking) })).filter((row): row is PaymentRow => Boolean(row.start));
   const confirmed = bookings.filter(({ booking }) => booking.status === "confirmed");
+  const active = bookings.filter(({ booking }) => booking.status === "confirmed" || booking.status === "pending");
   const todayBookings = confirmed.filter(({ start }) => startOfDay(new Date(start)).getTime() === today.getTime());
   const weekBookings = confirmed.filter(({ start }) => isWithinInterval(new Date(start), week));
-  const monthBookings = confirmed.filter(({ start }) => isWithinInterval(new Date(start), month));
 
-  const openDeposits = bookings
+  const openDeposits = active
     .filter(({ booking }) => !booking.deposit_exemption_reason && Number(booking.anzahlung ?? 0) > 0 && !booking.anzahlung_paid)
     .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
   const openCash = confirmed
     .filter(({ booking }) => Number(booking.bar ?? 0) > 0 && !booking.cash_received_at && !booking.fully_paid)
     .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
 
-  const monthRevenue = monthBookings.reduce((sum, { booking }) => sum + (booking.anzahlung_paid ? Number(booking.anzahlung ?? 0) : 0) + (booking.cash_received_at || booking.fully_paid ? Number(booking.bar ?? 0) : 0), 0);
+  const revenueRows: RevenueRow[] = (q.data ?? []).flatMap(booking => {
+    const rows: RevenueRow[] = [];
+    if (booking.anzahlung_paid && Number(booking.anzahlung ?? 0) > 0 && booking.anzahlung_paid_at) {
+      rows.push({ booking, kind: "Anzahlung", amount: Number(booking.anzahlung), paidAt: booking.anzahlung_paid_at });
+    }
+    const cashDate = booking.cash_received_at ?? (booking.fully_paid ? booking.completed_at : null);
+    if (Number(booking.bar ?? 0) > 0 && cashDate) {
+      rows.push({ booking, kind: "Barzahlung", amount: Number(booking.bar), paidAt: cashDate });
+    }
+    return rows;
+  }).filter(row => isWithinInterval(new Date(row.paidAt), month))
+    .sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime());
+
+  const monthRevenue = revenueRows.reduce((sum, row) => sum + row.amount, 0);
   const nextBookings = confirmed.filter(({ start }) => new Date(start) >= now).sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()).slice(0, 5);
 
   const metrics = [
@@ -137,7 +154,7 @@ function DashboardOverview() {
     { label: "Termine diese Woche", value: weekBookings.length, Icon: CalendarClock, kind: null as DetailKind },
     { label: "Offene Anzahlungen", value: openDeposits.length, Icon: CircleAlert, kind: "deposit" as DetailKind },
     { label: "Offene Barzahlungen", value: openCash.length, Icon: Wallet, kind: "cash" as DetailKind },
-    { label: "Umsatz diesen Monat", value: eur(monthRevenue), Icon: BadgeEuro, kind: null as DetailKind },
+    { label: "Umsatz diesen Monat", value: eur(monthRevenue), Icon: BadgeEuro, kind: "revenue" as DetailKind },
   ];
 
   return <div className="mb-14">
@@ -155,6 +172,7 @@ function DashboardOverview() {
 
       {detail === "deposit" && <PaymentDetails title="Offene Anzahlungen" empty="Keine offenen Anzahlungen." rows={openDeposits} amount={row => Number(row.booking.anzahlung ?? 0)} note={row => row.booking.anzahlung_method ? `Zahlungsart: ${row.booking.anzahlung_method}` : "Anzahlung noch nicht erhalten"} />}
       {detail === "cash" && <PaymentDetails title="Noch beim Termin zu zahlen" empty="Keine offenen Barzahlungen." rows={openCash} amount={row => Number(row.booking.bar ?? 0)} note={() => "Dieser Betrag ist beim Termin noch zu zahlen"} />}
+      {detail === "revenue" && <RevenueDetails rows={revenueRows} total={monthRevenue} />}
 
       <div className="bg-card border border-champagne/15 p-5">
         <div className="flex items-center justify-between gap-3 mb-4"><h3 className="font-display text-xl text-vanilla">Die nächsten Termine</h3><Link to="/admin/terminplan" className="text-xs uppercase tracking-[0.16em] text-champagne hover:text-vanilla transition">Terminplan <ArrowRight size={12} className="inline" /></Link></div>
@@ -174,6 +192,20 @@ function PaymentDetails({ title, empty, rows, amount, note }: { title: string; e
       <div><div className="text-vanilla group-hover:text-champagne transition">{row.booking.guest_name}</div><div className="text-xs text-vanilla/50">{format(new Date(row.start), "dd.MM.yyyy · HH:mm 'Uhr'", { locale: de })}</div><div className="text-xs text-vanilla/40 mt-1">{note(row)}</div></div>
       <div className="text-right"><div className="font-display text-xl text-champagne">{eur(amount(row))}</div><div className="text-[0.55rem] uppercase tracking-[0.16em] text-vanilla/40">Buchung öffnen</div></div>
     </Link>)}</div>}
+  </div>;
+}
+
+function RevenueDetails({ rows, total }: { rows: RevenueRow[]; total: number }) {
+  return <div className="bg-card border border-champagne/30 p-5 mb-5">
+    <h3 className="font-display text-xl text-vanilla mb-1">Eingegangene Zahlungen diesen Monat</h3>
+    <p className="text-xs text-vanilla/45 mb-4">Nach tatsächlichem Zahlungseingang – einschließlich stornierter und umgeplanter Buchungen.</p>
+    {rows.length === 0 ? <p className="text-sm text-vanilla/50">Keine eingegangenen Zahlungen in diesem Monat.</p> : <>
+      <div className="divide-y divide-champagne/10">{rows.map((row, index) => <Link key={`${row.booking.id}-${row.kind}-${index}`} to="/admin/buchung/$id" params={{ id: row.booking.id }} className="flex items-center justify-between gap-4 py-3 first:pt-0 group">
+        <div><div className="text-vanilla group-hover:text-champagne transition">{row.booking.guest_name}</div><div className="text-xs text-vanilla/50">{row.kind} · Eingang {format(new Date(row.paidAt), "dd.MM.yyyy", { locale: de })}</div><div className="text-xs text-vanilla/40 mt-1">Status: {statusLabel(row.booking.status)}</div></div>
+        <div className="text-right"><div className="font-display text-xl text-champagne">{eur(row.amount)}</div><div className="text-[0.55rem] uppercase tracking-[0.16em] text-vanilla/40">Buchung öffnen</div></div>
+      </Link>)}</div>
+      <div className="mt-4 pt-4 border-t border-champagne/25 flex items-center justify-between"><span className="text-xs uppercase tracking-[0.18em] text-vanilla/55">Gesamt</span><strong className="font-display text-2xl text-champagne">{eur(total)}</strong></div>
+    </>}
   </div>;
 }
 
