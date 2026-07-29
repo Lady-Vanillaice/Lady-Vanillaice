@@ -282,8 +282,19 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
 
     const sortedOpen = [...timelineSlots]
       .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
-    const starts = sortedOpen.map((s) => new Date(s.starts_at).getTime());
-    const ends = sortedOpen.map((s) => new Date(s.ends_at).getTime());
+    // The visible availability defines what can still be requested, but it must
+    // not cap the timeline. Manually entered/confirmed bookings can sit outside
+    // that window (including across midnight), so include every blocking range
+    // when deriving the displayed bounds.
+    const blockingRanges = [...busyFromClosedSlots, ...busyFromBookings];
+    const starts = [
+      ...sortedOpen.map((s) => new Date(s.starts_at).getTime()),
+      ...blockingRanges.map((range) => new Date(range.start).getTime()),
+    ];
+    const ends = [
+      ...sortedOpen.map((s) => new Date(s.ends_at).getTime()),
+      ...blockingRanges.map((range) => new Date(range.end).getTime()),
+    ];
     const timelineStart = Math.min(...starts);
     const timelineEnd = Math.max(...ends);
     const unavailableGaps: Array<{ start: string; end: string; kind: "booked" }> = [];
@@ -313,7 +324,7 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
       ends_at: new Date(timelineEnd).toISOString(),
       buffer_minutes: slot.buffer_minutes ?? 30,
       status: slot.status,
-      busy: [...unavailableGaps, ...busyFromClosedSlots, ...busyFromBookings],
+      busy: [...unavailableGaps, ...blockingRanges],
     };
   });
 
