@@ -53,6 +53,8 @@ function KassenbuchPage() {
   }).sort((a, b) => a.termin_datum.localeCompare(b.termin_datum)), [data, month, studioFilter, methodFilter, statusFilter, search]);
 
   const totals = filtered.reduce((a, e) => { a.anzahlung += e.anzahlung; a.bar += e.bar; a.gesamt += e.gesamt; if (e.status === "cancelled") a.storno += e.anzahlung; if (e.status === "completed") a.termine += 1; return a; }, { anzahlung: 0, bar: 0, gesamt: 0, storno: 0, termine: 0 });
+  const totalNet = totals.gesamt / 1.19;
+  const totalVat = totals.gesamt - totalNet;
   const studios = [...new Set(data.map(e => e.studio))].sort();
   const methods = [...new Set(data.map(e => e.anzahlung_method).filter(Boolean) as string[])].sort();
   const depositText = (e: CashBookEntry) => e.deposit_exemption_reason ? exemptionLabel[e.deposit_exemption_reason] : e.anzahlung_method ?? "—";
@@ -84,7 +86,7 @@ function KassenbuchPage() {
     const doc = new jsPDF({ orientation: mobile ? "portrait" : "landscape", unit: "pt", format: "a4" });
     const monthLabel = format(parseISO(`${month}-01`), "LLLL yyyy", { locale: de });
     doc.setFont("helvetica", "bold"); doc.setFontSize(20); doc.text("KASSENBUCH", 28, 40); doc.setFontSize(11); doc.text(monthLabel, 28, 58);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.text(`Gesamt: ${eur(totals.gesamt)} · Anzahlungen: ${eur(totals.anzahlung)} · Bar: ${eur(totals.bar)}`, 28, 76);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.text(`Gesamt brutto: ${eur(totals.gesamt)} · enthaltene MwSt. 19 %: ${eur(totalVat)} · Gesamt netto: ${eur(totalNet)}`, 28, 76);
     autoTable(doc, mobile ? {
       startY: 92, head: [["Termin / Kunde", "Studio / Adresse", "Zahlung", "Gesamt"]],
       body: filtered.map(e => [`${dateLabel(e.termin_datum)}\n${e.kunde}\n${statusLabel[e.status]}`, `${studioText(e)}\n${e.art}\n${e.dauer ?? ""}`, e.deposit_exemption_reason ? depositText(e) : `Anz.: ${eur(e.anzahlung)} ${e.anzahlung_method ?? ""}\nBar: ${eur(e.bar)}`, eur(e.gesamt)]),
@@ -112,7 +114,7 @@ function KassenbuchPage() {
     <PageHeader eyebrow="Admin" title={<em className="font-script gold-text not-italic">Kassenbuch</em>} />
     <section className="py-8 md:py-12"><div className="container-luxe max-w-[1500px] space-y-6">
       <Link to="/admin" className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-vanilla/60 hover:text-champagne"><ArrowLeft size={14} /> Zurück zum Admin</Link>
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3"><Stat label="Anzahlungen" value={eur(totals.anzahlung)} /><Stat label="Bar erhalten" value={eur(totals.bar)} /><Stat label="Gesamtumsatz" value={eur(totals.gesamt)} gold /><Stat label="Storno-Anzahlungen" value={eur(totals.storno)} /><Stat label="Erledigte Termine" value={String(totals.termine)} /></div>
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-7 gap-3"><Stat label="Anzahlungen" value={eur(totals.anzahlung)} /><Stat label="Bar erhalten" value={eur(totals.bar)} /><Stat label="Gesamt brutto" value={eur(totals.gesamt)} gold /><Stat label="Enthaltene MwSt. 19 %" value={eur(totalVat)} /><Stat label="Gesamt netto" value={eur(totalNet)} gold /><Stat label="Storno-Anzahlungen" value={eur(totals.storno)} /><Stat label="Erledigte Termine" value={String(totals.termine)} /></div>
       <div className="bg-card border border-champagne/20 p-4 grid sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 items-end">
         <Field label="Monat"><input type="month" value={month} onChange={e => setMonth(e.target.value)} className="luxe-input" /></Field>
         <Field label="Studio"><select value={studioFilter} onChange={e => setStudioFilter(e.target.value)} className="luxe-input"><option value="">Alle</option>{studios.map(v => <option key={v}>{v}</option>)}</select></Field>
