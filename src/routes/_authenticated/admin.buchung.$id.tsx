@@ -1296,7 +1296,7 @@ const depositDateMut = useMutation({
             </p>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border border-champagne/20 bg-anthracite/30 p-3">
               <div className="text-sm text-vanilla/70">
-                Preisvorschlag: {total != null ? `${total.toLocaleString("de-DE")"} € gesamt · ${deposit?.toLocaleString("de-DE")"} € Anzahlung · ${rest?.toLocaleString("de-DE")"} € bar` : "Bitte zuerst eine Dauer eintragen."}
+                Preisvorschlag: {total != null ? `${total.toLocaleString("de-DE")} € gesamt · ${deposit?.toLocaleString("de-DE")} € Anzahlung · ${rest?.toLocaleString("de-DE")} € bar` : "Bitte zuerst eine Dauer eintragen."}
               </div>
               <button
                 type="button"
