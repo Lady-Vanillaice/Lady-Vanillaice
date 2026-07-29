@@ -7,6 +7,109 @@ const STEP_MINUTES = 15;
 
 type BusyRange = { starts_at: string; ends_at: string };
 
+async function repairKnownManualOvernightBooking() {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const db = supabaseAdmin as any;
+  const oldStart = "2026-07-30T18:00:00.000Z";
+  const oldEnd = "2026-07-30T20:00:00.000Z";
+  const correctedStart = "2026-07-30T21:00:00.000Z";
+  const correctedEnd = "2026-07-30T23:00:00.000Z";
+
+  const { data: matches, error: matchError } = await db
+    .from("bookings")
+    .select("id, slot_id")
+    .eq("status", "confirmed")
+    .eq("duration_minutes", 120)
+    .like("guest_email", "manuell+%@intern.local")
+    .like("message", "%Manuell durch Admin eingetragen.%")
+    .gte("requested_start", oldStart)
+    .lt("requested_start", "2026-07-30T18:01:00.000Z")
+    .limit(1);
+
+  if (matchError) throw matchError;
+  const booking = matches?.[0];
+  if (!booking?.slot_id) return false;
+
+  const { data: slot, error: slotError } = await db
+    .from("availability_slots")
+    .select("id, location, buffer_minutes, is_duo, is_content_shoot, duo_partner")
+    .eq("id", booking.slot_id)
+    .single();
+  if (slotError || !slot) throw slotError ?? new Error("Kalenderslot fehlt");
+
+  const { data: neighbouring, error: neighbouringError } = await db
+    .from("availability_slots")
+    .select("id, starts_at, ends_at")
+    .eq("status", "open")
+    .eq("location", slot.location)
+    .lte("starts_at", oldEnd)
+    .gte("ends_at", oldStart)
+    .order("starts_at", { ascending: true });
+  if (neighbouringError) throw neighbouringError;
+
+  const sameInstant = (a: string, b: string) =>
+    new Date(a).getTime() === new Date(b).getTime();
+  const left = neighbouring?.find((entry: any) => sameInstant(entry.ends_at, oldStart));
+  const right = neighbouring?.find((entry: any) => sameInstant(entry.starts_at, oldEnd));
+  const covering = neighbouring?.find(
+    (entry: any) =>
+      new Date(entry.starts_at).getTime() <= new Date(oldStart).getTime() &&
+      new Date(entry.ends_at).getTime() >= new Date(oldEnd).getTime(),
+  );
+
+  if (left && right && left.id !== right.id) {
+    const { error } = await db
+      .from("availability_slots")
+      .update({ ends_at: right.ends_at })
+      .eq("id", left.id);
+    if (error) throw error;
+    const { error: deleteError } = await db
+      .from("availability_slots")
+      .delete()
+      .eq("id", right.id);
+    if (deleteError) throw deleteError;
+  } else if (left) {
+    const { error } = await db
+      .from("availability_slots")
+      .update({ ends_at: oldEnd })
+      .eq("id", left.id);
+    if (error) throw error;
+  } else if (right) {
+    const { error } = await db
+      .from("availability_slots")
+      .update({ starts_at: oldStart })
+      .eq("id", right.id);
+    if (error) throw error;
+  } else if (!covering) {
+    const { error } = await db.from("availability_slots").insert({
+      starts_at: oldStart,
+      ends_at: oldEnd,
+      location: slot.location,
+      status: "open",
+      buffer_minutes: slot.buffer_minutes ?? 45,
+      is_duo: slot.is_duo ?? false,
+      is_content_shoot: slot.is_content_shoot ?? false,
+      duo_partner: slot.duo_partner ?? null,
+      is_hidden: false,
+    });
+    if (error) throw error;
+  }
+
+  const { error: moveSlotError } = await db
+    .from("availability_slots")
+    .update({ starts_at: correctedStart, ends_at: correctedEnd })
+    .eq("id", slot.id);
+  if (moveSlotError) throw moveSlotError;
+
+  const { error: moveBookingError } = await db
+    .from("bookings")
+    .update({ requested_start: correctedStart, duration_minutes: 120 })
+    .eq("id", booking.id);
+  if (moveBookingError) throw moveBookingError;
+
+  return true;
+}
+
 function isActiveBlockingBooking(booking: { status?: string | null; updated_at?: string | null }) {
   if (booking.status !== "waiting_deposit") return true;
   if (!booking.updated_at) return true;
@@ -508,6 +611,12 @@ export const submitBooking = createServerFn({ method: "POST" })
  * any more (considering pending/confirmed bookings + buffer).
  */
 export const listUpcomingSlots = createServerFn({ method: "GET" }).handler(async () => {
+  try {
+    await repairKnownManualOvernightBooking();
+  } catch (error) {
+    console.error("Automatic overnight booking repair failed", error);
+  }
+
   const supabase = publicClient();
   const now = new Date().toISOString();
   const nowMs = Date.now();
