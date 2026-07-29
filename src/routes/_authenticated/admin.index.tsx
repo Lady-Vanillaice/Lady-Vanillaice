@@ -1,14 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { listAdminAccessRequests, decideAdminAccessRequest } from "@/lib/admin-access.functions";
 import { PageHeader } from "@/components/site/PageHeader";
 import {
   LogOut, Calendar, Mail, ShieldCheck, CheckCircle2, XCircle, MessageSquare, Quote,
   Camera, Sparkles, Wallet, RotateCcw, CalendarClock, Users, Clock3, BadgeEuro,
-  CircleAlert, ArrowRight, ChevronDown,
+  CircleAlert, ArrowRight, ChevronDown, Download, Share,
 } from "lucide-react";
 import { endOfMonth, endOfWeek, format, isWithinInterval, startOfDay, startOfMonth, startOfWeek } from "date-fns";
 import { de } from "date-fns/locale";
@@ -90,6 +90,8 @@ function AdminHubPage() {
         <button onClick={onLogout} className="btn-outline-gold !py-2 !px-4 !text-[0.65rem]"><LogOut size={12} /> Abmelden</button>
       </div>
 
+      <InstallAdminApp />
+
       <section className="mb-10">
         <div className="flex items-baseline justify-between flex-wrap gap-2 mb-4 pb-3 border-b border-champagne/15">
           <h2 className="font-display text-2xl gold-text">Schnellzugriff</h2>
@@ -131,6 +133,87 @@ function AdminHubPage() {
       <AdminAccessRequestsPanel />
     </div></section>
   </>;
+}
+
+type InstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+};
+
+function InstallAdminApp() {
+  const [prompt, setPrompt] = useState<InstallPromptEvent | null>(null);
+  const [showIosHelp, setShowIosHelp] = useState(false);
+  const [standalone, setStandalone] = useState(false);
+  const [isIos, setIsIos] = useState(false);
+
+  useEffect(() => {
+    const standaloneMode =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      ("standalone" in navigator && Boolean((navigator as Navigator & { standalone?: boolean }).standalone));
+    setStandalone(standaloneMode);
+    setIsIos(/iphone|ipad|ipod/i.test(navigator.userAgent));
+
+    const onInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setPrompt(event as InstallPromptEvent);
+    };
+    const onInstalled = () => {
+      setStandalone(true);
+      setPrompt(null);
+      setShowIosHelp(false);
+    };
+
+    window.addEventListener("beforeinstallprompt", onInstallPrompt);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onInstallPrompt);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
+
+  if (standalone) return null;
+
+  async function install() {
+    if (prompt) {
+      await prompt.prompt();
+      const choice = await prompt.userChoice;
+      if (choice.outcome === "accepted") setPrompt(null);
+      return;
+    }
+    setShowIosHelp(true);
+  }
+
+  return (
+    <section className="mb-8 border border-champagne/30 bg-card p-4 sm:p-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-champagne">
+            <Download size={17} />
+            <h2 className="font-display text-xl">LVI Admin als App installieren</h2>
+          </div>
+          <p className="mt-1 text-xs leading-relaxed text-vanilla/55">
+            Öffnet dieses Cockpit künftig direkt vom Home-Bildschirm – ohne Browserleiste.
+          </p>
+        </div>
+        <button type="button" onClick={install} className="btn-gold shrink-0 !py-2.5 !px-5 !text-[0.65rem]">
+          <Download size={13} />
+          App installieren
+        </button>
+      </div>
+      {showIosHelp && (
+        <div className="mt-4 border-t border-champagne/15 pt-4 text-sm text-vanilla/70">
+          {isIos ? (
+            <p className="flex items-start gap-2">
+              <Share size={17} className="mt-0.5 shrink-0 text-champagne" />
+              Tippe in Safari auf „Teilen“ und anschließend auf „Zum Home-Bildschirm“.
+            </p>
+          ) : (
+            <p>Öffne das Browsermenü und wähle „App installieren“ oder „Zum Startbildschirm hinzufügen“.</p>
+          )}
+        </div>
+      )}
+    </section>
+  );
 }
 
 function DashboardOverview() {

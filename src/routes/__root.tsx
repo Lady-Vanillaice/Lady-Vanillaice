@@ -15,6 +15,7 @@ import { Header } from "../components/site/Header";
 import { Footer } from "../components/site/Footer";
 import { AgeGate } from "../components/site/AgeGate";
 import { StickyContact } from "../components/site/StickyContact";
+import { PwaRegistration } from "../components/PwaRegistration";
 import { LanguageProvider, useT } from "../i18n";
 
 function NotFoundComponent() {
@@ -67,6 +68,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "theme-color", content: "#0b0b0d" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "LVI Admin" },
       { title: "Lady Vanilla Ice – Domina in München & Umgebung | BDSM Sessions" },
       { name: "description", content: "Stilvolle Domina-Sessions in München und Umgebung. Diskret, intensiv und individuell auf deine Fantasien abgestimmt. Termin online buchen." },
       { name: "author", content: "Lady Vanilla Ice" },
@@ -77,6 +82,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "manifest", href: "/admin-manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/admin-icon-192.png" },
       { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
@@ -145,6 +152,7 @@ function RootComponent() {
         <Footer />
         <AgeGate />
         <StickyContact />
+        <PwaRegistration />
       </div>
     </QueryClientProvider>
   );
