@@ -13,6 +13,43 @@ import {
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
+const ADMIN_TIME_ZONE = "Europe/Berlin";
+
+function berlinOffsetMinutes(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: ADMIN_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const value = (type: string) =>
+    Number(parts.find((part) => part.type === type)?.value ?? 0);
+  const representedAsUtc = Date.UTC(
+    value("year"),
+    value("month") - 1,
+    value("day"),
+    value("hour"),
+    value("minute"),
+    value("second"),
+  );
+  return (representedAsUtc - date.getTime()) / 60_000;
+}
+
+function berlinWallTimeToDate(date: string, time: string, nextDay = false) {
+  const [year, month, day] = date.split("-").map(Number);
+  const [hour, minute] = time.split(":").map(Number);
+  const wallTime = Date.UTC(year, month - 1, day + (nextDay ? 1 : 0), hour, minute);
+  let candidate = new Date(wallTime);
+  candidate = new Date(wallTime - berlinOffsetMinutes(candidate) * 60_000);
+  // Re-evaluate at the resulting instant so DST transition dates stay correct.
+  candidate = new Date(wallTime - berlinOffsetMinutes(candidate) * 60_000);
+  return candidate;
+}
+
 export type Slot = {
   id: string;
   starts_at: string;
@@ -293,16 +330,14 @@ export function NewSlotForm({
       setErr("Bitte ein Datum wählen.");
       return;
     }
-    const starts_at = new Date(`${date}T${start}:00`);
-    const ends_at = new Date(`${date}T${end}:00`);
-    if (ends_at <= starts_at) {
-      ends_at.setDate(ends_at.getDate() + 1);
-    }
-    const secondStartsAt = new Date(`${date}T${secondStart}:00`);
-    const secondEndsAt = new Date(`${date}T${secondEnd}:00`);
-    if (secondEndsAt <= secondStartsAt) {
-      secondEndsAt.setDate(secondEndsAt.getDate() + 1);
-    }
+    const starts_at = berlinWallTimeToDate(date, start);
+    const ends_at = berlinWallTimeToDate(date, end, end <= start);
+    const secondStartsAt = berlinWallTimeToDate(date, secondStart);
+    const secondEndsAt = berlinWallTimeToDate(
+      date,
+      secondEnd,
+      secondEnd <= secondStart,
+    );
     if (hasSecondWindow && secondStartsAt.getTime() < ends_at.getTime() && secondEndsAt.getTime() > starts_at.getTime()) {
       setErr("Die beiden Zeitfenster dürfen sich nicht überschneiden.");
       return;
@@ -529,12 +564,8 @@ export function ManualBookingForm({
       return;
     }
 
-    const starts_at = new Date(`${date}T${start}:00`);
-    const ends_at = new Date(`${date}T${end}:00`);
-
-    if (ends_at <= starts_at) {
-      ends_at.setDate(ends_at.getDate() + 1);
-    }
+    const starts_at = berlinWallTimeToDate(date, start);
+    const ends_at = berlinWallTimeToDate(date, end, end <= start);
 
     const fullLocation = room.trim()
       ? `${location} — Raum ${room.trim()}`
@@ -797,4 +828,3 @@ export function useConfirmAmounts(
     });
   };
 }
-
