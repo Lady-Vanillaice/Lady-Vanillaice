@@ -273,6 +273,9 @@ export function NewSlotForm({
   const [date, setDate] = useState("");
   const [start, setStart] = useState("18:00");
   const [end, setEnd] = useState("19:00");
+  const [hasSecondWindow, setHasSecondWindow] = useState(false);
+  const [secondStart, setSecondStart] = useState("20:00");
+  const [secondEnd, setSecondEnd] = useState("22:00");
   const [location, setLocation] = useState("Studio60, Gärtnerstraße 60, 80992 München");
   const [room, setRoom] = useState("");
   const [isDuo, setIsDuo] = useState(false);
@@ -295,15 +298,22 @@ export function NewSlotForm({
     if (ends_at <= starts_at) {
       ends_at.setDate(ends_at.getDate() + 1);
     }
+    const secondStartsAt = new Date(`${date}T${secondStart}:00`);
+    const secondEndsAt = new Date(`${date}T${secondEnd}:00`);
+    if (secondEndsAt <= secondStartsAt) {
+      secondEndsAt.setDate(secondEndsAt.getDate() + 1);
+    }
+    if (hasSecondWindow && secondStartsAt.getTime() < ends_at.getTime() && secondEndsAt.getTime() > starts_at.getTime()) {
+      setErr("Die beiden Zeitfenster dürfen sich nicht überschneiden.");
+      return;
+    }
     if (isDuo && !duoPartner.trim()) {
       setErr("Bitte den Namen der Duo-Partnerin angeben.");
       return;
     }
     try {
       const fullLocation = room.trim() ? `${location} — Raum ${room.trim()}` : location;
-      await onCreate({
-        starts_at: starts_at.toISOString(),
-        ends_at: ends_at.toISOString(),
+      const sharedValues = {
         location: fullLocation,
         is_duo: isDuo,
         is_content_shoot: isContentShoot,
@@ -311,8 +321,20 @@ export function NewSlotForm({
         internal_note: note || undefined,
         buffer_minutes: buffer,
         is_hidden: isHidden,
+      };
+      await onCreate({
+        starts_at: starts_at.toISOString(),
+        ends_at: ends_at.toISOString(),
+        ...sharedValues,
       });
-      setDate(""); setRoom(""); setNote(""); setIsDuo(false); setDuoPartner(""); setIsContentShoot(false); setBuffer(45); setIsHidden(true);
+      if (hasSecondWindow) {
+        await onCreate({
+          starts_at: secondStartsAt.toISOString(),
+          ends_at: secondEndsAt.toISOString(),
+          ...sharedValues,
+        });
+      }
+      setDate(""); setRoom(""); setNote(""); setIsDuo(false); setDuoPartner(""); setIsContentShoot(false); setBuffer(45); setIsHidden(true); setHasSecondWindow(false);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Fehler");
     }
@@ -326,19 +348,45 @@ export function NewSlotForm({
           Das ist kein fester Kundentermin. Es ist nur der Zeitraum, in dem Kunden später frei buchen können. Für mehrere Blöcke am selben Tag legst du einfach mehrere Zeitfenster an.
         </p>
       </div>
-      <div className="grid grid-cols-3 gap-3">
-        <div className="col-span-3 sm:col-span-1">
-          <label className="eyebrow block mb-1">Datum</label>
-          <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} className="input-luxe !py-2" />
+      <div className="border border-champagne/15 bg-anthracite/20 p-4 space-y-4">
+        <div className="grid grid-cols-3 gap-3">
+          <div className="col-span-3 sm:col-span-1">
+            <label className="eyebrow block mb-1">Datum</label>
+            <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} className="input-luxe !py-2" />
+          </div>
+          <div>
+            <label className="eyebrow block mb-1">1. Zeitfenster · Von</label>
+            <input type="time" required value={start} onChange={(e) => setStart(e.target.value)} className="input-luxe !py-2" />
+          </div>
+          <div>
+            <label className="eyebrow block mb-1">1. Zeitfenster · Bis</label>
+            <input type="time" required value={end} onChange={(e) => setEnd(e.target.value)} className="input-luxe !py-2" />
+          </div>
         </div>
-        <div>
-          <label className="eyebrow block mb-1">Von</label>
-          <input type="time" required value={start} onChange={(e) => setStart(e.target.value)} className="input-luxe !py-2" />
-        </div>
-        <div>
-          <label className="eyebrow block mb-1">Bis</label>
-          <input type="time" required value={end} onChange={(e) => setEnd(e.target.value)} className="input-luxe !py-2" />
-        </div>
+
+        {hasSecondWindow && (
+          <div className="grid grid-cols-2 gap-3 border-t border-champagne/15 pt-4">
+            <div>
+              <label className="eyebrow block mb-1">2. Zeitfenster · Von</label>
+              <input type="time" required value={secondStart} onChange={(e) => setSecondStart(e.target.value)} className="input-luxe !py-2" />
+            </div>
+            <div>
+              <label className="eyebrow block mb-1">2. Zeitfenster · Bis</label>
+              <input type="time" required value={secondEnd} onChange={(e) => setSecondEnd(e.target.value)} className="input-luxe !py-2" />
+            </div>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setHasSecondWindow((value) => !value)}
+          className="text-[0.65rem] uppercase tracking-[0.18em] text-champagne hover:text-vanilla transition"
+        >
+          {hasSecondWindow ? "– Zweites Zeitfenster entfernen" : "+ Zweites Zeitfenster an diesem Tag"}
+        </button>
+        <p className="text-[0.65rem] text-vanilla/45">
+          Ideal, wenn du zum Beispiel vormittags und abends verfügbar bist. Beide Zeitfenster erhalten dieselben Angaben unten.
+        </p>
       </div>
       <div>
         <label className="eyebrow block mb-1">Standort</label>
