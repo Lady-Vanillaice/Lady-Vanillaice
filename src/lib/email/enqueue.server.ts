@@ -2,6 +2,7 @@ import * as React from 'react'
 import { render } from '@react-email/components'
 import { TEMPLATES } from '@/lib/email-templates/registry'
 import { supabaseAdmin } from '@/integrations/supabase/client.server'
+import { deliverEmailNow } from '@/lib/email/deliver.server'
 
 const SITE_NAME = 'Lady Vanilla Ice'
 const SENDER_DOMAIN = 'notify.lady-vanillaice.com'
@@ -50,6 +51,10 @@ export async function enqueueTransactionalEmail({
   const normalizedEmail = effectiveRecipient.toLowerCase()
   const messageId = crypto.randomUUID()
   const idem = idempotencyKey || messageId
+  const isOwnerNotification =
+    normalizedEmail === 'info@herzblutmadl.com' &&
+    (templateName === 'booking-notification' ||
+      templateName === 'photoshooting-notification')
 
   // Merge template_data + subject into metadata so the admin UI can re-render
   // the exact preview later, plus any custom metadata (e.g. booking_id).
@@ -58,12 +63,15 @@ export async function enqueueTransactionalEmail({
     template_data: templateData,
   }
 
-  // Suppression check
-  const { data: suppressed } = await supabaseAdmin
-    .from('suppressed_emails')
-    .select('id')
-    .eq('email', normalizedEmail)
-    .maybeSingle()
+  // Operational owner notifications are not subscription emails. They must
+  // not disappear because the public suppression list contains the site owner.
+  const { data: suppressed } = isOwnerNotification
+    ? { data: null }
+    : await supabaseAdmin
+        .from('suppressed_emails')
+        .select('id')
+        .eq('email', normalizedEmail)
+        .maybeSingle()
 
   if (suppressed) {
     await supabaseAdmin.from('email_send_log').insert({
@@ -111,6 +119,44 @@ export async function enqueueTransactionalEmail({
       ? template.subject(templateData)
       : template.subject
 
+  // Send immediately through an independent provider when configured. This
+  // removes the former hard dependency on Lovable's queue cron and API key.
+  const directDelivery = await deliverEmailNow({
+    to: effectiveRecipient,
+    subject,
+    html,
+    text: plainText,
+    idempotencyKey: idem,
+  })
+
+  if (directDelivery.configured && directDelivery.success) {
+    await supabaseAdmin.from('email_send_log').insert({
+      message_id: messageId,
+      template_name: templateName,
+      recipient_email: effectiveRecipient,
+      status: 'sent',
+      metadata: {
+        ...logMetadata,
+        subject,
+        provider: directDelivery.provider,
+        provider_message_id: directDelivery.providerMessageId,
+      },
+    })
+    return { success: true }
+  }
+
+  if (directDelivery.configured) {
+    await supabaseAdmin.from('email_send_log').insert({
+      message_id: messageId,
+      template_name: templateName,
+      recipient_email: effectiveRecipient,
+      status: 'failed',
+      error_message: directDelivery.reason.slice(0, 1000),
+      metadata: { ...logMetadata, subject, provider: directDelivery.provider },
+    })
+  }
+
+  // Keep the existing Lovable-backed queue as a fallback during migration.
   await supabaseAdmin.from('email_send_log').insert({
     message_id: messageId,
     template_name: templateName,
@@ -152,4 +198,3 @@ export async function enqueueTransactionalEmail({
 
   return { success: true }
 }
-

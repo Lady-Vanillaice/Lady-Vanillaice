@@ -14,3 +14,15 @@ Here are some ideas to get you started:
 - 😄 Pronouns: ...
 - ⚡ Fun fact: ...
 -->
+
+## Transactional email
+
+Booking notifications and confirmations use Resend directly when these
+production environment variables are configured:
+
+- `RESEND_API_KEY` – Resend API key with sending permission
+- `EMAIL_FROM` – verified sender, for example
+  `Lady Vanilla Ice <noreply@lady-vanillaice.com>`
+
+Without `RESEND_API_KEY`, the application falls back to the legacy
+Lovable-backed database queue.
