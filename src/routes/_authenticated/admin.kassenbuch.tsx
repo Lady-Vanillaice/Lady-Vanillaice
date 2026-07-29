@@ -86,7 +86,6 @@ function KassenbuchPage() {
     const doc = new jsPDF({ orientation: mobile ? "portrait" : "landscape", unit: "pt", format: "a4" });
     const monthLabel = format(parseISO(`${month}-01`), "LLLL yyyy", { locale: de });
     doc.setFont("helvetica", "bold"); doc.setFontSize(20); doc.text("KASSENBUCH", 28, 40); doc.setFontSize(11); doc.text(monthLabel, 28, 58);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.text(`Gesamt brutto: ${eur(totals.gesamt)} · enthaltene MwSt. 19 %: ${eur(totalVat)} · Gesamt netto: ${eur(totalNet)}`, 28, 76);
     autoTable(doc, mobile ? {
       startY: 92, head: [["Termin / Kunde", "Studio / Adresse", "Zahlung", "Gesamt"]],
       body: filtered.map(e => [`${dateLabel(e.termin_datum)}\n${e.kunde}\n${statusLabel[e.status]}`, `${studioText(e)}\n${e.art}\n${e.dauer ?? ""}`, e.deposit_exemption_reason ? depositText(e) : `Anz.: ${eur(e.anzahlung)} ${e.anzahlung_method ?? ""}\nBar: ${eur(e.bar)}`, eur(e.gesamt)]),
@@ -95,6 +94,19 @@ function KassenbuchPage() {
       startY: 92, head: [["Termin", "Kunde", "Art", "Studio / Adresse", "Dauer", "Anzahlung am", "Anzahlung", "Zahlungsart / Ausnahme", "Bar am", "Bar", "Gesamt", "Status"]], body: rows(),
       foot: [["SUMME", "", "", "", "", "", eur(totals.anzahlung), "", "", eur(totals.bar), eur(totals.gesamt), ""]], styles: { fontSize: 5.8, cellPadding: 3, overflow: "linebreak" }, headStyles: { fillColor: [15, 15, 15] }, footStyles: { fillColor: [239, 229, 207], textColor: 15 },
     });
+    const tableEndY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 92;
+    let summaryY = tableEndY + 18;
+    if (summaryY > doc.internal.pageSize.getHeight() - 24) {
+      doc.addPage();
+      summaryY = 28;
+    }
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.text(
+      `Gesamt brutto: ${eur(totals.gesamt)} · enthaltene MwSt. 19 %: ${eur(totalVat)} · Gesamt netto: ${eur(totalNet)}`,
+      28,
+      summaryY,
+    );
     doc.save(`kassenbuch-${month}${mobile ? "-mobil" : ""}.pdf`);
   }
 
@@ -114,7 +126,7 @@ function KassenbuchPage() {
     <PageHeader eyebrow="Admin" title={<em className="font-script gold-text not-italic">Kassenbuch</em>} />
     <section className="py-8 md:py-12"><div className="container-luxe max-w-[1500px] space-y-6">
       <Link to="/admin" className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-vanilla/60 hover:text-champagne"><ArrowLeft size={14} /> Zurück zum Admin</Link>
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-7 gap-3"><Stat label="Anzahlungen" value={eur(totals.anzahlung)} /><Stat label="Bar erhalten" value={eur(totals.bar)} /><Stat label="Gesamt brutto" value={eur(totals.gesamt)} gold /><Stat label="Enthaltene MwSt. 19 %" value={eur(totalVat)} /><Stat label="Gesamt netto" value={eur(totalNet)} gold /><Stat label="Storno-Anzahlungen" value={eur(totals.storno)} /><Stat label="Erledigte Termine" value={String(totals.termine)} /></div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><Stat label="Anzahlungen" value={eur(totals.anzahlung)} /><Stat label="Bar erhalten" value={eur(totals.bar)} /><Stat label="Storno-Anzahlungen" value={eur(totals.storno)} /><Stat label="Erledigte Termine" value={String(totals.termine)} /></div>
       <div className="bg-card border border-champagne/20 p-4 grid sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 items-end">
         <Field label="Monat"><input type="month" value={month} onChange={e => setMonth(e.target.value)} className="luxe-input" /></Field>
         <Field label="Studio"><select value={studioFilter} onChange={e => setStudioFilter(e.target.value)} className="luxe-input"><option value="">Alle</option>{studios.map(v => <option key={v}>{v}</option>)}</select></Field>
@@ -126,6 +138,14 @@ function KassenbuchPage() {
       <form onSubmit={e => { e.preventDefault(); createMut.mutate(); }} className="bg-card border border-champagne/20 p-4 space-y-4"><h2 className="eyebrow">Manueller Eintrag</h2><div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3"><Field label="Datum"><input required type="date" value={datum} onChange={e => setDatum(e.target.value)} className="luxe-input" /></Field><Field label="Kunde"><input required value={kunde} onChange={e => setKunde(e.target.value)} className="luxe-input" /></Field><Field label="Studio"><input required value={studio} onChange={e => setStudio(e.target.value)} className="luxe-input" /></Field><Field label="Zahlungsart"><input value={anzahlungMethod} onChange={e => setAnzahlungMethod(e.target.value)} className="luxe-input" /></Field><Field label="Anzahlung (€)"><input value={anzahlung} onChange={e => setAnzahlung(e.target.value)} className="luxe-input" /></Field><Field label="Bar (€)"><input value={bar} onChange={e => setBar(e.target.value)} className="luxe-input" /></Field><div className="md:col-span-2"><Field label="Notiz"><input value={notiz} onChange={e => setNotiz(e.target.value)} className="luxe-input" /></Field></div></div><button className="btn-gold inline-flex gap-2"><Plus size={15} /> Eintrag speichern</button></form>
       <div className="md:hidden space-y-3">{isLoading ? <div>Lade…</div> : error ? <div className="text-bordeaux">Fehler beim Laden</div> : filtered.map(e => <article key={e.id} className="bg-card border border-champagne/20 p-4 space-y-2"><div className="flex justify-between"><div><strong>{e.kunde}</strong><div className="text-xs text-vanilla/55">{dateLabel(e.termin_datum)} · {e.art}</div></div><span className="text-champagne">{eur(e.gesamt)}</span></div><div className="text-sm">{e.studio}</div>{e.studio_address && <div className="text-xs text-vanilla/55">{e.studio_address}</div>}<div className="text-xs">Anzahlung: {eur(e.anzahlung)} · {depositText(e)}<br />Bar: {eur(e.bar)}</div><div className="flex justify-between"><span className={`status-${e.status}`}>{statusLabel[e.status]}</span>{e.source === "booking" ? <button onClick={() => setEditing(e)} className="text-champagne text-xs uppercase">Bearbeiten</button> : <button onClick={() => confirm("Löschen?") && deleteMut.mutate(e.id)}><Trash2 size={15} /></button>}</div></article>)}</div>
       <div className="hidden md:block bg-card border border-champagne/20 overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-sm min-w-[1550px]"><thead><tr className="text-[10px] uppercase text-vanilla/50">{["Termin", "Kunde", "Art", "Studio / Adresse", "Dauer", "Anzahlung am", "Anzahlung", "Zahlungsart / Ausnahme", "Bar am", "Bar", "Gesamt", "Status", ""].map(h => <th key={h} className="p-3 text-left">{h}</th>)}</tr></thead><tbody>{filtered.map(e => <tr key={e.id} className="border-t border-champagne/10"><td className="p-3">{dateLabel(e.termin_datum)}</td><td className="p-3 font-medium">{e.kunde}</td><td className="p-3">{e.art}</td><td className="p-3"><div>{e.studio}</div>{e.studio_address && <div className="text-xs text-vanilla/50 mt-1">{e.studio_address}</div>}</td><td className="p-3">{e.dauer ?? "—"}</td><td className="p-3">{dateLabel(e.anzahlung_datum)}</td><td className="p-3">{eur(e.anzahlung)}</td><td className="p-3">{depositText(e)}</td><td className="p-3">{dateLabel(e.bar_datum)}</td><td className="p-3">{eur(e.bar)}</td><td className="p-3 text-champagne">{eur(e.gesamt)}</td><td className="p-3"><span className={`status-${e.status}`}>{statusLabel[e.status]}</span></td><td className="p-3">{e.source === "booking" ? <button onClick={() => setEditing(e)} className="text-champagne text-xs uppercase">Bearbeiten</button> : <button onClick={() => confirm("Löschen?") && deleteMut.mutate(e.id)}><Trash2 size={15} /></button>}</td></tr>)}</tbody></table></div></div>
+      <div className="border border-champagne/30 bg-card p-4">
+        <div className="eyebrow text-champagne mb-3">Gesamtsumme</div>
+        <div className="grid sm:grid-cols-3 gap-3">
+          <Stat label="Gesamt brutto" value={eur(totals.gesamt)} gold />
+          <Stat label="Enthaltene MwSt. 19 %" value={eur(totalVat)} />
+          <Stat label="Gesamt netto" value={eur(totalNet)} gold />
+        </div>
+      </div>
     </div></section>
     {editing && <AccountingDialog entry={editing} onClose={() => setEditing(null)} onSave={async payload => { await saveAccounting({ data: payload }); await qc.invalidateQueries({ queryKey: ["cashbook"] }); setEditing(null); }} />}
     <style>{`.luxe-input{width:100%;background:color-mix(in oklab,var(--color-anthracite) 60%,transparent);border:1px solid color-mix(in oklab,var(--color-champagne) 25%,transparent);color:var(--color-vanilla);padding:.65rem .75rem;outline:none}.export-btn{display:inline-flex;gap:.35rem;align-items:center;border:1px solid color-mix(in oklab,var(--color-champagne) 45%,transparent);padding:.65rem .75rem;color:var(--color-champagne);font-size:.65rem;text-transform:uppercase}.status-open,.status-completed,.status-cancelled,.status-rescheduling{padding:.25rem .45rem;font-size:.62rem;text-transform:uppercase}.status-open{background:#7c5a102d}.status-completed{background:#16653455}.status-cancelled{background:#7f1d1d55}.status-rescheduling{background:#1d4ed855}`}</style>
