@@ -56,7 +56,25 @@ function KassenbuchPage() {
   const studios = [...new Set(data.map(e => e.studio))].sort();
   const methods = [...new Set(data.map(e => e.anzahlung_method).filter(Boolean) as string[])].sort();
   const depositText = (e: CashBookEntry) => e.deposit_exemption_reason ? `${exemptionLabel[e.deposit_exemption_reason]}${e.deposit_guarantor ? ` (${e.deposit_guarantor})` : ""}` : e.anzahlung_method ?? "—";
-  const studioText = (e: CashBookEntry) => `${e.studio}${e.studio_address ? `\n${e.studio_address}` : ""}`;
+  const studioParts = (e: CashBookEntry) => {
+    const rawStudio = e.studio.trim();
+    const storedAddress = e.studio_address?.trim() ?? "";
+    const commaIndex = rawStudio.indexOf(",");
+    const studioName = commaIndex >= 0
+      ? rawStudio.slice(0, commaIndex).trim()
+      : rawStudio;
+    const addressFromStudio = commaIndex >= 0
+      ? rawStudio.slice(commaIndex + 1).trim()
+      : "";
+    return {
+      studio: studioName,
+      address: storedAddress || addressFromStudio,
+    };
+  };
+  const studioText = (e: CashBookEntry) => {
+    const parts = studioParts(e);
+    return parts.address ? `${parts.studio}\n${parts.address}` : parts.studio;
+  };
   const rows = () => filtered.map(e => [dateLabel(e.termin_datum), e.kunde, e.art, studioText(e), e.dauer ?? "—", dateLabel(e.anzahlung_datum), eur(e.anzahlung), depositText(e), dateLabel(e.bar_datum), eur(e.bar), eur(e.gesamt), statusLabel[e.status]]);
 
   const createMut = useMutation({ mutationFn: () => create({ data: { studio, datum, kunde, anzahlung: Number(anzahlung.replace(",", ".")) || 0, anzahlung_method: anzahlungMethod || null, bar: Number(bar.replace(",", ".")) || 0, notiz: notiz || null } }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["cashbook"] }); setKunde(""); setAnzahlung("0"); setBar("0"); setNotiz(""); } });
