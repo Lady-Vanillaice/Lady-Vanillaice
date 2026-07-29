@@ -83,19 +83,49 @@ function AdminHubPage() {
   const navigate = useNavigate();
   async function onLogout() { await supabase.auth.signOut(); navigate({ to: "/" }); }
   return <>
-    <PageHeader eyebrow="Admin-Bereich" title={<>Dein <em className="font-script gold-text not-italic">Cockpit</em></>} intro="Alle wichtigen Termine, Zahlungen und Verwaltungsbereiche auf einen Blick." />
-    <section className="py-16"><div className="container-luxe">
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-10">
+    <PageHeader eyebrow="Admin-Bereich" title={<>Dein <em className="font-script gold-text not-italic">Cockpit</em></>} intro="Termine, Anfragen und Zahlungen schnell finden und bearbeiten." />
+    <section className="py-10 sm:py-14"><div className="container-luxe">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-7">
         <Link to="/" className="btn-outline-gold !py-2 !px-4 !text-[0.65rem]">Zur Website</Link>
         <button onClick={onLogout} className="btn-outline-gold !py-2 !px-4 !text-[0.65rem]"><LogOut size={12} /> Abmelden</button>
       </div>
+
+      <section className="mb-10">
+        <div className="flex items-baseline justify-between flex-wrap gap-2 mb-4 pb-3 border-b border-champagne/15">
+          <h2 className="font-display text-2xl gold-text">Schnellzugriff</h2>
+          <span className="text-[0.65rem] uppercase tracking-[0.2em] text-vanilla/45">Häufig verwendet</span>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <Link to="/admin/terminplan" className="group bg-card border border-champagne/25 p-4 hover:border-champagne/60 transition">
+            <CalendarClock size={19} className="text-champagne mb-2" />
+            <div className="font-display text-lg text-vanilla group-hover:text-champagne transition">Terminplan</div>
+            <div className="text-xs text-vanilla/45 mt-1">Bestätigte Termine</div>
+          </Link>
+          <Link to="/admin/kalender" className="group bg-card border border-champagne/25 p-4 hover:border-champagne/60 transition">
+            <Calendar size={19} className="text-champagne mb-2" />
+            <div className="font-display text-lg text-vanilla group-hover:text-champagne transition">Kalender</div>
+            <div className="text-xs text-vanilla/45 mt-1">Verfügbarkeit eintragen</div>
+          </Link>
+          <Link to="/admin/termine" className="group bg-card border border-champagne/25 p-4 hover:border-champagne/60 transition">
+            <Mail size={19} className="text-champagne mb-2" />
+            <div className="font-display text-lg text-vanilla group-hover:text-champagne transition">Anfragen</div>
+            <div className="text-xs text-vanilla/45 mt-1">Neue Anfragen prüfen</div>
+          </Link>
+          <Link to="/admin/kassenbuch" className="group bg-card border border-champagne/25 p-4 hover:border-champagne/60 transition">
+            <Wallet size={19} className="text-champagne mb-2" />
+            <div className="font-display text-lg text-vanilla group-hover:text-champagne transition">Kassenbuch</div>
+            <div className="text-xs text-vanilla/45 mt-1">Zahlungen verwalten</div>
+          </Link>
+        </div>
+      </section>
+
       <DashboardOverview />
-      <div className="space-y-14 mb-12">{HUB_GROUPS.map(group => <div key={group.label}>
+      <div className="space-y-9 mb-12">{HUB_GROUPS.map(group => <div key={group.label}>
         <div className="flex items-baseline justify-between flex-wrap gap-2 mb-5 pb-3 border-b border-champagne/15">
           <h2 className="font-display text-2xl gold-text">{group.label}</h2><span className="text-[0.65rem] uppercase tracking-[0.2em] text-vanilla/45">{group.hint}</span>
         </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">{group.cards.map(({ to, title, description, Icon }) => <Link key={to} to={to} className="group bg-card border border-champagne/15 p-6 hover:border-champagne/50 transition flex flex-col gap-3">
-          <Icon size={24} className="text-champagne" /><div className="font-display text-xl text-vanilla group-hover:text-champagne transition">{title}</div><p className="text-sm text-vanilla/65 leading-relaxed">{description}</p>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">{group.cards.map(({ to, title, description, Icon }) => <Link key={to} to={to} className="group bg-card border border-champagne/15 p-4 hover:border-champagne/50 transition grid grid-cols-[auto_1fr] items-start gap-x-3 gap-y-1">
+          <Icon size={19} className="text-champagne mt-0.5 row-span-2" /><div className="font-display text-lg text-vanilla group-hover:text-champagne transition">{title}</div><p className="text-xs text-vanilla/55 leading-relaxed">{description}</p>
         </Link>)}</div>
       </div>)}</div>
       <AdminAccessRequestsPanel />
@@ -157,7 +187,7 @@ function DashboardOverview() {
     { label: "Umsatz diesen Monat", value: eur(monthRevenue), Icon: BadgeEuro, kind: "revenue" as DetailKind },
   ];
 
-  return <div className="mb-14">
+  return <div className="mb-10">
     <div className="flex items-baseline justify-between flex-wrap gap-2 mb-5 pb-3 border-b border-champagne/15">
       <h2 className="font-display text-2xl gold-text">Heute im Blick</h2><span className="text-[0.65rem] uppercase tracking-[0.2em] text-vanilla/45">Stand {format(now, "dd.MM.yyyy · HH:mm", { locale: de })} Uhr</span>
     </div>
