@@ -62,6 +62,22 @@ export const Route = createFileRoute("/_authenticated/admin/buchung/$id")({
 const RUBY_JUNE_NAME = "Ruby June";
 const RUBY_JUNE_EMAIL = "mistress.ruby.june@gmail.com";
 
+const MESSAGE_TEMPLATES = [
+  { label: "Anfrage erhalten", text: "Danke für deine Anfrage. Ich prüfe den gewünschten Termin und melde mich schnellstmöglich mit einer verbindlichen Rückmeldung." },
+  { label: "Anzahlung", text: "Dein Termin ist vorgemerkt. Bitte überweise die vereinbarte Anzahlung, damit ich ihn verbindlich für dich reservieren kann." },
+  { label: "Termin-Erinnerung", text: "Ich freue mich auf unseren Termin. Bitte sei pünktlich und melde dich kurz, falls sich bei deiner Anreise etwas ändert." },
+  { label: "Adresse & Anfahrt", text: "Hier erhältst du noch einmal alle wichtigen Informationen zu Adresse und Anfahrt. Bitte plane ausreichend Zeit für deinen Weg ein." },
+  { label: "Danke danach", text: "Danke für dein Vertrauen und unsere gemeinsame Zeit. Ich wünsche dir einen angenehmen Nachklang." },
+] as const;
+
+const PREPARATION_ITEMS = [
+  "Studio gebucht",
+  "Duo-Partnerin bestätigt",
+  "Anzahlung geprüft",
+  "Adresse verschickt",
+  "Outfit und Material vorbereitet",
+] as const;
+
 function BookingDetailPage() {
   const { id } = Route.useParams();
   console.log("BOOKING ID:", id);
@@ -130,6 +146,22 @@ const [overrideDate, setOverrideDate] = useState("");
   const [cdrMessage, setCdrMessage] = useState("");
 
   const [activeTab, setActiveTab] = useState<"overview" | "communication" | "schedule" | "history">("overview");
+
+  function preparationDone(item: string) {
+    return note.split("\n").some((line) => line.trim() === `[x] ${item}`);
+  }
+
+  function togglePreparation(item: string) {
+    setNote((current) => {
+      const lines = current.split("\n").filter((line) => line.trim() !== `[x] ${item}`);
+      if (!preparationDoneFrom(current, item)) lines.push(`[x] ${item}`);
+      return lines.filter(Boolean).join("\n");
+    });
+  }
+
+  function preparationDoneFrom(value: string, item: string) {
+    return value.split("\n").some((line) => line.trim() === `[x] ${item}`);
+  }
 
 
   useEffect(() => {
@@ -679,12 +711,22 @@ const depositDateMut = useMutation({
                 <Mail size={12} /> {booking.guest_email}
               </a>
               {booking.guest_phone && (
-                <a
-                  href={`tel:${booking.guest_phone}`}
-                  className="text-sm text-champagne hover:underline inline-flex items-center gap-2 mt-1"
-                >
-                  <Phone size={12} /> {booking.guest_phone}
-                </a>
+                <div className="flex flex-col items-start gap-1 mt-1">
+                  <a
+                    href={`tel:${booking.guest_phone}`}
+                    className="text-sm text-champagne hover:underline inline-flex items-center gap-2"
+                  >
+                    <Phone size={12} /> {booking.guest_phone}
+                  </a>
+                  <a
+                    href={`https://wa.me/${booking.guest_phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hallo ${booking.guest_name}, ich melde mich wegen deiner Buchungsanfrage bei Lady Vanilla Ice.`)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm text-green-300 hover:underline inline-flex items-center gap-2"
+                  >
+                    <MessageSquare size={12} /> WhatsApp öffnen
+                  </a>
+                </div>
               )}
             </div>
 
@@ -805,6 +847,21 @@ const depositDateMut = useMutation({
               </div>
             </div>
 
+            <div className="mb-3">
+              <div className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 mb-2">Textvorlage wählen</div>
+              <div className="flex flex-wrap gap-2">
+                {MESSAGE_TEMPLATES.map((template) => (
+                  <button
+                    key={template.label}
+                    type="button"
+                    onClick={() => setConfirmationNote(template.text)}
+                    className="text-[0.6rem] uppercase tracking-[0.14em] px-2.5 py-1.5 border border-champagne/25 text-champagne hover:bg-champagne/10"
+                  >
+                    {template.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <textarea
               value={confirmationNote}
               onChange={(e) => setConfirmationNote(e.target.value)}
@@ -1003,6 +1060,36 @@ const depositDateMut = useMutation({
 
           {activeTab === "schedule" && (<>
           {/* INTERNE NOTIZ — editierbar */}
+
+          <div className="bg-card border border-champagne/30 p-6 mb-6">
+            <div className="eyebrow mb-1">Termin-Vorbereitung</div>
+            <p className="text-[0.7rem] text-vanilla/50 mb-4">Hake die Vorbereitung ab. Die Liste wird zusammen mit deiner internen Notiz gespeichert.</p>
+            <div className="grid sm:grid-cols-2 gap-2">
+              {PREPARATION_ITEMS.map((item) => {
+                const done = preparationDone(item);
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => togglePreparation(item)}
+                    className={`text-left border p-3 text-sm transition ${done ? "border-green-700/40 bg-green-700/10 text-green-200" : "border-champagne/20 text-vanilla/70 hover:border-champagne/50"}`}
+                  >
+                    {done ? "✓" : "○"} {item}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                disabled={noteMut.isPending || note === (booking.admin_note ?? "")}
+                onClick={() => noteMut.mutate()}
+                className="text-[0.65rem] uppercase tracking-[0.2em] px-4 py-2 border border-champagne/40 text-champagne hover:bg-champagne/10 disabled:opacity-30"
+              >
+                {noteMut.isPending ? "Speichere…" : "Checkliste speichern"}
+              </button>
+            </div>
+          </div>
 
           <div className="bg-card border border-champagne/15 p-6 mb-6">
             <div className="eyebrow mb-3 flex items-center justify-between gap-2">
@@ -1207,6 +1294,22 @@ const depositDateMut = useMutation({
               aber du kannst hier frei überschreiben. Diese Werte fließen ins Kassenbuch
               und in die Bestätigungs-E-Mail an den Gast.
             </p>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border border-champagne/20 bg-anthracite/30 p-3">
+              <div className="text-sm text-vanilla/70">
+                Preisvorschlag: {total != null ? `${total.toLocaleString("de-DE")} € gesamt · ${deposit?.toLocaleString("de-DE")} € Anzahlung · ${rest?.toLocaleString("de-DE")} € bar` : "Bitte zuerst eine Dauer eintragen."}
+              </div>
+              <button
+                type="button"
+                disabled={total == null || deposit == null || rest == null}
+                onClick={() => {
+                  if (deposit != null) setAnzahlungInput(String(deposit));
+                  if (rest != null) setBarInput(String(rest));
+                }}
+                className="text-[0.6rem] uppercase tracking-[0.16em] px-3 py-2 border border-champagne/40 text-champagne hover:bg-champagne/10 disabled:opacity-30"
+              >
+                Vorschlag übernehmen
+              </button>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 block mb-1">
