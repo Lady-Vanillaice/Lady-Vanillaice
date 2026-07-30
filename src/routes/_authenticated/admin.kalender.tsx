@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { createSlot, deleteSlot, getCalendarFeedUrl, updateSlotBuffer, setSlotHidden } from "@/lib/booking.functions";
+import { createSlot, deleteSlot, getCalendarFeedUrl, updateSlotBuffer, updateSlotTimes, setSlotHidden } from "@/lib/booking.functions";
 import { useState } from "react";
 import { PageHeader } from "@/components/site/PageHeader";
 import {
@@ -10,7 +10,7 @@ import {
   StatusBadge,
   type Slot,
 } from "@/components/admin/admin-shared";
-import { Trash2, MapPin, ArrowLeft, Eye, EyeOff, CalendarPlus, Copy } from "lucide-react";
+import { Trash2, MapPin, ArrowLeft, Eye, EyeOff, CalendarPlus, Copy, Pencil, Save, X } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -23,6 +23,8 @@ function AdminKalenderPage() {
   const qc = useQueryClient();
   const createSlotFn = useServerFn(createSlot);
   const deleteSlotFn = useServerFn(deleteSlot);
+  const updateSlotTimesFn = useServerFn(updateSlotTimes);
+  const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
 
   const slotsQ = useQuery({
     queryKey: ["admin-slots"],
@@ -77,6 +79,15 @@ function AdminKalenderPage() {
   const deleteMut = useMutation({
     mutationFn: (id: string) => deleteSlotFn({ data: { id } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-slots"] }),
+  });
+
+  const updateTimesMut = useMutation({
+    mutationFn: (v: { id: string; starts_at: string; ends_at: string }) =>
+      updateSlotTimesFn({ data: v }),
+    onSuccess: () => {
+      setEditingSlotId(null);
+      qc.invalidateQueries({ queryKey: ["admin-slots"] });
+    },
   });
 
   const updateBufferFn = useServerFn(updateSlotBuffer);
@@ -195,9 +206,26 @@ function AdminKalenderPage() {
                               Min
                             </label>
                           </div>
+                          {editingSlotId === s.id && (
+                            <SlotTimeEditor
+                              slot={s}
+                              pending={updateTimesMut.isPending}
+                              onCancel={() => setEditingSlotId(null)}
+                              onSave={(value) => updateTimesMut.mutateAsync({ id: s.id, ...value })}
+                            />
+                          )}
                         </div>
 
                         <div className="flex items-center gap-1 sm:shrink-0">
+                          <button
+                            onClick={() => setEditingSlotId(editingSlotId === s.id ? null : s.id)}
+                            disabled={updateTimesMut.isPending}
+                            className="text-vanilla/50 hover:text-champagne transition p-2"
+                            aria-label="Zeitfenster bearbeiten"
+                            title="Beginn oder Ende ändern"
+                          >
+                            <Pencil size={16} />
+                          </button>
                           <button
                             onClick={() => hiddenMut.mutate({ id: s.id, is_hidden: !s.is_hidden })}
                             disabled={hiddenMut.isPending}
@@ -227,6 +255,69 @@ function AdminKalenderPage() {
         </div>
       </section>
     </>
+  );
+}
+
+function SlotTimeEditor({
+  slot,
+  pending,
+  onSave,
+  onCancel,
+}: {
+  slot: Slot;
+  pending: boolean;
+  onSave: (value: { starts_at: string; ends_at: string }) => Promise<unknown>;
+  onCancel: () => void;
+}) {
+  const startDate = new Date(slot.starts_at);
+  const endDate = new Date(slot.ends_at);
+  const [date, setDate] = useState(format(startDate, "yyyy-MM-dd"));
+  const [start, setStart] = useState(format(startDate, "HH:mm"));
+  const [end, setEnd] = useState(format(endDate, "HH:mm"));
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    setError(null);
+    const startsAt = new Date(`${date}T${start}:00`);
+    const endsAt = new Date(`${date}T${end}:00`);
+    if (end <= start) endsAt.setDate(endsAt.getDate() + 1);
+    try {
+      await onSave({ starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString() });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Zeitfenster konnte nicht gespeichert werden.");
+    }
+  }
+
+  return (
+    <div className="mt-4 border border-champagne/25 bg-anthracite/30 p-4">
+      <div className="eyebrow text-champagne mb-3">Zeitfenster bearbeiten</div>
+      <div className="grid grid-cols-3 gap-3">
+        <div>
+          <label className="block text-[0.6rem] uppercase tracking-[0.16em] text-vanilla/45 mb-1">Datum</label>
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input-luxe !py-2" />
+        </div>
+        <div>
+          <label className="block text-[0.6rem] uppercase tracking-[0.16em] text-vanilla/45 mb-1">Von</label>
+          <input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="input-luxe !py-2" />
+        </div>
+        <div>
+          <label className="block text-[0.6rem] uppercase tracking-[0.16em] text-vanilla/45 mb-1">Bis</label>
+          <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className="input-luxe !py-2" />
+        </div>
+      </div>
+      <p className="mt-2 text-[0.65rem] text-vanilla/45">
+        Liegt „Bis“ vor „Von“, endet das Zeitfenster automatisch am folgenden Tag.
+      </p>
+      {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
+      <div className="mt-3 flex gap-2">
+        <button type="button" onClick={save} disabled={pending} className="btn-gold !py-2 !px-3 !text-[0.65rem]">
+          <Save size={12} /> {pending ? "Speichert…" : "Speichern"}
+        </button>
+        <button type="button" onClick={onCancel} disabled={pending} className="btn-outline-gold !py-2 !px-3 !text-[0.65rem]">
+          <X size={12} /> Abbrechen
+        </button>
+      </div>
+    </div>
   );
 }
 
