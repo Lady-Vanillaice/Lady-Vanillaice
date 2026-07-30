@@ -773,15 +773,13 @@ function AvailabilityTimeline({ slotId }: { slotId: string }) {
   const totalMs = winEnd - winStart;
   if (totalMs <= 0) return null;
 
-  const bufferMs = q.data.buffer_minutes * 60_000;
-
   // Booking and reservation ranges include their safety buffer. Gaps between
   // explicitly opened windows are neutral and must never be extended or shown
   // as bookings.
   const raw = q.data.busy
     .map((b) => {
       const kind = b.kind ?? "booked";
-      const rangeBuffer = kind === "unavailable" ? 0 : bufferMs;
+      const rangeBuffer = (b.buffer_minutes ?? q.data.buffer_minutes) * 60_000;
       return {
         s: Math.max(winStart, new Date(b.start).getTime() - rangeBuffer),
         e: Math.min(winEnd, new Date(b.end).getTime() + rangeBuffer),
