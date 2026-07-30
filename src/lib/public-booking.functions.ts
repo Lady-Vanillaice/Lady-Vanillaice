@@ -248,8 +248,11 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
       .order("starts_at", { ascending: true });
 
     const slotsForDay = daySlots?.length ? daySlots : [slot];
-    const visibleOpenSlots = slotsForDay.filter((s) => s.status === "open" && !s.is_hidden);
-    const timelineSlots = visibleOpenSlots.length ? visibleOpenSlots : slotsForDay;
+    // Every visible slot belongs to the released day window, even after that
+    // slot becomes held/booked. Using only currently open slots would turn the
+    // former slot boundaries into artificial grey gaps beside real bookings.
+    const visibleDaySlots = slotsForDay.filter((s) => !s.is_hidden);
+    const timelineSlots = visibleDaySlots.length ? visibleDaySlots : slotsForDay;
     const daySlotIds = slotsForDay.map((s) => s.id);
 
     const { data: bookings } = await supabaseAdmin
