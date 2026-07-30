@@ -440,7 +440,20 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
     const altDate = String(fd.get("alt_date") ?? "").trim();
     const altTime = String(fd.get("alt_time") ?? "").trim();
     const altNote = String(fd.get("alt_note") ?? "").trim();
-    const baseMessage = String(fd.get("message") ?? "");
+    const experience = String(fd.get("experience") ?? "").trim();
+    const preferences = String(fd.get("preferences") ?? "").trim();
+    const taboos = String(fd.get("taboos") ?? "").trim();
+    const health = String(fd.get("health") ?? "").trim();
+    const safeword = String(fd.get("safeword") ?? "").trim();
+    const note = String(fd.get("message") ?? "").trim();
+    const baseMessage = [
+      experience ? `Erfahrung:\n${experience}` : null,
+      preferences ? `Vorlieben & Wünsche:\n${preferences}` : null,
+      taboos ? `Tabus & Grenzen:\n${taboos}` : null,
+      health ? `Gesundheitliche Hinweise:\n${health}` : null,
+      safeword ? `Safeword:\n${safeword}` : null,
+      note ? `Weitere Nachricht:\n${note}` : null,
+    ].filter(Boolean).join("\n\n");
     const altParts: string[] = [];
     if (altDate) altParts.push(`Datum: ${altDate}${altTime ? ` um ${altTime}` : ""}`);
     if (altNote) altParts.push(altNote);
@@ -649,15 +662,46 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
           <label className="eyebrow block mb-1.5">{tr("Handynummer", "Mobile number")}</label>
           <input name="phone" type="tel" required minLength={6} maxLength={40} className="input-luxe" placeholder="+49 151 23456789" />
         </div>
-        <div>
-          <label className="eyebrow block mb-1.5">{tr("Nachricht", "Message")}</label>
+        <div className="border border-champagne/20 bg-champagne/[0.03] p-4 space-y-4">
+          <div>
+            <div className="eyebrow text-champagne">{tr("Vorlieben & Grenzen", "Preferences & boundaries")}</div>
+            <p className="mt-1 text-[0.7rem] leading-relaxed text-vanilla/55">{tr("Diese Angaben helfen mir, deine Anfrage schnell und sicher einzuordnen.", "These details help me assess your request quickly and safely.")}</p>
+          </div>
+          <div>
+            <label className="eyebrow block mb-1.5">{tr("Erfahrung", "Experience")}</label>
+            <select name="experience" required defaultValue="" className="input-luxe">
+              <option value="" disabled>{tr("Bitte auswählen", "Please select")}</option>
+              <option value={tr("Erste Session", "First session")}>{tr("Erste Session", "First session")}</option>
+              <option value={tr("Etwas Erfahrung", "Some experience")}>{tr("Etwas Erfahrung", "Some experience")}</option>
+              <option value={tr("Erfahren", "Experienced")}>{tr("Erfahren", "Experienced")}</option>
+            </select>
+          </div>
+          <div>
+            <label className="eyebrow block mb-1.5">{tr("Vorlieben & Wünsche", "Preferences & wishes")}</label>
+            <textarea name="preferences" rows={3} required minLength={3} maxLength={450} className="input-luxe resize-y" placeholder={tr("Was wünschst du dir für die Session?", "What would you like for the session?")} />
+          </div>
+          <div>
+            <label className="eyebrow block mb-1.5">{tr("Tabus & klare Grenzen", "Taboos & hard limits")}</label>
+            <textarea name="taboos" rows={3} required minLength={2} maxLength={450} className="input-luxe resize-y" placeholder={tr("Was darf auf keinen Fall passieren?", "What must not happen under any circumstances?")} />
+          </div>
+          <div>
+            <label className="eyebrow block mb-1.5">{tr("Gesundheitliche Hinweise (optional)", "Health information (optional)")}</label>
+            <textarea name="health" rows={2} maxLength={150} className="input-luxe resize-y" placeholder={tr("Verletzungen, Allergien oder andere wichtige Hinweise", "Injuries, allergies or other important information")} />
+          </div>
+          <div>
+            <label className="eyebrow block mb-1.5">{tr("Safeword (optional)", "Safeword (optional)")}</label>
+            <input name="safeword" maxLength={40} className="input-luxe" placeholder={tr("Zum Beispiel: Rot", "For example: Red")} />
+          </div>
+          <div>
+          <label className="eyebrow block mb-1.5">{tr("Weitere Nachricht (optional)", "Additional message (optional)")}</label>
           <textarea
-            name="message" rows={4} required minLength={5} maxLength={2000}
-            className="input-luxe resize-none"
+            name="message" rows={3} maxLength={250}
+            className="input-luxe resize-y"
             placeholder={durationChoice === "custom"
               ? tr("Bitte schreibe deine gewünschte Dauer und worauf du dich freust…", "Please write your desired duration and what you're looking forward to…")
-              : tr("Erzähle mir kurz, worauf du dich freust oder was dir wichtig ist…", "Tell me briefly what you're looking forward to or what matters to you…")}
+              : tr("Gibt es noch etwas, das ich wissen sollte?", "Is there anything else I should know?")}
           />
+          </div>
         </div>
 
         <div className="border border-champagne/20 bg-champagne/[0.03] p-4 space-y-3">
