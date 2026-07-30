@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/site/PageHeader";
-import { ArrowLeft, Search, Mail, Phone, User, Save, X } from "lucide-react";
+import { ArrowLeft, Search, Mail, Phone, User, Save, X, CalendarCheck, Star, ShieldAlert, HeartPulse, KeyRound } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { listCustomers, upsertCustomerNote, type CustomerRow } from "@/lib/customers.functions";
@@ -35,6 +35,8 @@ function AdminKundenPage() {
       phone?: string | null;
       vorlieben?: string | null;
       tabus?: string | null;
+      gesundheit?: string | null;
+      safeword?: string | null;
       admin_note?: string | null;
     }) => upsertFn({ data: v }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-customers"] }),
@@ -52,6 +54,10 @@ function AdminKundenPage() {
         c.note?.phone ?? "",
         c.note?.vorlieben ?? "",
         c.note?.tabus ?? "",
+        c.note?.gesundheit ?? "",
+        c.note?.safeword ?? "",
+        c.booking_profile.gesundheit ?? "",
+        c.booking_profile.safeword ?? "",
         c.note?.admin_note ?? "",
       ]
         .join(" ")
@@ -123,7 +129,7 @@ function AdminKundenPage() {
                         </span>
                         {c.bookings_count > 0 && (
                           <span className="text-[0.6rem] uppercase tracking-[0.2em] text-champagne/80 border border-champagne/30 px-2 py-0.5">
-                            {c.bookings_count}× bestätigt
+                            {c.visits_count}× dagewesen
                           </span>
                         )}
                       </div>
@@ -194,6 +200,8 @@ function CustomerEditor({
     phone: string | null;
     vorlieben: string | null;
     tabus: string | null;
+    gesundheit: string | null;
+    safeword: string | null;
     admin_note: string | null;
   }) => void | Promise<void>;
   onClose: () => void;
@@ -204,12 +212,40 @@ function CustomerEditor({
   const [phone, setPhone] = useState(
     customer.note?.phone ?? customer.phones[0] ?? "",
   );
-  const [vorlieben, setVorlieben] = useState(customer.note?.vorlieben ?? "");
-  const [tabus, setTabus] = useState(customer.note?.tabus ?? "");
+  const [vorlieben, setVorlieben] = useState(customer.note?.vorlieben ?? customer.booking_profile.vorlieben ?? "");
+  const [tabus, setTabus] = useState(customer.note?.tabus ?? customer.booking_profile.tabus ?? "");
+  const [gesundheit, setGesundheit] = useState(customer.note?.gesundheit ?? customer.booking_profile.gesundheit ?? "");
+  const [safeword, setSafeword] = useState(customer.note?.safeword ?? customer.booking_profile.safeword ?? "");
   const [adminNote, setAdminNote] = useState(customer.note?.admin_note ?? "");
 
   return (
     <div className="border-t border-champagne/10 p-5 space-y-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="border border-champagne/20 bg-anthracite/20 p-3">
+          <div className="flex items-center gap-2 text-champagne text-xs uppercase tracking-[0.16em]">
+            <CalendarCheck size={14} /> Besuche
+          </div>
+          <div className="mt-2 font-display text-2xl text-vanilla">{customer.visits_count}</div>
+          <div className="text-[0.65rem] text-vanilla/45">{customer.bookings_count} bestätigte Termine insgesamt</div>
+        </div>
+        <div className="border border-champagne/20 bg-anthracite/20 p-3 sm:col-span-1 lg:col-span-2">
+          <div className="flex items-center gap-2 text-champagne text-xs uppercase tracking-[0.16em]">
+            <Star size={14} /> Rezension auf der Homepage
+          </div>
+          <div className="mt-2 text-sm text-vanilla">
+            {customer.testimonial
+              ? customer.testimonial.status === "approved"
+                ? "Ja — veröffentlicht"
+                : customer.testimonial.status === "pending"
+                  ? "Eingereicht — wartet auf Freigabe"
+                  : "Eingereicht — abgelehnt"
+              : "Keine eindeutig zugeordnete Rezension"}
+          </div>
+          <div className="mt-1 text-[0.65rem] text-vanilla/45">
+            Zuordnung über das gleiche Pseudonym.
+          </div>
+        </div>
+      </div>
       <div className="grid md:grid-cols-2 gap-4">
         <div>
           <label className="eyebrow block mb-1.5">Pseudonym / Name</label>
@@ -231,7 +267,7 @@ function CustomerEditor({
         </div>
       </div>
       <div>
-        <label className="eyebrow block mb-1.5 text-champagne">Vorlieben</label>
+        <label className="eyebrow flex items-center gap-2 mb-1.5 text-champagne"><Star size={12} /> Vorlieben</label>
         <textarea
           rows={4}
           value={vorlieben}
@@ -241,13 +277,32 @@ function CustomerEditor({
         />
       </div>
       <div>
-        <label className="eyebrow block mb-1.5 text-bordeaux">Tabus</label>
+        <label className="eyebrow flex items-center gap-2 mb-1.5 text-bordeaux"><ShieldAlert size={12} /> Tabus</label>
         <textarea
           rows={3}
           value={tabus}
           onChange={(e) => setTabus(e.target.value)}
           className="input-luxe resize-none"
           placeholder="Was ist absolut zu vermeiden?"
+        />
+      </div>
+      <div>
+        <label className="eyebrow flex items-center gap-2 mb-1.5"><HeartPulse size={12} /> Gesundheitliche Hinweise</label>
+        <textarea
+          rows={3}
+          value={gesundheit}
+          onChange={(e) => setGesundheit(e.target.value)}
+          className="input-luxe resize-none"
+          placeholder="Verletzungen, Allergien, Kreislauf oder andere wichtige Hinweise …"
+        />
+      </div>
+      <div>
+        <label className="eyebrow flex items-center gap-2 mb-1.5"><KeyRound size={12} /> Safeword</label>
+        <input
+          value={safeword}
+          onChange={(e) => setSafeword(e.target.value)}
+          className="input-luxe"
+          placeholder="z. B. Rot"
         />
       </div>
       <div>
@@ -270,6 +325,8 @@ function CustomerEditor({
               phone: phone.trim() || null,
               vorlieben: vorlieben.trim() || null,
               tabus: tabus.trim() || null,
+              gesundheit: gesundheit.trim() || null,
+              safeword: safeword.trim() || null,
               admin_note: adminNote.trim() || null,
             })
           }
