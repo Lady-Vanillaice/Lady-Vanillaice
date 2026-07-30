@@ -778,7 +778,7 @@ const depositDateMut = useMutation({
           {/* NACHRICHT / VORLIEBEN DES GASTS */}
           <div className="bg-card border border-champagne/15 p-6 mb-6">
             <div className="eyebrow mb-3 flex items-center gap-2">
-              <MessageSquare size={12} /> Nachricht &amp; Vorlieben von {booking.guest_name}
+              <MessageSquare size={12} /> Session-Übersicht von {booking.guest_name}
             </div>
             <p className="text-sm text-vanilla/80 leading-relaxed whitespace-pre-line bg-anthracite/40 p-4 border border-champagne/10">
               {booking.message || "—"}
@@ -1755,4 +1755,3 @@ function DeleteInline({
     </div>
   );
 }
-
