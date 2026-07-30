@@ -281,6 +281,9 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
     });
 
     const busyFromClosedSlots = slotsForDay.flatMap((s) => {
+      // Hidden legacy fragments are not part of the public availability and
+      // must not reappear as grey blocks in the timeline.
+      if (s.is_hidden) return [];
       if (s.status !== "booked" && s.status !== "held") return [];
       // A closed slot with a concrete booking must use that booking's exact
       // start/end. Adding the whole slot as well would paint the entire
