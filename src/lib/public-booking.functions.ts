@@ -297,7 +297,7 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
     ];
     const timelineStart = Math.min(...starts);
     const timelineEnd = Math.max(...ends);
-    const unavailableGaps: Array<{ start: string; end: string; kind: "booked" }> = [];
+    const unavailableGaps: Array<{ start: string; end: string; kind: "unavailable" }> = [];
     let cursor = timelineStart;
     for (const s of sortedOpen) {
       const sStart = new Date(s.starts_at).getTime();
@@ -306,7 +306,7 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
         unavailableGaps.push({
           start: new Date(cursor).toISOString(),
           end: new Date(sStart).toISOString(),
-          kind: "booked",
+          kind: "unavailable",
         });
       }
       cursor = Math.max(cursor, sEnd);
@@ -315,7 +315,7 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
       unavailableGaps.push({
         start: new Date(cursor).toISOString(),
         end: new Date(timelineEnd).toISOString(),
-        kind: "booked",
+        kind: "unavailable",
       });
     }
 
