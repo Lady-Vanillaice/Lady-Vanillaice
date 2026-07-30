@@ -90,7 +90,7 @@ export const Route = createFileRoute("/api/public/calendar/$")({
           const descParts: string[] = [];
           if (b.guest_email) descParts.push(`E-Mail: ${b.guest_email}`);
           if (b.duration) descParts.push(`Dauer: ${b.duration}`);
-          if (b.message) descParts.push(`Nachricht: ${b.message}`);
+          if (b.message) descParts.push(`SESSION-ÜBERSICHT:\n${b.message}`);
           if (b.admin_note) descParts.push(`Notiz: ${b.admin_note}`);
           if (b.confirmation_note) descParts.push(`Bestätigung: ${b.confirmation_note}`);
 
