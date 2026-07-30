@@ -795,9 +795,6 @@ function AvailabilityTimeline({ slotId }: { slotId: string }) {
     if (last && r.s <= last.e && last.kind === r.kind) last.e = Math.max(last.e, r.e);
     else merged.push({ ...r });
   }
-  const hasReservedRanges = merged.some((range) => range.kind === "reserved");
-  const hasUnavailableRanges = merged.some((range) => range.kind === "unavailable");
-
   // Build free segments as the complement of merged busy ranges.
   const freeSegs: Array<{ s: number; e: number }> = [];
   let cursor = winStart;
@@ -915,13 +912,8 @@ function AvailabilityTimeline({ slotId }: { slotId: string }) {
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-vanilla/60">
         <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-champagne" /> {tr("verfügbar", "available")}</span>
-        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-bordeaux" /> {tr("belegt inkl. Puffer", "booked incl. buffer")}</span>
-        {hasReservedRanges && (
-          <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-vanilla/40" /> {tr("vorläufig reserviert", "provisionally reserved")}</span>
-        )}
-        {hasUnavailableRanges && (
-          <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-anthracite border border-vanilla/20" /> {tr("nicht freigegeben", "unavailable")}</span>
-        )}
+        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-bordeaux" /> {tr("belegt", "booked")}</span>
+        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-vanilla/40" /> {tr("reserviert", "reserved")}</span>
       </div>
     </div>
   );
