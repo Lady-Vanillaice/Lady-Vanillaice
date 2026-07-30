@@ -775,17 +775,23 @@ function AvailabilityTimeline({ slotId }: { slotId: string }) {
 
   const bufferMs = q.data.buffer_minutes * 60_000;
 
-  // Merge overlapping busy ranges + include buffer on both sides.
+  // Booking and reservation ranges include their safety buffer. Gaps between
+  // explicitly opened windows are neutral and must never be extended or shown
+  // as bookings.
   const raw = q.data.busy
-    .map((b) => ({
-      s: Math.max(winStart, new Date(b.start).getTime() - bufferMs),
-      e: Math.min(winEnd, new Date(b.end).getTime() + bufferMs),
-      kind: b.kind ?? "booked",
-    }))
+    .map((b) => {
+      const kind = b.kind ?? "booked";
+      const rangeBuffer = kind === "unavailable" ? 0 : bufferMs;
+      return {
+        s: Math.max(winStart, new Date(b.start).getTime() - rangeBuffer),
+        e: Math.min(winEnd, new Date(b.end).getTime() + rangeBuffer),
+        kind,
+      };
+    })
     .filter((r) => r.e > r.s)
     .sort((a, b) => a.s - b.s);
 
-  const merged: Array<{ s: number; e: number; kind: "booked" | "reserved" }> = [];
+  const merged: Array<{ s: number; e: number; kind: "booked" | "reserved" | "unavailable" }> = [];
   for (const r of raw) {
     const last = merged[merged.length - 1];
     if (last && r.s <= last.e && last.kind === r.kind) last.e = Math.max(last.e, r.e);
@@ -843,17 +849,20 @@ function AvailabilityTimeline({ slotId }: { slotId: string }) {
       <div className="overflow-x-auto">
         <div style={{ width: `${zoom * 100}%`, minWidth: "100%" }}>
       <div className="relative h-10 border border-champagne/20 bg-champagne/[0.04]">
-        {/* Busy segments (with buffer) — rendered first so free buttons sit on top */}
+        {/* Blocked segments — rendered first so free buttons sit on top */}
         {merged.map((seg) => {
           const left = pct(seg.s);
           const width = pct(seg.e) - left;
           const isReserved = seg.kind === "reserved";
+          const isUnavailable = seg.kind === "unavailable";
           return (
             <div
               key={`b-${seg.s}`}
-              title={`${isReserved ? tr("Reserviert","Reserved") : tr("Belegt","Booked")} ${fmtHm(seg.s)} – ${fmtHm(seg.e)} (${tr("inkl. Puffer","incl. buffer")})`}
+              title={`${isUnavailable ? tr("Nicht freigegeben","Unavailable") : isReserved ? tr("Reserviert","Reserved") : tr("Belegt","Booked")} ${fmtHm(seg.s)} – ${fmtHm(seg.e)}`}
               className={`absolute top-0 bottom-0 pointer-events-none ${
-                isReserved
+                isUnavailable
+                  ? "bg-anthracite/80 border-x border-vanilla/15"
+                  : isReserved
                   ? "bg-vanilla/35 border-x border-vanilla/45"
                   : "bg-bordeaux/60 border-x border-bordeaux/70"
               }`}
@@ -908,6 +917,7 @@ function AvailabilityTimeline({ slotId }: { slotId: string }) {
         <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-champagne" /> {tr("verfügbar", "available")}</span>
         <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-bordeaux" /> {tr("belegt", "booked")}</span>
         <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-vanilla/40" /> {tr("reserviert", "reserved")}</span>
+        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-anthracite border border-vanilla/20" /> {tr("nicht freigegeben", "unavailable")}</span>
       </div>
     </div>
   );
