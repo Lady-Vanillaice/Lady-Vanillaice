@@ -442,9 +442,9 @@ function DashboardOverview() {
 
       <div className="bg-card border border-champagne/15 p-5">
         <div className="flex items-center justify-between gap-3 mb-4"><h3 className="font-display text-xl text-vanilla">Die nächsten Termine</h3><Link to="/admin/terminplan" className="text-xs uppercase tracking-[0.16em] text-champagne hover:text-vanilla transition">Terminplan <ArrowRight size={12} className="inline" /></Link></div>
-        {nextBookings.length === 0 ? <p className="text-sm text-vanilla/50">Keine kommenden bestätigten Termine.</p> : <div className="divide-y divide-champagne/10">{nextBookings.map(({ booking, start }) => <Link key={booking.id} to="/admin/buchung/$id" params={{ id: booking.id }} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0 group">
+        {nextBookings.length === 0 ? <p className="text-sm text-vanilla/50">Keine kommenden bestätigten Termine.</p> : <div className="divide-y divide-champagne/10">{nextBookings.map(({ booking, start }) => <Link key={booking.id} to="/admin/buchung/$id" params={{ id: booking.id }} className="flex flex-col items-start gap-2 py-4 first:pt-0 last:pb-0 group">
           <div><div className="text-vanilla group-hover:text-champagne transition">{booking.guest_name}</div><div className="text-xs text-vanilla/50">{format(new Date(start), "EEEE, dd.MM.yyyy · HH:mm 'Uhr'", { locale: de })}</div></div>
-          <div className="text-right"><div className="text-sm text-champagne">Noch zu zahlen: {eur((!booking.anzahlung_paid && !booking.deposit_exemption_reason ? Number(booking.anzahlung ?? 0) : 0) + (!booking.cash_received_at && !booking.fully_paid ? Number(booking.bar ?? 0) : 0))}</div><div className="text-[0.55rem] uppercase tracking-[0.16em] text-vanilla/45">Termin öffnen</div></div>
+          <div className="text-left"><div className="text-sm text-champagne">Noch zu zahlen: {eur((!booking.anzahlung_paid && !booking.deposit_exemption_reason ? Number(booking.anzahlung ?? 0) : 0) + (!booking.cash_received_at && !booking.fully_paid ? Number(booking.bar ?? 0) : 0))}</div><div className="text-[0.55rem] uppercase tracking-[0.16em] text-vanilla/45">Termin öffnen</div></div>
         </Link>)}</div>}
       </div>
     </>}
