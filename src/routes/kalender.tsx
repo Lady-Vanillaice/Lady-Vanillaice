@@ -912,7 +912,7 @@ function AvailabilityTimeline({ slotId }: { slotId: string }) {
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-vanilla/60">
         <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-champagne" /> {tr("verfügbar", "available")}</span>
-        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-bordeaux" /> {tr("belegt inkl. Puffer", "booked incl. buffer")}</span>
+        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-bordeaux" /> {tr("belegt", "booked")}</span>
       </div>
     </div>
   );
