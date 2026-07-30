@@ -4,11 +4,16 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { listAdminAccessRequests, decideAdminAccessRequest } from "@/lib/admin-access.functions";
+import {
+  getPushConfiguration,
+  removePushSubscription,
+  savePushSubscription,
+} from "@/lib/push-notifications.functions";
 import { PageHeader } from "@/components/site/PageHeader";
 import {
   LogOut, Calendar, Mail, ShieldCheck, CheckCircle2, XCircle, MessageSquare, Quote,
   Camera, Sparkles, Wallet, RotateCcw, CalendarClock, Users, Clock3, BadgeEuro,
-  CircleAlert, ArrowRight, ChevronDown, Download, Share,
+  CircleAlert, ArrowRight, ChevronDown, Download, Share, Bell, BellOff,
 } from "lucide-react";
 import { endOfMonth, endOfWeek, format, isWithinInterval, startOfDay, startOfMonth, startOfWeek } from "date-fns";
 import { de } from "date-fns/locale";
@@ -91,6 +96,7 @@ function AdminHubPage() {
       </div>
 
       <InstallAdminApp />
+      <PushNotificationsCard />
 
       <section className="mb-10">
         <div className="flex items-baseline justify-between flex-wrap gap-2 mb-4 pb-3 border-b border-champagne/15">
@@ -133,6 +139,115 @@ function AdminHubPage() {
       <AdminAccessRequestsPanel />
     </div></section>
   </>;
+}
+
+function urlBase64ToUint8Array(value: string) {
+  const padding = "=".repeat((4 - (value.length % 4)) % 4);
+  const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
+  return Uint8Array.from(window.atob(base64), (character) => character.charCodeAt(0));
+}
+
+function PushNotificationsCard() {
+  const getConfig = useServerFn(getPushConfiguration);
+  const saveSubscription = useServerFn(savePushSubscription);
+  const removeSubscription = useServerFn(removePushSubscription);
+  const [supported, setSupported] = useState(true);
+  const [enabled, setEnabled] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const available = "serviceWorker" in navigator && "PushManager" in window;
+    setSupported(available);
+    if (!available) return;
+    navigator.serviceWorker.ready
+      .then((registration) => registration.pushManager.getSubscription())
+      .then((subscription) => setEnabled(Boolean(subscription)))
+      .catch(() => setSupported(false));
+  }, []);
+
+  async function enable() {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const config = await getConfig();
+      if (!config.configured || !config.publicKey) throw new Error("Push ist noch nicht konfiguriert.");
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") throw new Error("Benachrichtigungen wurden nicht erlaubt.");
+      const registration = await navigator.serviceWorker.ready;
+      const subscription =
+        (await registration.pushManager.getSubscription()) ??
+        (await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(config.publicKey),
+        }));
+      const json = subscription.toJSON();
+      if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
+        throw new Error("Das Gerät hat keine vollständige Push-Anmeldung geliefert.");
+      }
+      await saveSubscription({
+        data: {
+          endpoint: json.endpoint,
+          keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
+        },
+      });
+      setEnabled(true);
+      setMessage("Push-Mitteilungen sind aktiv.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Push konnte nicht aktiviert werden.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function disable() {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      if (subscription) {
+        await removeSubscription({ data: { endpoint: subscription.endpoint } });
+        await subscription.unsubscribe();
+      }
+      setEnabled(false);
+      setMessage("Push-Mitteilungen sind ausgeschaltet.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Push konnte nicht ausgeschaltet werden.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!supported) return null;
+
+  return (
+    <section className="mb-8 border border-champagne/30 bg-card p-4 sm:p-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-champagne">
+            {enabled ? <Bell size={17} /> : <BellOff size={17} />}
+            <h2 className="font-display text-xl">Buchungs-Push</h2>
+          </div>
+          <p className="mt-1 text-xs leading-relaxed text-vanilla/55">
+            {enabled
+              ? "Du wirst auf diesem Gerät über neue Buchungsanfragen informiert."
+              : "Aktiviere Mitteilungen für neue Buchungsanfragen auf diesem Gerät."}
+          </p>
+          {message && <p className="mt-2 text-xs text-vanilla/75">{message}</p>}
+        </div>
+        <button
+          type="button"
+          onClick={enabled ? disable : enable}
+          disabled={busy}
+          className={enabled ? "btn-outline-gold shrink-0 !py-2.5 !px-5 !text-[0.65rem]" : "btn-gold shrink-0 !py-2.5 !px-5 !text-[0.65rem]"}
+        >
+          {enabled ? <BellOff size={13} /> : <Bell size={13} />}
+          {busy ? "Bitte warten…" : enabled ? "Ausschalten" : "Aktivieren"}
+        </button>
+      </div>
+    </section>
+  );
 }
 
 type InstallPromptEvent = Event & {

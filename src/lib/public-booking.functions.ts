@@ -612,6 +612,17 @@ export const submitBooking = createServerFn({ method: "POST" })
       console.error("Failed to enqueue booking emails", err);
     }
 
+    try {
+      const { sendNewBookingPush } = await import("@/lib/push-notifications.server");
+      await sendNewBookingPush({
+        bookingId: row.id,
+        guestName: data.guest_name,
+        requestedStart: insertData.requested_start ?? null,
+      });
+    } catch (err) {
+      console.error("Failed to send booking push notification", err);
+    }
+
     return { id: row.id };
   });
 
