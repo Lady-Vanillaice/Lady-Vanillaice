@@ -645,12 +645,6 @@ export const submitBooking = createServerFn({ method: "POST" })
  * any more (considering pending/confirmed bookings + buffer).
  */
 export const listUpcomingSlots = createServerFn({ method: "GET" }).handler(async () => {
-  try {
-    await repairKnownManualOvernightBooking();
-  } catch (error) {
-    console.error("Automatic overnight booking repair failed", error);
-  }
-
   const supabase = publicClient();
   const now = new Date().toISOString();
   const nowMs = Date.now();
