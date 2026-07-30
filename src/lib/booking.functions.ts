@@ -139,6 +139,63 @@ export const updateSlotBuffer = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const updateSlotTimes = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({
+      id: z.string().uuid(),
+      starts_at: z.string().datetime(),
+      ends_at: z.string().datetime(),
+    }).superRefine((value, ctx) => {
+      if (new Date(value.ends_at).getTime() <= new Date(value.starts_at).getTime()) {
+        ctx.addIssue({ code: "custom", message: "Das Ende muss nach dem Beginn liegen." });
+      }
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await ensureAdmin(context.supabase, context.userId);
+
+    const { data: slot, error: slotErr } = await context.supabase
+      .from("availability_slots")
+      .select("id, buffer_minutes")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (slotErr) throw new Error(slotErr.message);
+    if (!slot) throw new Error("Zeitfenster nicht gefunden.");
+
+    const { data: bookings, error: bookingErr } = await context.supabase
+      .from("bookings")
+      .select("requested_start, duration_minutes, status, updated_at")
+      .eq("slot_id", data.id)
+      .in("status", ["confirmed", "waiting_deposit"])
+      .not("requested_start", "is", null)
+      .not("duration_minutes", "is", null);
+    if (bookingErr) throw new Error(bookingErr.message);
+
+    const newStart = new Date(data.starts_at).getTime();
+    const newEnd = new Date(data.ends_at).getTime();
+    const bufferMs = (slot.buffer_minutes ?? 30) * 60_000;
+    const conflicting = (bookings ?? []).find((booking) => {
+      if (booking.status === "waiting_deposit" && booking.updated_at) {
+        const expired = new Date(booking.updated_at).getTime() + 24 * 60 * 60_000 <= Date.now();
+        if (expired) return false;
+      }
+      const bookingStart = new Date(booking.requested_start!).getTime();
+      const bookingEnd = bookingStart + booking.duration_minutes! * 60_000;
+      return bookingStart - bufferMs < newStart || bookingEnd + bufferMs > newEnd;
+    });
+    if (conflicting) {
+      throw new Error("Das Zeitfenster kann nicht so weit verkürzt werden, weil ein bestätigter oder reservierter Termin inklusive Puffer außerhalb liegen würde.");
+    }
+
+    const { error } = await context.supabase
+      .from("availability_slots")
+      .update({ starts_at: data.starts_at, ends_at: data.ends_at })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const setSlotHidden = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
