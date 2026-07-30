@@ -247,7 +247,7 @@ export function BookingCard({
 
       <div className="mb-3">
         <div className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 mb-1">
-          Nachricht &amp; Vorlieben
+          Session-Übersicht
         </div>
         <p className="text-sm text-vanilla/75 leading-relaxed bg-anthracite/40 p-3 border border-champagne/10 whitespace-pre-line">
           <MessageSquare size={11} className="inline mr-1 text-champagne" />
