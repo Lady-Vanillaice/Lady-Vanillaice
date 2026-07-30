@@ -256,7 +256,9 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
       .from("bookings")
       .select("slot_id, requested_start, duration_minutes, status, updated_at")
       .in("slot_id", daySlotIds)
-      .in("status", ["pending", "waiting_deposit", "confirmed"])
+      // A plain inquiry is not a reservation. Only a confirmed booking or a
+      // booking explicitly waiting for its deposit blocks the public timeline.
+      .in("status", ["waiting_deposit", "confirmed"])
       .not("requested_start", "is", null)
       .not("duration_minutes", "is", null);
 
@@ -284,7 +286,9 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
       return [{
         start: s.starts_at,
         end: s.ends_at,
-        kind: s.status === "held" ? "reserved" as const : "booked" as const,
+        // Closed availability is not proof of a customer booking. The
+        // bookings table above is authoritative for red/grey customer ranges.
+        kind: "unavailable" as const,
       }];
     });
 
