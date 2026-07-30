@@ -251,6 +251,8 @@ export type Database = {
           id: string
           phone: string | null
           pseudonym: string | null
+          gesundheit: string | null
+          safeword: string | null
           tabus: string | null
           updated_at: string
           vorlieben: string | null
@@ -262,6 +264,8 @@ export type Database = {
           id?: string
           phone?: string | null
           pseudonym?: string | null
+          gesundheit?: string | null
+          safeword?: string | null
           tabus?: string | null
           updated_at?: string
           vorlieben?: string | null
@@ -273,6 +277,8 @@ export type Database = {
           id?: string
           phone?: string | null
           pseudonym?: string | null
+          gesundheit?: string | null
+          safeword?: string | null
           tabus?: string | null
           updated_at?: string
           vorlieben?: string | null
