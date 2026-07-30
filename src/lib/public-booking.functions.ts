@@ -260,8 +260,12 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
       .not("requested_start", "is", null)
       .not("duration_minutes", "is", null);
 
-    const busyFromBookings = (bookings ?? []).flatMap((b) => {
-      if (!isActiveBlockingBooking(b)) return [];
+    const activeBookings = (bookings ?? []).filter((b) => isActiveBlockingBooking(b));
+    const activeBookingSlotIds = new Set(
+      activeBookings.flatMap((b) => b.slot_id ? [b.slot_id] : []),
+    );
+
+    const busyFromBookings = activeBookings.flatMap((b) => {
       if (!b.requested_start || !b.duration_minutes) return [];
       const s = new Date(b.requested_start).getTime();
       return [{
@@ -273,10 +277,14 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
 
     const busyFromClosedSlots = slotsForDay.flatMap((s) => {
       if (s.status !== "booked" && s.status !== "held") return [];
+      // A closed slot with a concrete booking must use that booking's exact
+      // start/end. Adding the whole slot as well would paint the entire
+      // availability window as occupied.
+      if (activeBookingSlotIds.has(s.id)) return [];
       return [{
         start: s.starts_at,
         end: s.ends_at,
-        kind: "booked" as const,
+        kind: s.status === "held" ? "reserved" as const : "booked" as const,
       }];
     });
 
