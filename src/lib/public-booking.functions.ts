@@ -266,8 +266,8 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
       .not("duration_minutes", "is", null);
 
     const activeBookings = (bookings ?? []).filter((b) => isActiveBlockingBooking(b));
-    const activeBookingSlotIds = new Set(
-      activeBookings.flatMap((b) => b.slot_id ? [b.slot_id] : []),
+    const bufferBySlotId = new Map(
+      slotsForDay.map((s) => [s.id, s.buffer_minutes ?? 30]),
     );
 
     const busyFromBookings = activeBookings.flatMap((b) => {
@@ -277,24 +277,7 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
         start: b.requested_start,
         end: new Date(s + b.duration_minutes * 60_000).toISOString(),
         kind: b.status === "confirmed" ? "booked" as const : "reserved" as const,
-      }];
-    });
-
-    const busyFromClosedSlots = slotsForDay.flatMap((s) => {
-      // Hidden legacy fragments are not part of the public availability and
-      // must not reappear as grey blocks in the timeline.
-      if (s.is_hidden) return [];
-      if (s.status !== "booked" && s.status !== "held") return [];
-      // A closed slot with a concrete booking must use that booking's exact
-      // start/end. Adding the whole slot as well would paint the entire
-      // availability window as occupied.
-      if (activeBookingSlotIds.has(s.id)) return [];
-      return [{
-        start: s.starts_at,
-        end: s.ends_at,
-        // Closed availability is not proof of a customer booking. The
-        // bookings table above is authoritative for red/grey customer ranges.
-        kind: "unavailable" as const,
+        buffer_minutes: b.slot_id ? (bufferBySlotId.get(b.slot_id) ?? 30) : 30,
       }];
     });
 
@@ -304,7 +287,10 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
     // not cap the timeline. Manually entered/confirmed bookings can sit outside
     // that window (including across midnight), so include every blocking range
     // when deriving the displayed bounds.
-    const blockingRanges = [...busyFromClosedSlots, ...busyFromBookings];
+    // Only an explicit booking status may colour the public timeline:
+    // confirmed = red, waiting_deposit ("Reservieren") = grey. Every other
+    // minute inside the released day window remains gold.
+    const blockingRanges = busyFromBookings;
     const starts = [
       ...sortedOpen.map((s) => new Date(s.starts_at).getTime()),
       ...blockingRanges.map((range) => new Date(range.start).getTime()),
@@ -315,34 +301,12 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
     ];
     const timelineStart = Math.min(...starts);
     const timelineEnd = Math.max(...ends);
-    const unavailableGaps: Array<{ start: string; end: string; kind: "unavailable" }> = [];
-    let cursor = timelineStart;
-    for (const s of sortedOpen) {
-      const sStart = new Date(s.starts_at).getTime();
-      const sEnd = new Date(s.ends_at).getTime();
-      if (sStart > cursor) {
-        unavailableGaps.push({
-          start: new Date(cursor).toISOString(),
-          end: new Date(sStart).toISOString(),
-          kind: "unavailable",
-        });
-      }
-      cursor = Math.max(cursor, sEnd);
-    }
-    if (cursor < timelineEnd) {
-      unavailableGaps.push({
-        start: new Date(cursor).toISOString(),
-        end: new Date(timelineEnd).toISOString(),
-        kind: "unavailable",
-      });
-    }
-
     return {
       starts_at: new Date(timelineStart).toISOString(),
       ends_at: new Date(timelineEnd).toISOString(),
       buffer_minutes: slot.buffer_minutes ?? 30,
       status: slot.status,
-      busy: [...unavailableGaps, ...blockingRanges],
+      busy: blockingRanges,
     };
   });
 
