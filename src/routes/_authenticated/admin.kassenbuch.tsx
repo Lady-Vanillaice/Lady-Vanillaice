@@ -4,18 +4,24 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { format, parseISO } from "date-fns";
 import { de } from "date-fns/locale";
-import { ArrowLeft, FileDown, FileSpreadsheet, Plus, Save, Search, Smartphone, Trash2, X } from "lucide-react";
+import { ArrowLeft, Car, FileDown, FileSpreadsheet, Plus, Save, Search, Smartphone, Trash2, X } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { PageHeader } from "@/components/site/PageHeader";
 import { updateBookingAccounting } from "@/lib/accounting.functions";
 import { createCashBookEntry, createStudioRentExpense, deleteCashBookEntry, listCashBookEntries, type CashBookEntry, type DepositExemptionReason } from "@/lib/cashbook.functions";
+import { calculateStudioDistances } from "@/lib/travel-log.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/kassenbuch")({ component: KassenbuchPage });
 
 const eur = (n: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(n);
 const today = () => new Date().toISOString().slice(0, 10);
 const dateLabel = (v: string | null) => v ? format(parseISO(v), "dd.MM.yyyy", { locale: de }) : "—";
+const addDays = (date: string, days: number) => {
+  const value = parseISO(date);
+  value.setDate(value.getDate() + days);
+  return value.toISOString().slice(0, 10);
+};
 const statusLabel: Record<CashBookEntry["status"], string> = { open: "Offen", completed: "Erledigt", cancelled: "Storniert", rescheduling: "Umplanen" };
 const exemptionLabel: Record<DepositExemptionReason, string> = {
   regular_customer: "Keine Anzahlung – Stammkunde",
@@ -34,6 +40,7 @@ function KassenbuchPage() {
   const list = useServerFn(listCashBookEntries);
   const create = useServerFn(createCashBookEntry);
   const createExpense = useServerFn(createStudioRentExpense);
+  const calculateDistances = useServerFn(calculateStudioDistances);
   const del = useServerFn(deleteCashBookEntry);
   const saveAccounting = useServerFn(updateBookingAccounting);
   const { data = [], isLoading, error } = useQuery({ queryKey: ["cashbook"], queryFn: () => list() });
@@ -48,6 +55,7 @@ function KassenbuchPage() {
   const [anzahlung, setAnzahlung] = useState("0"); const [anzahlungMethod, setAnzahlungMethod] = useState(""); const [bar, setBar] = useState("0"); const [notiz, setNotiz] = useState("");
   const [expenseStudio, setExpenseStudio] = useState(""); const [expenseDate, setExpenseDate] = useState(today());
   const [expenseAmount, setExpenseAmount] = useState(""); const [expenseMethod, setExpenseMethod] = useState(""); const [expenseNote, setExpenseNote] = useState("");
+  const [travelLogPending, setTravelLogPending] = useState(false);
 
   const filtered = useMemo(() => data.filter((e) => {
     const monthDate = e.anzahlung_datum || e.bar_datum || e.termin_datum;
@@ -136,6 +144,93 @@ function KassenbuchPage() {
     download(`kassenbuch-${month}.xls`, `\uFEFF<html><head><meta charset="utf-8"></head><body><table>${table}</table></body></html>`, "application/vnd.ms-excel");
   }
 
+  async function exportTravelLog() {
+    const appointments = incomeEntries
+      .filter(entry => entry.source === "booking" && entry.status !== "cancelled")
+      .map(entry => ({
+        date: entry.termin_datum,
+        studio: entry.studio,
+        address: entry.studio_address?.trim() || "",
+      }));
+    const missingAddress = appointments.find(entry => !entry.address);
+    if (missingAddress) {
+      alert(`Für ${missingAddress.studio} am ${dateLabel(missingAddress.date)} fehlt die Studio-Adresse. Bitte den Termin zuerst im Kassenbuch bearbeiten.`);
+      return;
+    }
+
+    const uniqueDays = [...new Map(appointments.map(entry => [`${entry.date}|${entry.studio}|${entry.address}`, entry])).values()]
+      .sort((a, b) => a.date.localeCompare(b.date));
+    if (!uniqueDays.length) {
+      alert("Für den gewählten Monat gibt es keine Termine mit Fahrt.");
+      return;
+    }
+
+    setTravelLogPending(true);
+    try {
+      const distanceResult = await calculateDistances({
+        data: {
+          destinations: uniqueDays.map(entry => ({
+            key: `${entry.studio}|${entry.address}`,
+            address: entry.address,
+          })),
+        },
+      });
+      const kilometres = new Map(distanceResult.distances.map(entry => [entry.key, entry.kilometres]));
+      const rows: Array<[string, string, string, string, number]> = [];
+
+      for (let index = 0; index < uniqueDays.length;) {
+        const first = uniqueDays[index];
+        let lastIndex = index;
+        while (
+          lastIndex + 1 < uniqueDays.length
+          && uniqueDays[lastIndex + 1].date === addDays(uniqueDays[lastIndex].date, 1)
+          && uniqueDays[lastIndex + 1].studio === first.studio
+          && uniqueDays[lastIndex + 1].address === first.address
+        ) lastIndex += 1;
+
+        const km = kilometres.get(`${first.studio}|${first.address}`) ?? 0;
+        if (lastIndex === index) {
+          rows.push([dateLabel(first.date), `${distanceResult.homeAddress} - ${first.address} - ${distanceResult.homeAddress}`, first.studio, "Hin- und Rückfahrt", km * 2]);
+        } else {
+          const last = uniqueDays[lastIndex];
+          rows.push([dateLabel(first.date), `${distanceResult.homeAddress} - ${first.address}`, first.studio, "Hinfahrt, Übernachtung vor Ort", km]);
+          rows.push([dateLabel(last.date), `${last.address} - ${distanceResult.homeAddress}`, last.studio, "Rückfahrt nach mehrtägigem Aufenthalt", km]);
+        }
+        index = lastIndex + 1;
+      }
+
+      const totalKm = rows.reduce((sum, row) => sum + row[4], 0);
+      const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+      const monthLabel = format(parseISO(`${month}-01`), "LLLL yyyy", { locale: de });
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(20);
+      doc.text("FAHRTENBUCH", 28, 40);
+      doc.setFontSize(11);
+      doc.text(monthLabel, 28, 58);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.text(`Ausgangspunkt: ${distanceResult.homeAddress}`, 28, 74);
+      autoTable(doc, {
+        startY: 90,
+        head: [["Datum", "Fahrtstrecke", "Studio", "Anlass / Art der Fahrt", "Kilometer"]],
+        body: rows.map(row => [row[0], row[1], row[2], row[3], `${row[4]} km`]),
+        foot: [["SUMME", "", "", "", `${totalKm} km`]],
+        styles: { fontSize: 8, cellPadding: 5, overflow: "linebreak" },
+        columnStyles: { 0: { cellWidth: 70 }, 1: { cellWidth: 330 }, 2: { cellWidth: 90 }, 3: { cellWidth: 180 }, 4: { cellWidth: 70, halign: "right" } },
+        headStyles: { fillColor: [15, 15, 15] },
+        footStyles: { fillColor: [239, 229, 207], textColor: 15, fontStyle: "bold" },
+      });
+      const finalY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 90;
+      doc.setFontSize(8);
+      doc.text("Automatisch aus den im Kassenbuch hinterlegten Terminen und Studio-Adressen erstellt.", 28, Math.min(finalY + 24, 560));
+      doc.save(`fahrtenbuch-${month}.pdf`);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Das Fahrtenbuch konnte nicht erstellt werden.");
+    } finally {
+      setTravelLogPending(false);
+    }
+  }
+
   return <>
     <PageHeader eyebrow="Admin" title={<em className="font-script gold-text not-italic">Kassenbuch</em>} />
     <section className="py-8 md:py-12"><div className="container-luxe max-w-[1500px] space-y-6">
@@ -147,7 +242,7 @@ function KassenbuchPage() {
         <Field label="Zahlungsart"><select value={methodFilter} onChange={e => setMethodFilter(e.target.value)} className="luxe-input"><option value="">Alle</option>{methods.map(v => <option key={v}>{v}</option>)}</select></Field>
         <Field label="Status"><select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="luxe-input"><option value="">Alle</option><option value="open">Offen</option><option value="completed">Erledigt</option><option value="cancelled">Storniert</option><option value="rescheduling">Umplanen</option></select></Field>
         <Field label="Suchen"><div className="relative"><Search size={14} className="absolute left-3 top-3 text-vanilla/40" /><input value={search} onChange={e => setSearch(e.target.value)} className="luxe-input pl-9" /></div></Field>
-        <div className="flex gap-2 flex-wrap"><button onClick={exportMonthPackage} className="export-btn !border-champagne !bg-champagne/10"><FileDown size={14} /> Monatsabschluss</button><button onClick={() => exportPdf(false)} className="export-btn"><FileDown size={14} /> PDF</button><button onClick={() => exportPdf(true)} className="export-btn"><Smartphone size={14} /> PDF Handy</button><button onClick={exportCsv} className="export-btn"><FileSpreadsheet size={14} /> CSV</button><button onClick={exportExcel} className="export-btn"><FileSpreadsheet size={14} /> Excel</button></div>
+        <div className="flex gap-2 flex-wrap"><button onClick={exportMonthPackage} className="export-btn !border-champagne !bg-champagne/10"><FileDown size={14} /> Monatsabschluss</button><button onClick={exportTravelLog} disabled={travelLogPending} className="export-btn !border-champagne !bg-champagne/10"><Car size={14} /> {travelLogPending ? "Berechne…" : "Fahrtenbuch PDF"}</button><button onClick={() => exportPdf(false)} className="export-btn"><FileDown size={14} /> PDF</button><button onClick={() => exportPdf(true)} className="export-btn"><Smartphone size={14} /> PDF Handy</button><button onClick={exportCsv} className="export-btn"><FileSpreadsheet size={14} /> CSV</button><button onClick={exportExcel} className="export-btn"><FileSpreadsheet size={14} /> Excel</button></div>
       </div>
       <form onSubmit={e => { e.preventDefault(); createMut.mutate(); }} className="bg-card border border-champagne/20 p-4 space-y-4"><h2 className="eyebrow">Manueller Eintrag</h2><div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3"><Field label="Datum"><input required type="date" value={datum} onChange={e => setDatum(e.target.value)} className="luxe-input" /></Field><Field label="Kunde"><input required value={kunde} onChange={e => setKunde(e.target.value)} className="luxe-input" /></Field><Field label="Studio"><input required value={studio} onChange={e => setStudio(e.target.value)} className="luxe-input" /></Field><Field label="Zahlungsart"><input value={anzahlungMethod} onChange={e => setAnzahlungMethod(e.target.value)} className="luxe-input" /></Field><Field label="Anzahlung (€)"><input value={anzahlung} onChange={e => setAnzahlung(e.target.value)} className="luxe-input" /></Field><Field label="Bar (€)"><input value={bar} onChange={e => setBar(e.target.value)} className="luxe-input" /></Field><div className="md:col-span-2"><Field label="Notiz"><input value={notiz} onChange={e => setNotiz(e.target.value)} className="luxe-input" /></Field></div></div><button className="btn-gold inline-flex gap-2"><Plus size={15} /> Eintrag speichern</button></form>
       <form onSubmit={e => { e.preventDefault(); expenseMut.mutate(); }} className="bg-card border border-bordeaux/50 p-4 space-y-4"><h2 className="eyebrow text-champagne">Ausgabe – Studiomiete</h2><div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3"><Field label="Datum"><input required type="date" value={expenseDate} onChange={e => setExpenseDate(e.target.value)} className="luxe-input" /></Field><Field label="Studio"><input required value={expenseStudio} onChange={e => setExpenseStudio(e.target.value)} placeholder="z. B. Studio60" className="luxe-input" /></Field><Field label="Betrag (€)"><input required inputMode="decimal" value={expenseAmount} onChange={e => setExpenseAmount(e.target.value)} className="luxe-input" /></Field><Field label="Bezahlt mit"><input required value={expenseMethod} onChange={e => setExpenseMethod(e.target.value)} placeholder="Bar, Karte, Überweisung …" className="luxe-input" /></Field><div className="md:col-span-4"><Field label="Notiz (optional)"><input value={expenseNote} onChange={e => setExpenseNote(e.target.value)} className="luxe-input" /></Field></div></div><button disabled={expenseMut.isPending} className="btn-gold inline-flex gap-2"><Plus size={15} />{expenseMut.isPending ? "Speichere…" : "Studiomiete speichern"}</button>{expenseMut.error && <p className="text-sm text-bordeaux">{(expenseMut.error as Error).message}</p>}</form>
