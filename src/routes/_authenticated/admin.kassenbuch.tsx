@@ -9,7 +9,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { PageHeader } from "@/components/site/PageHeader";
 import { updateBookingAccounting } from "@/lib/accounting.functions";
-import { createCashBookEntry, deleteCashBookEntry, listCashBookEntries, type CashBookEntry, type DepositExemptionReason } from "@/lib/cashbook.functions";
+import { createCashBookEntry, createStudioRentExpense, deleteCashBookEntry, listCashBookEntries, type CashBookEntry, type DepositExemptionReason } from "@/lib/cashbook.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/kassenbuch")({ component: KassenbuchPage });
 
@@ -33,6 +33,7 @@ function KassenbuchPage() {
   const qc = useQueryClient();
   const list = useServerFn(listCashBookEntries);
   const create = useServerFn(createCashBookEntry);
+  const createExpense = useServerFn(createStudioRentExpense);
   const del = useServerFn(deleteCashBookEntry);
   const saveAccounting = useServerFn(updateBookingAccounting);
   const { data = [], isLoading, error } = useQuery({ queryKey: ["cashbook"], queryFn: () => list() });
@@ -45,18 +46,25 @@ function KassenbuchPage() {
   const [editing, setEditing] = useState<CashBookEntry | null>(null);
   const [studio, setStudio] = useState(""); const [datum, setDatum] = useState(today()); const [kunde, setKunde] = useState("");
   const [anzahlung, setAnzahlung] = useState("0"); const [anzahlungMethod, setAnzahlungMethod] = useState(""); const [bar, setBar] = useState("0"); const [notiz, setNotiz] = useState("");
+  const [expenseStudio, setExpenseStudio] = useState(""); const [expenseDate, setExpenseDate] = useState(today());
+  const [expenseAmount, setExpenseAmount] = useState(""); const [expenseMethod, setExpenseMethod] = useState(""); const [expenseNote, setExpenseNote] = useState("");
 
   const filtered = useMemo(() => data.filter((e) => {
     const monthDate = e.anzahlung_datum || e.bar_datum || e.termin_datum;
-    const haystack = `${e.kunde} ${e.studio} ${e.studio_address ?? ""} ${e.art} ${e.dauer ?? ""}`.toLowerCase();
-    return (!month || monthDate.startsWith(month)) && (!studioFilter || e.studio === studioFilter) && (!methodFilter || e.anzahlung_method === methodFilter) && (!statusFilter || e.status === statusFilter) && (!search || haystack.includes(search.toLowerCase()));
+    const haystack = `${e.kunde} ${e.studio} ${e.studio_address ?? ""} ${e.art} ${e.dauer ?? ""} ${e.expense_category ?? ""} ${e.payment_method ?? ""}`.toLowerCase();
+    const paymentMethod = e.entry_type === "expense" ? e.payment_method : e.anzahlung_method;
+    return (!month || monthDate.startsWith(month)) && (!studioFilter || e.studio === studioFilter) && (!methodFilter || paymentMethod === methodFilter) && (!statusFilter || e.status === statusFilter) && (!search || haystack.includes(search.toLowerCase()));
   }).sort((a, b) => a.termin_datum.localeCompare(b.termin_datum)), [data, month, studioFilter, methodFilter, statusFilter, search]);
 
-  const totals = filtered.reduce((a, e) => { a.anzahlung += e.anzahlung; a.bar += e.bar; a.gesamt += e.gesamt; if (e.status === "cancelled") a.storno += e.anzahlung; if (e.status === "completed") a.termine += 1; return a; }, { anzahlung: 0, bar: 0, gesamt: 0, storno: 0, termine: 0 });
+  const incomeEntries = filtered.filter(e => e.entry_type === "income");
+  const expenseEntries = filtered.filter(e => e.entry_type === "expense");
+  const totals = incomeEntries.reduce((a, e) => { a.anzahlung += e.anzahlung; a.bar += e.bar; a.gesamt += e.gesamt; if (e.status === "cancelled") a.storno += e.anzahlung; if (e.status === "completed") a.termine += 1; return a; }, { anzahlung: 0, bar: 0, gesamt: 0, storno: 0, termine: 0 });
+  const totalExpenses = expenseEntries.reduce((sum, e) => sum + e.expense_amount, 0);
+  const balance = totals.gesamt - totalExpenses;
   const totalNet = totals.gesamt / 1.19;
   const totalVat = totals.gesamt - totalNet;
   const studios = [...new Set(data.map(e => e.studio))].sort();
-  const methods = [...new Set(data.map(e => e.anzahlung_method).filter(Boolean) as string[])].sort();
+  const methods = [...new Set(data.flatMap(e => [e.anzahlung_method, e.payment_method]).filter(Boolean) as string[])].sort();
   const depositText = (e: CashBookEntry) => e.deposit_exemption_reason ? exemptionLabel[e.deposit_exemption_reason] : e.anzahlung_method ?? "—";
   const studioParts = (e: CashBookEntry) => {
     const rawStudio = e.studio.trim();
@@ -77,9 +85,10 @@ function KassenbuchPage() {
     const parts = studioParts(e);
     return parts.address ? `${parts.studio}\n${parts.address}` : parts.studio;
   };
-  const rows = () => filtered.map(e => [dateLabel(e.termin_datum), e.kunde, e.art, studioText(e), e.dauer ?? "—", dateLabel(e.anzahlung_datum), eur(e.anzahlung), depositText(e), dateLabel(e.bar_datum), eur(e.bar), eur(e.gesamt), statusLabel[e.status]]);
+  const rows = () => incomeEntries.map(e => [dateLabel(e.termin_datum), e.kunde, e.art, studioText(e), e.dauer ?? "—", dateLabel(e.anzahlung_datum), eur(e.anzahlung), depositText(e), dateLabel(e.bar_datum), eur(e.bar), eur(e.gesamt), statusLabel[e.status]]);
 
   const createMut = useMutation({ mutationFn: () => create({ data: { studio, datum, kunde, anzahlung: Number(anzahlung.replace(",", ".")) || 0, anzahlung_method: anzahlungMethod || null, bar: Number(bar.replace(",", ".")) || 0, notiz: notiz || null } }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["cashbook"] }); setKunde(""); setAnzahlung("0"); setBar("0"); setNotiz(""); } });
+  const expenseMut = useMutation({ mutationFn: () => createExpense({ data: { studio: expenseStudio, datum: expenseDate, betrag: Number(expenseAmount.replace(",", ".")), zahlungsart: expenseMethod, notiz: expenseNote || null } }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["cashbook"] }); setExpenseAmount(""); setExpenseMethod(""); setExpenseNote(""); } });
   const deleteMut = useMutation({ mutationFn: (id: string) => del({ data: { id } }), onSuccess: () => qc.invalidateQueries({ queryKey: ["cashbook"] }) });
 
   function exportPdf(mobile = false) {
@@ -88,7 +97,7 @@ function KassenbuchPage() {
     doc.setFont("helvetica", "bold"); doc.setFontSize(20); doc.text("KASSENBUCH", 28, 40); doc.setFontSize(11); doc.text(monthLabel, 28, 58);
     autoTable(doc, mobile ? {
       startY: 92, head: [["Termin / Kunde", "Studio / Adresse", "Zahlung", "Gesamt"]],
-      body: filtered.map(e => [`${dateLabel(e.termin_datum)}\n${e.kunde}\n${statusLabel[e.status]}`, `${studioText(e)}\n${e.art}\n${e.dauer ?? ""}`, e.deposit_exemption_reason ? depositText(e) : `Anz.: ${eur(e.anzahlung)} ${e.anzahlung_method ?? ""}\nBar: ${eur(e.bar)}`, eur(e.gesamt)]),
+      body: incomeEntries.map(e => [`${dateLabel(e.termin_datum)}\n${e.kunde}\n${statusLabel[e.status]}`, `${studioText(e)}\n${e.art}\n${e.dauer ?? ""}`, e.deposit_exemption_reason ? depositText(e) : `Anz.: ${eur(e.anzahlung)} ${e.anzahlung_method ?? ""}\nBar: ${eur(e.bar)}`, eur(e.gesamt)]),
       foot: [["SUMME", "", "", eur(totals.gesamt)]], styles: { fontSize: 7.5, cellPadding: 4, overflow: "linebreak" }, headStyles: { fillColor: [15, 15, 15] }, footStyles: { fillColor: [239, 229, 207], textColor: 15 },
     } : {
       startY: 92, head: [["Termin", "Kunde", "Art", "Studio / Adresse", "Dauer", "Anzahlung am", "Anzahlung", "Zahlungsart / Ausnahme", "Bar am", "Bar", "Gesamt", "Status"]], body: rows(),
@@ -112,7 +121,7 @@ function KassenbuchPage() {
 
   function exportCsv() {
     const head = ["Termin", "Kunde", "Art", "Studio", "Adresse", "Dauer", "Anzahlung erhalten am", "Anzahlung EUR", "Zahlungsart / Ausnahme", "Bar erhalten am", "Bar EUR", "Gesamt EUR", "Status"];
-    const raw = filtered.map(e => [e.termin_datum, e.kunde, e.art, e.studio, e.studio_address ?? "", e.dauer ?? "", e.anzahlung_datum ?? "", e.anzahlung.toFixed(2).replace(".", ","), depositText(e), e.bar_datum ?? "", e.bar.toFixed(2).replace(".", ","), e.gesamt.toFixed(2).replace(".", ","), statusLabel[e.status]]);
+    const raw = incomeEntries.map(e => [e.termin_datum, e.kunde, e.art, e.studio, e.studio_address ?? "", e.dauer ?? "", e.anzahlung_datum ?? "", e.anzahlung.toFixed(2).replace(".", ","), depositText(e), e.bar_datum ?? "", e.bar.toFixed(2).replace(".", ","), e.gesamt.toFixed(2).replace(".", ","), statusLabel[e.status]]);
     const csv = [head, ...raw].map(r => r.map(v => `"${String(v).replaceAll('"', '""')}"`).join(";")).join("\n");
     download(`kassenbuch-${month}.csv`, `\uFEFF${csv}`, "text/csv;charset=utf-8");
   }
@@ -131,7 +140,7 @@ function KassenbuchPage() {
     <PageHeader eyebrow="Admin" title={<em className="font-script gold-text not-italic">Kassenbuch</em>} />
     <section className="py-8 md:py-12"><div className="container-luxe max-w-[1500px] space-y-6">
       <Link to="/admin" className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-vanilla/60 hover:text-champagne"><ArrowLeft size={14} /> Zurück zum Admin</Link>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3"><Stat label="Anzahlungen" value={eur(totals.anzahlung)} /><Stat label="Bar erhalten" value={eur(totals.bar)} /><Stat label="Storno-Anzahlungen" value={eur(totals.storno)} /><Stat label="Erledigte Termine" value={String(totals.termine)} /></div>
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3"><Stat label="Anzahlungen" value={eur(totals.anzahlung)} /><Stat label="Bar erhalten" value={eur(totals.bar)} /><Stat label="Ausgaben" value={eur(totalExpenses)} /><Stat label="Saldo" value={eur(balance)} gold /><Stat label="Erledigte Termine" value={String(totals.termine)} /></div>
       <div className="bg-card border border-champagne/20 p-4 grid sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 items-end">
         <Field label="Monat"><input type="month" value={month} onChange={e => setMonth(e.target.value)} className="luxe-input" /></Field>
         <Field label="Studio"><select value={studioFilter} onChange={e => setStudioFilter(e.target.value)} className="luxe-input"><option value="">Alle</option>{studios.map(v => <option key={v}>{v}</option>)}</select></Field>
@@ -141,14 +150,16 @@ function KassenbuchPage() {
         <div className="flex gap-2 flex-wrap"><button onClick={exportMonthPackage} className="export-btn !border-champagne !bg-champagne/10"><FileDown size={14} /> Monatsabschluss</button><button onClick={() => exportPdf(false)} className="export-btn"><FileDown size={14} /> PDF</button><button onClick={() => exportPdf(true)} className="export-btn"><Smartphone size={14} /> PDF Handy</button><button onClick={exportCsv} className="export-btn"><FileSpreadsheet size={14} /> CSV</button><button onClick={exportExcel} className="export-btn"><FileSpreadsheet size={14} /> Excel</button></div>
       </div>
       <form onSubmit={e => { e.preventDefault(); createMut.mutate(); }} className="bg-card border border-champagne/20 p-4 space-y-4"><h2 className="eyebrow">Manueller Eintrag</h2><div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3"><Field label="Datum"><input required type="date" value={datum} onChange={e => setDatum(e.target.value)} className="luxe-input" /></Field><Field label="Kunde"><input required value={kunde} onChange={e => setKunde(e.target.value)} className="luxe-input" /></Field><Field label="Studio"><input required value={studio} onChange={e => setStudio(e.target.value)} className="luxe-input" /></Field><Field label="Zahlungsart"><input value={anzahlungMethod} onChange={e => setAnzahlungMethod(e.target.value)} className="luxe-input" /></Field><Field label="Anzahlung (€)"><input value={anzahlung} onChange={e => setAnzahlung(e.target.value)} className="luxe-input" /></Field><Field label="Bar (€)"><input value={bar} onChange={e => setBar(e.target.value)} className="luxe-input" /></Field><div className="md:col-span-2"><Field label="Notiz"><input value={notiz} onChange={e => setNotiz(e.target.value)} className="luxe-input" /></Field></div></div><button className="btn-gold inline-flex gap-2"><Plus size={15} /> Eintrag speichern</button></form>
-      <div className="md:hidden space-y-3">{isLoading ? <div>Lade…</div> : error ? <div className="text-bordeaux">Fehler beim Laden</div> : filtered.map(e => <article key={e.id} className="bg-card border border-champagne/20 p-4 space-y-2"><div className="flex justify-between"><div><strong>{e.kunde}</strong><div className="text-xs text-vanilla/55">{dateLabel(e.termin_datum)} · {e.art}</div></div><span className="text-champagne">{eur(e.gesamt)}</span></div><div className="text-sm">{e.studio}</div>{e.studio_address && <div className="text-xs text-vanilla/55">{e.studio_address}</div>}<div className="text-xs">Anzahlung: {eur(e.anzahlung)} · {depositText(e)}<br />Bar: {eur(e.bar)}</div><div className="flex justify-between"><span className={`status-${e.status}`}>{statusLabel[e.status]}</span>{e.source === "booking" ? <button onClick={() => setEditing(e)} className="text-champagne text-xs uppercase">Bearbeiten</button> : <button onClick={() => confirm("Löschen?") && deleteMut.mutate(e.id)}><Trash2 size={15} /></button>}</div></article>)}</div>
-      <div className="hidden md:block bg-card border border-champagne/20 overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-sm min-w-[1550px]"><thead><tr className="text-[10px] uppercase text-vanilla/50">{["Termin", "Kunde", "Art", "Studio / Adresse", "Dauer", "Anzahlung am", "Anzahlung", "Zahlungsart / Ausnahme", "Bar am", "Bar", "Gesamt", "Status", ""].map(h => <th key={h} className="p-3 text-left">{h}</th>)}</tr></thead><tbody>{filtered.map(e => <tr key={e.id} className="border-t border-champagne/10"><td className="p-3">{dateLabel(e.termin_datum)}</td><td className="p-3 font-medium">{e.kunde}</td><td className="p-3">{e.art}</td><td className="p-3"><div>{e.studio}</div>{e.studio_address && <div className="text-xs text-vanilla/50 mt-1">{e.studio_address}</div>}</td><td className="p-3">{e.dauer ?? "—"}</td><td className="p-3">{dateLabel(e.anzahlung_datum)}</td><td className="p-3">{eur(e.anzahlung)}</td><td className="p-3">{depositText(e)}</td><td className="p-3">{dateLabel(e.bar_datum)}</td><td className="p-3">{eur(e.bar)}</td><td className="p-3 text-champagne">{eur(e.gesamt)}</td><td className="p-3"><span className={`status-${e.status}`}>{statusLabel[e.status]}</span></td><td className="p-3">{e.source === "booking" ? <button onClick={() => setEditing(e)} className="text-champagne text-xs uppercase">Bearbeiten</button> : <button onClick={() => confirm("Löschen?") && deleteMut.mutate(e.id)}><Trash2 size={15} /></button>}</td></tr>)}</tbody></table></div></div>
+      <form onSubmit={e => { e.preventDefault(); expenseMut.mutate(); }} className="bg-card border border-bordeaux/50 p-4 space-y-4"><h2 className="eyebrow text-champagne">Ausgabe – Studiomiete</h2><div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3"><Field label="Datum"><input required type="date" value={expenseDate} onChange={e => setExpenseDate(e.target.value)} className="luxe-input" /></Field><Field label="Studio"><input required value={expenseStudio} onChange={e => setExpenseStudio(e.target.value)} placeholder="z. B. Studio60" className="luxe-input" /></Field><Field label="Betrag (€)"><input required inputMode="decimal" value={expenseAmount} onChange={e => setExpenseAmount(e.target.value)} className="luxe-input" /></Field><Field label="Bezahlt mit"><input required value={expenseMethod} onChange={e => setExpenseMethod(e.target.value)} placeholder="Bar, Karte, Überweisung …" className="luxe-input" /></Field><div className="md:col-span-4"><Field label="Notiz (optional)"><input value={expenseNote} onChange={e => setExpenseNote(e.target.value)} className="luxe-input" /></Field></div></div><button disabled={expenseMut.isPending} className="btn-gold inline-flex gap-2"><Plus size={15} />{expenseMut.isPending ? "Speichere…" : "Studiomiete speichern"}</button>{expenseMut.error && <p className="text-sm text-bordeaux">{(expenseMut.error as Error).message}</p>}</form>
+      {expenseEntries.length > 0 && <div className="bg-card border border-bordeaux/40 overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-[10px] uppercase text-vanilla/50">{["Datum", "Ausgabe", "Studio", "Zahlungsart", "Betrag", ""].map(h => <th key={h} className="p-3 text-left">{h}</th>)}</tr></thead><tbody>{expenseEntries.map(e => <tr key={e.id} className="border-t border-champagne/10"><td className="p-3">{dateLabel(e.termin_datum)}</td><td className="p-3">Studiomiete</td><td className="p-3">{e.studio}</td><td className="p-3">{e.payment_method}</td><td className="p-3 text-bordeaux">− {eur(e.expense_amount)}</td><td className="p-3"><button onClick={() => confirm("Ausgabe löschen?") && deleteMut.mutate(e.id)}><Trash2 size={15} /></button></td></tr>)}</tbody></table></div>}
+      <div className="md:hidden space-y-3">{isLoading ? <div>Lade…</div> : error ? <div className="text-bordeaux">Fehler beim Laden</div> : incomeEntries.map(e => <article key={e.id} className="bg-card border border-champagne/20 p-4 space-y-2"><div className="flex justify-between"><div><strong>{e.kunde}</strong><div className="text-xs text-vanilla/55">{dateLabel(e.termin_datum)} · {e.art}</div></div><span className="text-champagne">{eur(e.gesamt)}</span></div><div className="text-sm">{e.studio}</div>{e.studio_address && <div className="text-xs text-vanilla/55">{e.studio_address}</div>}<div className="text-xs">Anzahlung: {eur(e.anzahlung)} · {depositText(e)}<br />Bar: {eur(e.bar)}</div><div className="flex justify-between"><span className={`status-${e.status}`}>{statusLabel[e.status]}</span>{e.source === "booking" ? <button onClick={() => setEditing(e)} className="text-champagne text-xs uppercase">Bearbeiten</button> : <button onClick={() => confirm("Löschen?") && deleteMut.mutate(e.id)}><Trash2 size={15} /></button>}</div></article>)}</div>
+      <div className="hidden md:block bg-card border border-champagne/20 overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-sm min-w-[1550px]"><thead><tr className="text-[10px] uppercase text-vanilla/50">{["Termin", "Kunde", "Art", "Studio / Adresse", "Dauer", "Anzahlung am", "Anzahlung", "Zahlungsart / Ausnahme", "Bar am", "Bar", "Gesamt", "Status", ""].map(h => <th key={h} className="p-3 text-left">{h}</th>)}</tr></thead><tbody>{incomeEntries.map(e => <tr key={e.id} className="border-t border-champagne/10"><td className="p-3">{dateLabel(e.termin_datum)}</td><td className="p-3 font-medium">{e.kunde}</td><td className="p-3">{e.art}</td><td className="p-3"><div>{e.studio}</div>{e.studio_address && <div className="text-xs text-vanilla/50 mt-1">{e.studio_address}</div>}</td><td className="p-3">{e.dauer ?? "—"}</td><td className="p-3">{dateLabel(e.anzahlung_datum)}</td><td className="p-3">{eur(e.anzahlung)}</td><td className="p-3">{depositText(e)}</td><td className="p-3">{dateLabel(e.bar_datum)}</td><td className="p-3">{eur(e.bar)}</td><td className="p-3 text-champagne">{eur(e.gesamt)}</td><td className="p-3"><span className={`status-${e.status}`}>{statusLabel[e.status]}</span></td><td className="p-3">{e.source === "booking" ? <button onClick={() => setEditing(e)} className="text-champagne text-xs uppercase">Bearbeiten</button> : <button onClick={() => confirm("Löschen?") && deleteMut.mutate(e.id)}><Trash2 size={15} /></button>}</td></tr>)}</tbody></table></div></div>
       <div className="border border-champagne/30 bg-card p-4">
         <div className="eyebrow text-champagne mb-3">Gesamtsumme</div>
         <div className="grid sm:grid-cols-3 gap-3">
           <Stat label="Gesamt brutto" value={eur(totals.gesamt)} gold />
-          <Stat label="Enthaltene MwSt. 19 %" value={eur(totalVat)} />
-          <Stat label="Gesamt netto" value={eur(totalNet)} gold />
+          <Stat label="Ausgaben Studiomiete" value={eur(totalExpenses)} />
+          <Stat label="Saldo" value={eur(balance)} gold />
         </div>
       </div>
     </div></section>
