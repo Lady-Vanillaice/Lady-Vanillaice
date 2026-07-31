@@ -14,17 +14,21 @@ export type CashBookEntry = {
   payment_method: string | null;
   booking_id: string | null;
   termin_datum: string;
+  termin_start: string | null;
+  termin_ende: string | null;
   studio: string;
   studio_address: string | null;
   kunde: string;
   art: string;
   dauer: string | null;
   anzahlung: number;
+  anzahlung_vorgemerkt: number;
   anzahlung_method: string | null;
   anzahlung_datum: string | null;
   deposit_exemption_reason: DepositExemptionReason | null;
   deposit_guarantor: string | null;
   bar: number;
+  restbetrag_vorgemerkt: number;
   bar_datum: string | null;
   durchgefuehrt_datum: string | null;
   gesamt: number;
@@ -60,7 +64,7 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
     const [manualRes, bookingRes] = await Promise.all([
       db.from("cash_book_entries").select("id, studio, datum, kunde, anzahlung, anzahlung_method, bar, gesamt, notiz, created_at"),
       db.from("bookings")
-        .select("id, guest_name, duration, duration_minutes, status, anzahlung, anzahlung_method, anzahlung_paid, anzahlung_paid_at, deposit_exemption_reason, deposit_guarantor, bar, completed_at, cash_received_at, fully_paid, admin_note, created_at, requested_start, studio_override, studio_address_override, availability_slots(starts_at, location, location_address, is_duo, is_content_shoot)")
+        .select("id, guest_name, duration, duration_minutes, status, anzahlung, anzahlung_method, anzahlung_paid, anzahlung_paid_at, deposit_exemption_reason, deposit_guarantor, bar, completed_at, cash_received_at, fully_paid, admin_note, created_at, requested_start, studio_override, studio_address_override, availability_slots(starts_at, ends_at, location, location_address, is_duo, is_content_shoot)")
         .in("status", ["confirmed", "cancelled", "rescheduling"]),
     ]);
     if (manualRes.error) throw new Error(manualRes.error.message);
@@ -73,15 +77,17 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
         expense_category: isStudioRent ? "studio_rent" : null,
         expense_amount: isStudioRent ? Number(e.bar) : 0,
         payment_method: isStudioRent ? e.anzahlung_method ?? null : null,
-        booking_id: null, termin_datum: e.datum,
+        booking_id: null, termin_datum: e.datum, termin_start: null, termin_ende: null,
         studio: e.studio, studio_address: null, kunde: e.kunde,
         art: isStudioRent ? STUDIO_RENT_LABEL : e.studio === "Custom Content" ? "Custom Content" : "Manuell",
         dauer: e.notiz || null,
         anzahlung: isStudioRent ? 0 : Number(e.anzahlung),
+        anzahlung_vorgemerkt: isStudioRent ? 0 : Number(e.anzahlung),
         anzahlung_method: isStudioRent ? null : e.anzahlung_method ?? null,
         anzahlung_datum: !isStudioRent && Number(e.anzahlung) > 0 ? e.datum : null,
         deposit_exemption_reason: null, deposit_guarantor: null,
         bar: isStudioRent ? 0 : Number(e.bar),
+        restbetrag_vorgemerkt: isStudioRent ? 0 : Number(e.bar),
         bar_datum: !isStudioRent && Number(e.bar) > 0 ? e.datum : null,
         durchgefuehrt_datum: !isStudioRent && Number(e.bar) > 0 ? e.datum : null,
         gesamt: isStudioRent ? 0 : Number(e.gesamt), status: "completed",
@@ -91,7 +97,7 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
 
     const bookings: CashBookEntry[] = (bookingRes.data ?? []).map((b: any) => {
       const slot = (Array.isArray(b.availability_slots) ? b.availability_slots[0] : b.availability_slots) as {
-        starts_at?: string; location?: string; location_address?: string | null; is_duo?: boolean; is_content_shoot?: boolean;
+        starts_at?: string; ends_at?: string; location?: string; location_address?: string | null; is_duo?: boolean; is_content_shoot?: boolean;
       } | null;
       const termin = dateOnly(b.requested_start ?? slot?.starts_at) ?? dateOnly(b.created_at)!;
       const anzahlung = b.anzahlung_paid ? Number(b.anzahlung ?? 0) : 0;
@@ -101,19 +107,21 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
       return {
         id: `booking:${b.id}`, source: "booking", entry_type: "income", expense_category: null,
         expense_amount: 0, payment_method: null, booking_id: b.id, termin_datum: termin,
+        termin_start: b.requested_start ?? slot?.starts_at ?? null, termin_ende: slot?.ends_at ?? null,
         studio: b.studio_override?.trim() || slot?.location || "—",
         studio_address: b.studio_address_override?.trim() || slot?.location_address || null,
         kunde: b.guest_name, art, dauer: durationLabel(b.duration_minutes, b.duration), anzahlung,
+        anzahlung_vorgemerkt: Number(b.anzahlung ?? 0),
         anzahlung_method: b.anzahlung_method ?? null, anzahlung_datum: dateOnly(b.anzahlung_paid_at),
         deposit_exemption_reason: b.deposit_exemption_reason ?? null, deposit_guarantor: b.deposit_guarantor ?? null,
-        bar, bar_datum: dateOnly(b.cash_received_at), durchgefuehrt_datum: dateOnly(b.completed_at), gesamt: anzahlung + bar,
+        bar, restbetrag_vorgemerkt: Number(b.bar ?? 0), bar_datum: dateOnly(b.cash_received_at), durchgefuehrt_datum: dateOnly(b.completed_at), gesamt: anzahlung + bar,
         status, notiz: b.admin_note ?? null, created_at: b.created_at,
       };
     });
 
     return [...manual, ...bookings].sort((a, b) => {
-      const ad = a.anzahlung_datum || a.bar_datum || a.termin_datum;
-      const bd = b.anzahlung_datum || b.bar_datum || b.termin_datum;
+      const ad = a.termin_start || a.termin_datum;
+      const bd = b.termin_start || b.termin_datum;
       return ad < bd ? 1 : ad > bd ? -1 : 0;
     });
   });
