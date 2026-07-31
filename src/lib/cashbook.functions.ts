@@ -3,6 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
 export type DepositExemptionReason = "regular_customer" | "trust" | "exception" | "colleague_guarantees";
+const STUDIO_RENT_LABEL = "Studiomiete";
 
 export type CashBookEntry = {
   id: string;
@@ -57,7 +58,7 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
     await ensureAdmin(context.supabase, context.userId);
     const db = context.supabase as any;
     const [manualRes, bookingRes] = await Promise.all([
-      db.from("cash_book_entries").select("id, entry_type, expense_category, expense_amount, payment_method, studio, datum, kunde, anzahlung, anzahlung_method, bar, gesamt, notiz, created_at"),
+      db.from("cash_book_entries").select("id, studio, datum, kunde, anzahlung, anzahlung_method, bar, gesamt, notiz, created_at"),
       db.from("bookings")
         .select("id, guest_name, duration, duration_minutes, status, anzahlung, anzahlung_method, anzahlung_paid, anzahlung_paid_at, deposit_exemption_reason, deposit_guarantor, bar, completed_at, cash_received_at, fully_paid, admin_note, created_at, requested_start, studio_override, studio_address_override, availability_slots(starts_at, location, location_address, is_duo, is_content_shoot)")
         .in("status", ["confirmed", "cancelled", "rescheduling"]),
@@ -65,18 +66,28 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
     if (manualRes.error) throw new Error(manualRes.error.message);
     if (bookingRes.error) throw new Error(bookingRes.error.message);
 
-    const manual: CashBookEntry[] = (manualRes.data ?? []).map((e: any) => ({
-      id: e.id, source: "manual", entry_type: e.entry_type ?? "income",
-      expense_category: e.expense_category ?? null, expense_amount: Number(e.expense_amount ?? 0),
-      payment_method: e.payment_method ?? null, booking_id: null, termin_datum: e.datum,
-      studio: e.studio, studio_address: null, kunde: e.kunde,
-      art: e.studio === "Custom Content" ? "Custom Content" : "Manuell",
-      dauer: e.notiz || null, anzahlung: Number(e.anzahlung), anzahlung_method: e.anzahlung_method ?? null,
-      anzahlung_datum: Number(e.anzahlung) > 0 ? e.datum : null, deposit_exemption_reason: null,
-      deposit_guarantor: null, bar: Number(e.bar), bar_datum: Number(e.bar) > 0 ? e.datum : null,
-      durchgefuehrt_datum: Number(e.bar) > 0 ? e.datum : null, gesamt: Number(e.gesamt), status: "completed",
-      notiz: e.notiz, created_at: e.created_at,
-    }));
+    const manual: CashBookEntry[] = (manualRes.data ?? []).map((e: any) => {
+      const isStudioRent = e.kunde === STUDIO_RENT_LABEL;
+      return {
+        id: e.id, source: "manual", entry_type: isStudioRent ? "expense" : "income",
+        expense_category: isStudioRent ? "studio_rent" : null,
+        expense_amount: isStudioRent ? Number(e.bar) : 0,
+        payment_method: isStudioRent ? e.anzahlung_method ?? null : null,
+        booking_id: null, termin_datum: e.datum,
+        studio: e.studio, studio_address: null, kunde: e.kunde,
+        art: isStudioRent ? STUDIO_RENT_LABEL : e.studio === "Custom Content" ? "Custom Content" : "Manuell",
+        dauer: e.notiz || null,
+        anzahlung: isStudioRent ? 0 : Number(e.anzahlung),
+        anzahlung_method: isStudioRent ? null : e.anzahlung_method ?? null,
+        anzahlung_datum: !isStudioRent && Number(e.anzahlung) > 0 ? e.datum : null,
+        deposit_exemption_reason: null, deposit_guarantor: null,
+        bar: isStudioRent ? 0 : Number(e.bar),
+        bar_datum: !isStudioRent && Number(e.bar) > 0 ? e.datum : null,
+        durchgefuehrt_datum: !isStudioRent && Number(e.bar) > 0 ? e.datum : null,
+        gesamt: isStudioRent ? 0 : Number(e.gesamt), status: "completed",
+        notiz: e.notiz, created_at: e.created_at,
+      };
+    });
 
     const bookings: CashBookEntry[] = (bookingRes.data ?? []).map((b: any) => {
       const slot = (Array.isArray(b.availability_slots) ? b.availability_slots[0] : b.availability_slots) as {
@@ -145,15 +156,12 @@ export const createStudioRentExpense = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await ensureAdmin(context.supabase, context.userId);
     const { data: row, error } = await context.supabase.from("cash_book_entries").insert({
-      entry_type: "expense",
-      expense_category: "studio_rent",
-      expense_amount: data.betrag,
-      payment_method: data.zahlungsart.trim(),
       studio: data.studio.trim(),
       datum: data.datum,
-      kunde: "Studiomiete",
+      kunde: STUDIO_RENT_LABEL,
       anzahlung: 0,
-      bar: 0,
+      anzahlung_method: data.zahlungsart.trim(),
+      bar: data.betrag,
       notiz: data.notiz?.trim() || null,
       created_by: context.userId,
     }).select("id").single();
