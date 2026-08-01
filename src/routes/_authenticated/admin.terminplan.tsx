@@ -1,10 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/site/PageHeader";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CalendarPlus } from "lucide-react";
 import { format, isSameDay, startOfDay } from "date-fns";
 import { de } from "date-fns/locale";
+import { ManualBookingForm, type ManualBookingValues } from "@/components/admin/admin-shared";
+import { createManualBooking } from "@/lib/booking.functions";
+import { listCustomers } from "@/lib/customers.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/terminplan")({
   head: () => ({ meta: [{ title: "Terminplan — Admin" }, { name: "robots", content: "noindex,nofollow" }] }),
@@ -31,6 +35,23 @@ type Entry = {
 };
 
 function TerminplanPage() {
+  const qc = useQueryClient();
+  const createManualBookingFn = useServerFn(createManualBooking);
+  const listCustomersFn = useServerFn(listCustomers);
+  const customersQ = useQuery({ queryKey: ["customers"], queryFn: () => listCustomersFn() });
+  const manualMut = useMutation({
+    mutationFn: (input: ManualBookingValues) => createManualBookingFn({ data: input }),
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["admin-terminplan"], refetchType: "all" }),
+        qc.invalidateQueries({ queryKey: ["admin-bookings"], refetchType: "all" }),
+        qc.invalidateQueries({ queryKey: ["admin-slots"], refetchType: "all" }),
+        qc.invalidateQueries({ queryKey: ["cashbook"], refetchType: "all" }),
+        qc.invalidateQueries({ queryKey: ["customers"], refetchType: "all" }),
+        qc.invalidateQueries({ queryKey: ["public-slots"], refetchType: "all" }),
+      ]);
+    },
+  });
   const q = useQuery({
     queryKey: ["admin-terminplan"],
     queryFn: async (): Promise<Entry[]> => {
@@ -111,6 +132,16 @@ bar: b.bar != null ? Number(b.bar) : null,
               <ArrowLeft size={12} /> Zum Admin-Bereich
             </Link>
           </div>
+
+          <details className="mb-8 bg-card border border-champagne/25">
+            <summary className="cursor-pointer px-5 py-4 text-sm text-vanilla/80 hover:text-champagne flex items-center gap-2">
+              <CalendarPlus size={16} className="text-champagne" />
+              Neuen externen Termin eintragen
+            </summary>
+            <div className="p-5 border-t border-champagne/15">
+              <ManualBookingForm onCreate={(values) => manualMut.mutateAsync(values)} pending={manualMut.isPending} customers={customersQ.data ?? []} />
+            </div>
+          </details>
 
           {q.isLoading && <p className="text-vanilla/50 text-sm">Lade…</p>}
           {!q.isLoading && groups.length === 0 && (
