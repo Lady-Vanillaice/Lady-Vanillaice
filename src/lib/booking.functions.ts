@@ -257,6 +257,8 @@ export const updateBookingStatus = createServerFn({ method: "POST" })
         .nullable(),
       anzahlung: z.number().min(0).max(1_000_000).optional(),
       bar: z.number().min(0).max(1_000_000).optional(),
+      anzahlung_method: z.string().trim().max(100).optional().nullable(),
+      anzahlung_paid_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
       deposit_partner_name: z.string().trim().max(120).optional().nullable(),
       deposit_partner_email: z.string().trim().email().max(200).optional().nullable(),
     }).parse(d),
@@ -278,6 +280,9 @@ export const updateBookingStatus = createServerFn({ method: "POST" })
       confirmation_note?: string | null;
       anzahlung?: number;
       bar?: number;
+      anzahlung_method?: string | null;
+      anzahlung_paid?: boolean;
+      anzahlung_paid_at?: string | null;
     } = {
       status: data.status,
       admin_note: data.admin_note ?? null,
@@ -286,6 +291,11 @@ export const updateBookingStatus = createServerFn({ method: "POST" })
     if (data.status === "confirmed" || data.status === "waiting_deposit") {
       if (typeof data.anzahlung === "number") updatePayload.anzahlung = data.anzahlung;
       if (typeof data.bar === "number") updatePayload.bar = data.bar;
+      if (data.anzahlung_paid_at) {
+        updatePayload.anzahlung_method = data.anzahlung_method?.trim() || null;
+        updatePayload.anzahlung_paid = true;
+        updatePayload.anzahlung_paid_at = `${data.anzahlung_paid_at}T12:00:00.000Z`;
+      }
     }
 
     const { error } = await context.supabase
@@ -349,7 +359,8 @@ export const updateBookingStatus = createServerFn({ method: "POST" })
 
         // A reservation is always "deposit pending" — treat confirmed with unpaid deposit the same way.
         const isReservation = data.status === "waiting_deposit";
-        const depositPending = isReservation || (anzahlungNum > 0 && !booking.anzahlung_paid);
+        const depositPaid = Boolean(data.anzahlung_paid_at || booking.anzahlung_paid);
+        const depositPending = isReservation || (anzahlungNum > 0 && !depositPaid);
 
         await enqueueTransactionalEmail({
           templateName: "booking-confirmed",
@@ -363,7 +374,7 @@ export const updateBookingStatus = createServerFn({ method: "POST" })
             restAmount,
             confirmationNote: data.confirmation_note?.trim() ? data.confirmation_note.trim() : undefined,
             depositPending,
-            depositPaid: !isReservation && booking.anzahlung_paid,
+            depositPaid: !isReservation && depositPaid,
             depositPartnerName: data.deposit_partner_name ?? undefined,
             depositPartnerEmail: data.deposit_partner_email ?? undefined,
           },
@@ -921,6 +932,10 @@ export const updateBookingType = createServerFn({ method: "POST" })
   id: z.string().uuid(),
   booking_type: z.enum(["single", "duo"]),
   duo_partner: z.string().trim().max(120).optional().nullable(),
+  total_amount: z.number().positive().max(1_000_000),
+  deposit_amount: z.number().positive().max(1_000_000),
+  deposit_method: z.string().trim().min(1).max(100),
+  deposit_paid_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   is_content_shoot: z.boolean(),
 }).parse(d),
   )
@@ -1169,6 +1184,9 @@ export const createManualBooking = createServerFn({ method: "POST" })
     if (durationMinutes < 15) {
       throw new Error("Termin muss mindestens 15 Minuten dauern.");
     }
+    if (data.deposit_amount > data.total_amount) {
+      throw new Error("Die Anzahlung darf nicht höher als der Gesamtpreis sein.");
+    }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -1304,6 +1322,12 @@ export const createManualBooking = createServerFn({ method: "POST" })
         message,
         status: "confirmed",
         admin_note: data.internal_note ?? null,
+        anzahlung: data.deposit_amount,
+        anzahlung_method: data.deposit_method,
+        anzahlung_paid: true,
+        anzahlung_paid_at: `${data.deposit_paid_at}T12:00:00.000Z`,
+        bar: data.total_amount - data.deposit_amount,
+        fully_paid: data.total_amount === data.deposit_amount,
       });
     if (bookingErr) {
       // Roll back the slot to avoid orphan blocked windows.
