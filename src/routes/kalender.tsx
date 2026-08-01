@@ -345,9 +345,6 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
     const rows = slot.windows?.length ? slot.windows : [slot];
     return [...rows].sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
   }, [slot]);
-  const windowTimeLabel = windows
-    .map((window) => `${formatMunichTime(window.starts_at)} – ${formatMunichTime(window.ends_at)}`)
-    .join(" · ");
   const windowDurations = windows.map((w) => Math.round((new Date(w.ends_at).getTime() - new Date(w.starts_at).getTime()) / 60_000));
   const longestWindowMinutes = Math.max(...windowDurations, 30);
 
@@ -519,9 +516,16 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
           </span>
         )}
       </h3>
-      <div className="text-xs text-vanilla/60 mb-5 flex flex-wrap gap-3">
-        <span className="flex items-center gap-1.5"><Clock size={11} className="text-champagne" />
-          <span>{tr("Verfügbar", "Available")} {windowTimeLabel}</span>
+      <div className="text-xs text-vanilla/60 mb-5 flex flex-wrap items-start gap-3">
+        <span className="flex items-start gap-1.5"><Clock size={11} className="text-champagne mt-0.5 shrink-0" />
+          <span className="flex flex-col gap-1">
+            <span>{tr("Verfügbar", "Available")}</span>
+            {windows.map((window) => (
+              <span key={window.id}>
+                {formatMunichTime(window.starts_at)} – {formatMunichTime(window.ends_at)}
+              </span>
+            ))}
+          </span>
         </span>
         <span className="flex items-center gap-1.5"><MapPin size={11} className="text-champagne" />{slot.location}</span>
       </div>
