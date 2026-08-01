@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import type { CustomerRow } from "@/lib/customers.functions";
 
 const ADMIN_TIME_ZONE = "Europe/Berlin";
 
@@ -272,7 +273,7 @@ export function BookingCard({
           onClick={onConfirm}
           className="text-[0.65rem] uppercase tracking-[0.2em] px-3 py-2 border border-champagne/40 text-champagne hover:bg-champagne/10 disabled:opacity-30"
         >
-          <CheckCircle2 size={12} className="inline mr-1" /> Bestätigen
+          <CheckCircle2 size={12} className="inline mr-1" /> Termin fixieren
         </button>
         <DeclineButton
           disabled={b.status === "declined" || pending}
@@ -508,7 +509,7 @@ export function NewSlotForm({
     </form>
   );
 }
- export type ManualBookingValues = {
+export type ManualBookingValues = {
   starts_at: string;
   ends_at: string;
   location: string;
@@ -518,14 +519,20 @@ export function NewSlotForm({
   internal_note?: string | null;
   booking_type: "single" | "duo" | "content";
   duo_partner?: string | null;
+  total_amount: number;
+  deposit_amount: number;
+  deposit_method: string;
+  deposit_paid_at: string;
 };
 
 export function ManualBookingForm({
   onCreate,
   pending,
+  customers = [],
 }: {
   onCreate: (v: ManualBookingValues) => Promise<unknown>;
   pending: boolean;
+  customers?: CustomerRow[];
 }) {
   const [date, setDate] = useState("");
   const [start, setStart] = useState("18:00");
@@ -541,8 +548,41 @@ export function ManualBookingForm({
   const [bookingType, setBookingType] =
     useState<"single" | "duo" | "content">("single");
   const [duoPartner, setDuoPartner] = useState("");
+  const [totalAmount, setTotalAmount] = useState("");
+  const [depositAmount, setDepositAmount] = useState("");
+  const [depositMethod, setDepositMethod] = useState("Überweisung");
+  const [depositPaidAt, setDepositPaidAt] = useState(() => new Date().toISOString().slice(0, 10));
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
+  const [customerOpen, setCustomerOpen] = useState(false);
+  const matchingCustomers = guestName.trim()
+    ? customers.filter((customer) => {
+        const query = guestName.trim().toLocaleLowerCase("de-DE");
+        return [customer.note?.pseudonym, ...customer.names].filter(Boolean).some((name) => String(name).toLocaleLowerCase("de-DE").startsWith(query));
+      }).slice(0, 8)
+    : [];
+
+  const selectCustomer = (customer: CustomerRow) => {
+    const name = customer.note?.pseudonym || customer.names[0] || "";
+    const phone = customer.note?.phone || customer.phones[0] || "";
+    const profile = {
+      vorlieben: customer.note?.vorlieben || customer.booking_profile.vorlieben,
+      tabus: customer.note?.tabus || customer.booking_profile.tabus,
+      gesundheit: customer.note?.gesundheit || customer.booking_profile.gesundheit,
+      safeword: customer.note?.safeword || customer.booking_profile.safeword,
+      admin: customer.note?.admin_note || null,
+    };
+    setGuestName(name);
+    setContact(phone || customer.email);
+    setNote([
+      profile.vorlieben ? `Vorlieben: ${profile.vorlieben}` : null,
+      profile.tabus ? `Tabus: ${profile.tabus}` : null,
+      profile.gesundheit ? `Gesundheit: ${profile.gesundheit}` : null,
+      profile.safeword ? `Safeword: ${profile.safeword}` : null,
+      profile.admin ? `Interne Kundennotiz: ${profile.admin}` : null,
+    ].filter(Boolean).join("\n"));
+    setCustomerOpen(false);
+  };
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -561,6 +601,21 @@ export function ManualBookingForm({
 
     if (bookingType === "duo" && !duoPartner.trim()) {
       setErr("Bitte die Duo-Partnerin angeben.");
+      return;
+    }
+
+    const total = Number(totalAmount.replace(",", "."));
+    const deposit = Number(depositAmount.replace(",", "."));
+    if (!Number.isFinite(total) || total <= 0) {
+      setErr("Bitte den Gesamtpreis eintragen.");
+      return;
+    }
+    if (!Number.isFinite(deposit) || deposit <= 0 || deposit > total) {
+      setErr("Die erhaltene Anzahlung muss größer als 0 € und höchstens so hoch wie der Gesamtpreis sein.");
+      return;
+    }
+    if (!depositMethod.trim() || !depositPaidAt) {
+      setErr("Bitte Zahlungsart und Eingangsdatum der Anzahlung angeben.");
       return;
     }
 
@@ -583,6 +638,10 @@ export function ManualBookingForm({
         booking_type: bookingType,
         duo_partner:
           bookingType === "duo" ? duoPartner.trim() : null,
+        total_amount: total,
+        deposit_amount: deposit,
+        deposit_method: depositMethod.trim(),
+        deposit_paid_at: depositPaidAt,
       });
 
       setOk(true);
@@ -593,6 +652,8 @@ export function ManualBookingForm({
       setNote("");
       setBookingType("single");
       setDuoPartner("");
+      setTotalAmount("");
+      setDepositAmount("");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Fehler");
     }
@@ -731,15 +792,25 @@ export function ManualBookingForm({
       )}
 
       <div className="grid sm:grid-cols-2 gap-3">
-        <div>
+        <div className="relative">
           <label className="eyebrow block mb-1">Name / Pseudonym</label>
           <input
             value={guestName}
-            onChange={(e) => setGuestName(e.target.value)}
+            onChange={(e) => { setGuestName(e.target.value); setCustomerOpen(true); }}
+            onFocus={() => setCustomerOpen(true)}
             placeholder="z. B. Markus / Sklave M."
             className="input-luxe !py-2"
             required
+            autoComplete="off"
           />
+          {customerOpen && matchingCustomers.length > 0 && (
+            <div className="absolute left-0 right-0 top-full z-50 border border-champagne/30 bg-card shadow-xl max-h-64 overflow-y-auto">
+              {matchingCustomers.map((customer) => {
+                const displayName = customer.note?.pseudonym || customer.names[0] || customer.email;
+                return <button key={customer.email} type="button" onClick={() => selectCustomer(customer)} className="block w-full text-left px-3 py-2 border-b border-champagne/10 last:border-0 hover:bg-champagne/10"><span className="block text-sm text-vanilla">{displayName}</span><span className="block text-[0.65rem] text-vanilla/50">{customer.email} · {customer.visits_count} vergangene Termine</span></button>;
+              })}
+            </div>
+          )}
         </div>
 
         <div>
@@ -781,6 +852,20 @@ export function ManualBookingForm({
           rows={3}
           className="input-luxe !py-2 resize-none"
         />
+      </div>
+
+      <div className="border border-champagne/25 bg-champagne/[0.04] p-4 space-y-3">
+        <div>
+          <div className="eyebrow text-champagne">Preis & Zahlung</div>
+          <p className="mt-1 text-[0.7rem] text-vanilla/55">Die Anzahlung wird als bereits erhalten gespeichert. Der Restbetrag wird automatisch berechnet und ins Kassenbuch übernommen.</p>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div><label className="eyebrow block mb-1">Gesamtpreis (€)</label><input required inputMode="decimal" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} placeholder="z. B. 450" className="input-luxe !py-2" /></div>
+          <div><label className="eyebrow block mb-1">Anzahlung erhalten (€)</label><input required inputMode="decimal" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} placeholder="z. B. 150" className="input-luxe !py-2" /></div>
+          <div><label className="eyebrow block mb-1">Zahlungsart</label><select value={depositMethod} onChange={(e) => setDepositMethod(e.target.value)} className="input-luxe !py-2"><option>Überweisung</option><option>PayPal</option><option>Bar</option><option>Sonstige</option></select></div>
+          <div><label className="eyebrow block mb-1">Anzahlung eingegangen am</label><input required type="date" value={depositPaidAt} onChange={(e) => setDepositPaidAt(e.target.value)} className="input-luxe !py-2" /></div>
+        </div>
+        <div className="flex items-center justify-between border-t border-champagne/20 pt-3"><span className="text-sm text-vanilla/65">Noch bar beim Termin</span><strong className="font-display text-2xl text-champagne">{Math.max(0, (Number(totalAmount.replace(",", ".")) || 0) - (Number(depositAmount.replace(",", ".")) || 0)).toLocaleString("de-DE")} €</strong></div>
       </div>
 
       {err && <div className="text-xs text-destructive">{err}</div>}
