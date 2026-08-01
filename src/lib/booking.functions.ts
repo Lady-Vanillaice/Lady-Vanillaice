@@ -410,10 +410,12 @@ export const deleteBooking = createServerFn({ method: "POST" })
       "@/integrations/supabase/client.server"
     );
 
-    // Zuerst den zugehörigen Slot merken.
+    // Zuerst alle Daten merken, die für einen bestehenden Kassenbucheintrag
+    // benötigt werden. Das Kassenbuch darf beim Löschen der Anfrage nicht
+    // nachträglich verändert werden.
     const { data: booking, error: fetchErr } = await supabaseAdmin
       .from("bookings")
-      .select("id, slot_id")
+      .select("id, slot_id, status, guest_name, duration, duration_minutes, anzahlung, anzahlung_method, anzahlung_paid, bar, cash_received_at, fully_paid, completed_at, requested_start, studio_override, admin_note, created_at, availability_slots(starts_at, ends_at, location, is_duo, is_content_shoot)")
       .eq("id", data.id)
       .maybeSingle();
 
@@ -423,6 +425,59 @@ export const deleteBooking = createServerFn({ method: "POST" })
 
     if (!booking) {
       throw new Error("Buchung nicht gefunden.");
+    }
+
+    const shouldKeepCashBookEntry =
+      ["confirmed", "cancelled", "rescheduling"].includes(booking.status) ||
+      Boolean(booking.anzahlung_paid || booking.cash_received_at || booking.fully_paid || booking.completed_at);
+
+    if (shouldKeepCashBookEntry) {
+      const slot = (Array.isArray(booking.availability_slots)
+        ? booking.availability_slots[0]
+        : booking.availability_slots) as {
+          starts_at?: string;
+          ends_at?: string;
+          location?: string;
+          is_duo?: boolean;
+          is_content_shoot?: boolean;
+        } | null;
+      const appointmentStart = booking.requested_start ?? slot?.starts_at ?? booking.created_at;
+      const deposit = booking.anzahlung_paid ? Number(booking.anzahlung ?? 0) : 0;
+      const cash = booking.cash_received_at || booking.fully_paid ? Number(booking.bar ?? 0) : 0;
+      const bookingType = slot?.is_duo
+        ? slot.is_content_shoot ? "Duo + Content" : "Duo"
+        : slot?.is_content_shoot ? "Single + Content" : "Single";
+      const duration = booking.duration_minutes
+        ? `${booking.duration_minutes} Min.`
+        : booking.duration?.trim() || null;
+      const archiveNote = [
+        "Archivierter Kassenbucheintrag (zugehörige Buchungsanfrage gelöscht).",
+        `Art: ${bookingType}`,
+        duration ? `Dauer: ${duration}` : null,
+        booking.admin_note?.trim() || null,
+      ].filter(Boolean).join(" · ");
+
+      // Die Buchungs-ID wird als feste ID verwendet. Dadurch ist der Vorgang
+      // auch dann idempotent, wenn das Löschen nach dem Archivieren scheitert
+      // und erneut ausgeführt wird.
+      const { error: archiveErr } = await supabaseAdmin
+        .from("cash_book_entries")
+        .upsert({
+          id: booking.id,
+          studio: booking.studio_override?.trim() || slot?.location || "—",
+          datum: String(appointmentStart).slice(0, 10),
+          kunde: booking.guest_name,
+          anzahlung: deposit,
+          anzahlung_method: booking.anzahlung_method?.trim() || null,
+          bar: cash,
+          notiz: archiveNote,
+          created_by: context.userId,
+          created_at: booking.created_at,
+        }, { onConflict: "id", ignoreDuplicates: true });
+
+      if (archiveErr) {
+        throw new Error(`Kassenbucheintrag konnte nicht gesichert werden: ${archiveErr.message}`);
+      }
     }
 
     // Buchung endgültig löschen.
