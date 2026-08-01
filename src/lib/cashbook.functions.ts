@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
-export type DepositExemptionReason = "regular_customer" | "trust" | "exception" | "colleague_guarantees";
+export type DepositExemptionReason = "regular_customer" | "trust" | "exception" | "colleague_guarantees" | "spontaneous";
 const STUDIO_RENT_LABEL = "Studiomiete";
 
 export type CashBookEntry = {

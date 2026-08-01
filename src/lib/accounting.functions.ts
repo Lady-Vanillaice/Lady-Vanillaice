@@ -8,7 +8,7 @@ async function ensureAdmin(supabase: any, userId: string) {
   if (!data) throw new Error("Forbidden");
 }
 
-const exemptionReason = z.enum(["regular_customer", "trust", "exception", "colleague_guarantees"]);
+const exemptionReason = z.enum(["regular_customer", "trust", "exception", "colleague_guarantees", "spontaneous"]);
 
 const accountingInput = z.object({
   id: z.string().uuid(),
