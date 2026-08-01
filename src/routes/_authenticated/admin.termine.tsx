@@ -4,11 +4,11 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { updateBookingStatus, deleteBooking, createManualBooking } from "@/lib/booking.functions";
+import { updateBookingStatus, deleteBooking } from "@/lib/booking.functions";
 import { createCashBookEntry } from "@/lib/cashbook.functions";
 import { PageHeader } from "@/components/site/PageHeader";
-import { BookingCard, useConfirmAmounts, ManualBookingForm, type Booking, type Slot } from "@/components/admin/admin-shared";
-import { ArrowLeft, CalendarPlus, Plus } from "lucide-react";
+import { BookingCard, type Booking, type Slot } from "@/components/admin/admin-shared";
+import { ArrowLeft, Plus, X, CheckCircle2 } from "lucide-react";
 
 type StatusTab = "offen" | "wartend" | "geschlossen";
 
@@ -81,7 +81,6 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
   const qc = useQueryClient();
   const updateBookingFn = useServerFn(updateBookingStatus);
   const deleteBookingFn = useServerFn(deleteBooking);
-  const createManualBookingFn = useServerFn(createManualBooking);
   const createCashBookEntryFn = useServerFn(createCashBookEntry);
 
   const slotsQ = useQuery({
@@ -135,6 +134,8 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
       anzahlung?: number;
       bar?: number;
       confirmation_note?: string;
+      anzahlung_method?: string | null;
+      anzahlung_paid_at?: string | null;
     }) => updateBookingFn({ data: v }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-bookings"] });
@@ -152,41 +153,6 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
     },
   });
 
-  const manualMut = useMutation({
-  mutationFn: (input: {
-    starts_at: string;
-    ends_at: string;
-    location: string;
-    guest_name: string;
-    guest_contact?: string | null;
-    source?: string | null;
-    internal_note?: string | null;
-    booking_type: "single" | "duo" | "content";
-    duo_partner?: string | null;
-  }) => createManualBookingFn({ data: input }),
-
-  onSuccess: async () => {
-    await Promise.all([
-      qc.invalidateQueries({
-        queryKey: ["admin-slots"],
-        refetchType: "all",
-      }),
-      qc.invalidateQueries({
-        queryKey: ["admin-bookings"],
-        refetchType: "all",
-      }),
-      qc.invalidateQueries({
-        queryKey: ["public-slots"],
-        refetchType: "all",
-      }),
-      qc.invalidateQueries({
-        queryKey: ["slot-availability"],
-        refetchType: "all",
-      }),
-    ]);
-  },
-});
-
   const customCashbookMut = useMutation({
     mutationFn: (input: { name: string; wish: string; amount: number }) =>
       createCashBookEntryFn({
@@ -203,7 +169,7 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["cashbook"] }),
   });
 
-  const confirmAmounts = useConfirmAmounts((v) => statusMut.mutate(v));
+  const [fixing, setFixing] = useState<Booking | null>(null);
 
   const [tab, setTab] = useState<StatusTab>("offen");
   const kindFiltered = (bookingsQ.data ?? []).filter((b) => matchKind(b, kind));
@@ -233,21 +199,6 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
               <ArrowLeft size={12} /> Zum Admin-Bereich
             </Link>
           </div>
-
-          {kind === "standard" && (
-            <details className="mb-6 bg-card border border-champagne/15">
-              <summary className="cursor-pointer px-5 py-3 text-sm text-vanilla/80 hover:text-champagne flex items-center gap-2">
-                <CalendarPlus size={16} className="text-champagne" />
-                Externen Termin manuell eintragen (Telegram, E-Mail …)
-              </summary>
-              <div className="p-5 pt-2 border-t border-champagne/10">
-                <ManualBookingForm
-                  onCreate={(v) => manualMut.mutateAsync(v)}
-                  pending={manualMut.isPending}
-                />
-              </div>
-            </details>
-          )}
 
           {kind === "custom" && (
             <CustomCashbookForm
@@ -291,7 +242,7 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
                   b={b}
                   slot={slot}
                   pending={statusMut.isPending || deleteBookingMut.isPending}
-                  onConfirm={() => confirmAmounts(b.id)}
+                  onConfirm={() => setFixing(b)}
                   onDecline={(reason) =>
                     statusMut.mutate({ id: b.id, status: "declined", decline_reason: reason })
                   }
@@ -301,9 +252,61 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
               );
             })}
           </div>
+          {fixing && <FixBookingDialog booking={fixing} pending={statusMut.isPending} onClose={() => setFixing(null)} onSave={(values) => statusMut.mutate({ id: fixing.id, status: "confirmed", ...values }, { onSuccess: () => setFixing(null) })} />}
         </div>
       </section>
     </>
+  );
+}
+
+function FixBookingDialog({
+  booking,
+  pending,
+  onClose,
+  onSave,
+}: {
+  booking: Booking;
+  pending: boolean;
+  onClose: () => void;
+  onSave: (values: { anzahlung: number; bar: number; anzahlung_method: string; anzahlung_paid_at: string }) => void;
+}) {
+  const [total, setTotal] = useState("");
+  const [deposit, setDeposit] = useState("");
+  const [method, setMethod] = useState("Überweisung");
+  const [paidAt, setPaidAt] = useState(() => new Date().toISOString().slice(0, 10));
+  const [error, setError] = useState("");
+  const totalValue = Number(total.replace(",", ".")) || 0;
+  const depositValue = Number(deposit.replace(",", ".")) || 0;
+  const rest = Math.max(0, totalValue - depositValue);
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (totalValue <= 0) return setError("Bitte den Gesamtpreis eintragen.");
+    if (depositValue <= 0 || depositValue > totalValue) return setError("Die erhaltene Anzahlung muss größer als 0 € und höchstens so hoch wie der Gesamtpreis sein.");
+    if (!method.trim() || !paidAt) return setError("Bitte Zahlungsart und Eingangsdatum angeben.");
+    onSave({ anzahlung: depositValue, bar: rest, anzahlung_method: method.trim(), anzahlung_paid_at: paidAt });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] grid place-items-center bg-black/80 p-3">
+      <form onSubmit={submit} className="w-full max-w-lg bg-card border border-champagne/40 p-5 space-y-5">
+        <div className="flex items-start justify-between gap-3">
+          <div><div className="eyebrow">Termin fixieren</div><h2 className="font-display text-2xl text-vanilla">{booking.guest_name}</h2></div>
+          <button type="button" onClick={onClose} aria-label="Schließen"><X size={20} /></button>
+        </div>
+        <p className="text-sm text-vanilla/60">Trage nur Preis und die bereits erhaltene Anzahlung ein. Der Bar-Rest wird automatisch berechnet und der Termin anschließend in Terminplan und Kassenbuch übernommen.</p>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <label className="space-y-1"><span className="eyebrow block">Gesamtpreis (€)</span><input autoFocus required inputMode="decimal" value={total} onChange={(e) => setTotal(e.target.value)} placeholder="z. B. 450" className="input-luxe" /></label>
+          <label className="space-y-1"><span className="eyebrow block">Anzahlung erhalten (€)</span><input required inputMode="decimal" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="z. B. 150" className="input-luxe" /></label>
+          <label className="space-y-1"><span className="eyebrow block">Zahlungsart</span><select value={method} onChange={(e) => setMethod(e.target.value)} className="input-luxe"><option>Überweisung</option><option>PayPal</option><option>Bar</option><option>Sonstige</option></select></label>
+          <label className="space-y-1"><span className="eyebrow block">Eingegangen am</span><input required type="date" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} className="input-luxe" /></label>
+        </div>
+        <div className="flex items-center justify-between border border-champagne/25 bg-champagne/[0.05] p-4"><span className="text-sm text-vanilla/65">Noch bar beim Termin</span><strong className="font-display text-3xl text-champagne">{rest.toLocaleString("de-DE")} €</strong></div>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2"><button type="button" onClick={onClose} className="btn-outline-gold">Abbrechen</button><button disabled={pending} className="btn-gold"><CheckCircle2 size={14} />{pending ? "Wird gespeichert…" : "Termin fixieren"}</button></div>
+      </form>
+    </div>
   );
 }
 
