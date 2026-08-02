@@ -233,7 +233,7 @@ function DayPlanDownloadButton({ day, items }: { day: Date; items: Entry[] }) {
     const wishLines = items.map((entry) =>
       wrapCanvasText(measure, entry.guest_wish?.trim() || "Kein Wunsch eingetragen.", contentWidth - 92),
     );
-    const rowHeights = wishLines.map((lines) => 218 + Math.max(1, lines.length) * 32);
+    const rowHeights = wishLines.map((lines) => 250 + Math.max(1, lines.length) * 32);
     const headerHeight = 290;
     const footerHeight = 112;
     const height = Math.max(
