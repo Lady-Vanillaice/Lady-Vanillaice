@@ -50,13 +50,14 @@ export const listCustomers = createServerFn({ method: "GET" })
 
     const { data: bookings, error: bErr } = await context.supabase
       .from("bookings")
-      .select("guest_name, guest_email, guest_phone, requested_start, created_at, status, message")
+      .select("guest_name, guest_email, guest_phone, requested_start, created_at, status, message, completed_at, fully_paid, cash_received_at")
       .eq("status", "confirmed")
       .order("created_at", { ascending: false });
     if (bErr) throw new Error(bErr.message);
 
     const map = new Map<string, CustomerRow>();
     const now = Date.now();
+    const normalizeName = (value: string) => value.trim().toLocaleLowerCase("de-DE");
     const extractSection = (message: string | null, labels: string[]) => {
       if (!message) return null;
       const escaped = labels.map((label) => label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
@@ -66,6 +67,10 @@ export const listCustomers = createServerFn({ method: "GET" })
       return match?.[1]?.trim() || null;
     };
     for (const b of bookings ?? []) {
+      // Die Kundenliste enthält ausschließlich tatsächlich abgeschlossene
+      // Sessions – dieselbe Grundlage, auf der das Kassenbuch den Termin als
+      // erledigt behandelt.
+      if (!b.completed_at && !b.fully_paid && !b.cash_received_at) continue;
       const rawEmail = (b.guest_email ?? "").trim();
       if (!rawEmail) continue;
       const key = rawEmail.toLowerCase();
@@ -102,6 +107,55 @@ export const listCustomers = createServerFn({ method: "GET" })
           note: null,
         });
       }
+    }
+
+    // Manuelle bzw. beim Löschen archivierte Kassenbucheinträge besitzen
+    // keine Buchungszeile mehr. Ihre Kundennamen bleiben trotzdem dauerhaft
+    // für die Kundensuche verfügbar.
+    const { data: cashbookRows, error: cErr } = await context.supabase
+      .from("cash_book_entries")
+      .select("id, kunde, datum, notiz, created_at")
+      .neq("kunde", "Studiomiete")
+      .order("datum", { ascending: false });
+    if (cErr) throw new Error(cErr.message);
+
+    for (const row of cashbookRows ?? []) {
+      const name = String(row.kunde ?? "").trim();
+      if (!name) continue;
+      const existing = Array.from(map.values()).find((customer) =>
+        [customer.note?.pseudonym, ...customer.names]
+          .filter(Boolean)
+          .some((candidate) => normalizeName(String(candidate)) === normalizeName(name)),
+      );
+      const when = row.datum ?? row.created_at ?? null;
+      if (existing) {
+        if (!existing.names.includes(name)) existing.names.push(name);
+        existing.bookings_count += 1;
+        existing.visits_count += 1;
+        if (when && (!existing.last_booking_at || when > existing.last_booking_at)) existing.last_booking_at = when;
+        continue;
+      }
+      map.set(`cashbook:${row.id}`, {
+        email: `cashbook+${row.id}@intern.local`,
+        names: [name],
+        phones: [],
+        bookings_count: 1,
+        visits_count: 1,
+        last_booking_at: when,
+        testimonial: null,
+        booking_profile: { vorlieben: null, tabus: null, gesundheit: null, safeword: null },
+        note: row.notiz ? {
+          id: row.id,
+          pseudonym: name,
+          phone: null,
+          vorlieben: null,
+          tabus: null,
+          gesundheit: null,
+          safeword: null,
+          admin_note: row.notiz,
+          updated_at: row.created_at,
+        } : null,
+      });
     }
 
     const { data: notes, error: nErr } = await context.supabase
@@ -152,7 +206,7 @@ export const listCustomers = createServerFn({ method: "GET" })
       const identities = new Set(
         [customer.note?.pseudonym, ...customer.names].filter(Boolean).map((value) => normalize(String(value))),
       );
-      const match = (testimonials ?? []).find((item) => identities.has(normalize(item.pseudonym)));
+      const match = (testimonials ?? []).find((item) => item.pseudonym && identities.has(normalize(item.pseudonym)));
       if (match) {
         customer.testimonial = {
           id: match.id,
