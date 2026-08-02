@@ -1477,3 +1477,36 @@ export const previewEmail = createServerFn({ method: "GET" })
       renderError,
     };
   });
+
+export const retryEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ logId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await ensureAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: log, error } = await supabaseAdmin.from("email_send_log")
+      .select("id, message_id, template_name, recipient_email, metadata")
+      .eq("id", data.logId).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!log) throw new Error("E-Mail-Eintrag nicht gefunden.");
+    const meta = (log.metadata as Record<string, any> | null) ?? {};
+    const templateData = (meta.template_data as Record<string, any> | undefined) ?? {};
+    const React = await import("react");
+    const { render } = await import("@react-email/components");
+    const { TEMPLATES } = await import("@/lib/email-templates/registry");
+    const template = TEMPLATES[log.template_name as keyof typeof TEMPLATES];
+    if (!template) throw new Error("E-Mail-Vorlage nicht gefunden.");
+    const element = React.createElement(template.component as any, templateData);
+    const html = await render(element);
+    const text = await render(element, { plainText: true });
+    const subject = typeof template.subject === "function" ? (template.subject as (d: any) => string)(templateData) : template.subject;
+    const { deliverEmailNow } = await import("@/lib/email/deliver.server");
+    const delivery = await deliverEmailNow({ to: log.recipient_email, subject, html, text, idempotencyKey: `${log.message_id ?? log.id}-retry-${Date.now()}` });
+    if (!delivery.configured) throw new Error("Kein E-Mail-Anbieter ist konfiguriert.");
+    if (!delivery.success) throw new Error(`Versand fehlgeschlagen: ${delivery.reason}`);
+    await supabaseAdmin.from("email_send_log").insert({
+      message_id: log.message_id, template_name: log.template_name, recipient_email: log.recipient_email,
+      status: "sent", metadata: { ...meta, subject, provider: delivery.provider, provider_message_id: delivery.providerMessageId, retried_from: log.id },
+    });
+    return { ok: true };
+  });
