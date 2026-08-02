@@ -8,8 +8,8 @@ export interface DeliverEmailParams {
 
 export type DeliveryResult =
   | { configured: false }
-  | { configured: true; success: true; provider: 'resend'; providerMessageId: string | null }
-  | { configured: true; success: false; provider: 'resend'; reason: string }
+  | { configured: true; success: true; provider: 'resend' | 'lovable'; providerMessageId: string | null }
+  | { configured: true; success: false; provider: 'resend' | 'lovable'; reason: string }
 
 /**
  * Sends transactional mail without depending on Lovable's queue worker.
@@ -25,13 +25,14 @@ export async function deliverEmailNow({
   idempotencyKey,
 }: DeliverEmailParams): Promise<DeliveryResult> {
   const apiKey = process.env.RESEND_API_KEY?.trim()
-  if (!apiKey) return { configured: false }
+  const lovableApiKey = process.env.LOVABLE_API_KEY?.trim()
+  if (!apiKey && !lovableApiKey) return { configured: false }
 
   const from =
     process.env.EMAIL_FROM?.trim() ||
     'Lady Vanilla Ice <noreply@lady-vanillaice.com>'
 
-  try {
+  if (apiKey) try {
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -70,5 +71,24 @@ export async function deliverEmailNow({
       reason,
     })
     return { configured: true, success: false, provider: 'resend', reason }
+  }
+
+  try {
+    const { sendLovableEmail } = await import('@lovable.dev/email-js')
+    await sendLovableEmail({
+      to,
+      from,
+      subject,
+      html,
+      text,
+      purpose: 'transactional',
+      label: 'transactional',
+      idempotency_key: idempotencyKey,
+    }, { apiKey: lovableApiKey!, sendUrl: process.env.LOVABLE_SEND_URL })
+    return { configured: true, success: true, provider: 'lovable', providerMessageId: null }
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    console.error('Direct email delivery failed', { provider: 'lovable', reason })
+    return { configured: true, success: false, provider: 'lovable', reason }
   }
 }
