@@ -333,9 +333,7 @@ function FreeSlotImageExport({ slots, loading }: { slots: Slot[]; loading: boole
     ctx.fillText("LADY VANILLA ICE", width / 2, 180);
     ctx.fillStyle = vanilla;
     ctx.font = '22px Arial, sans-serif';
-    ctx.letterSpacing = "8px";
-    ctx.fillText("FREIE TERMINE", width / 2, 225);
-    ctx.letterSpacing = "0px";
+    ctx.fillText("F R E I E   T E R M I N E", width / 2, 225);
 
     freeSlots.forEach((slot, index) => {
       const y = headerHeight + index * rowHeight;
