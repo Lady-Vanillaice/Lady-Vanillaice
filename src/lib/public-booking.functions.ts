@@ -158,6 +158,7 @@ const bookingInput = z.object({
   requested_start: z.string().datetime().optional(),
   message: z.string().trim().min(5).max(2000),
   age_confirmed: z.literal(true),
+  marketing_consent: z.boolean().optional().default(false),
 });
 
 const startTimesInput = z.object({
@@ -592,6 +593,15 @@ export const submitBooking = createServerFn({ method: "POST" })
       ]);
     } catch (err) {
       console.error("Failed to enqueue booking emails", err);
+    }
+
+    if (data.marketing_consent) {
+      try {
+        const { requestNewsletterOptIn } = await import("@/lib/newsletter.functions");
+        await requestNewsletterOptIn(data.guest_name, data.guest_email, "booking_form");
+      } catch (err) {
+        console.error("Failed to send newsletter opt-in", err);
+      }
     }
 
     try {
