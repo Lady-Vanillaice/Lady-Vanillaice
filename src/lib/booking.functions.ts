@@ -631,6 +631,7 @@ function computePersonalMessageAmounts(
 const personalMessageInput = z.object({
   id: z.string().uuid(),
   message: z.string().max(2000),
+  includeDepositInfo: z.boolean().optional().default(false),
   depositOverride: z.number().min(0).max(1_000_000).optional().nullable(),
   barOverride: z.number().min(0).max(1_000_000).optional().nullable(),
   depositPartnerName: z.string().trim().max(120).optional().nullable(),
@@ -675,6 +676,7 @@ export const sendPersonalMessage = createServerFn({ method: "POST" })
         guestName: booking.guest_name ?? undefined,
         message: data.message,
         duration: booking.duration ?? undefined,
+        includeDepositInfo: data.includeDepositInfo,
         ...amounts,
         depositPartnerName: data.depositPartnerName ?? undefined,
         depositPartnerEmail: data.depositPartnerEmail ?? undefined,
@@ -716,6 +718,7 @@ export const previewPersonalMessage = createServerFn({ method: "POST" })
         guestName: booking.guest_name ?? undefined,
         message: data.message,
         duration: booking.duration ?? undefined,
+        includeDepositInfo: data.includeDepositInfo,
         ...amounts,
         depositPartnerName: data.depositPartnerName ?? undefined,
         depositPartnerEmail: data.depositPartnerEmail ?? undefined,
