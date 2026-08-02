@@ -79,6 +79,9 @@ export type Booking = {
   admin_note: string | null;
   created_at: string;
   anzahlung_paid?: boolean | null;
+  completed_at?: string | null;
+  cash_received_at?: string | null;
+  fully_paid?: boolean | null;
 };
 
 export type DeclineReason = "services_not_offered" | "slot_taken" | "not_yet_offered" | "no_response";
