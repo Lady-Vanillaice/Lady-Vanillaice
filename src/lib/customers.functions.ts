@@ -158,12 +158,24 @@ export const listCustomers = createServerFn({ method: "GET" })
       });
     }
 
-    const { data: notes, error: nErr } = await context.supabase
+    let notesResult = await context.supabase
       .from("customer_notes")
       .select("id, email, pseudonym, phone, vorlieben, tabus, gesundheit, safeword, admin_note, updated_at");
-    if (nErr) throw new Error(nErr.message);
+    // Ältere Live-Datenbanken hatten die Felder gesundheit/safeword noch
+    // nicht. Die Kundenliste muss trotzdem laden, bis die Migration greift.
+    if (notesResult.error?.message?.includes("does not exist")) {
+      notesResult = await context.supabase
+        .from("customer_notes")
+        .select("id, email, pseudonym, phone, vorlieben, tabus, admin_note, updated_at");
+    }
+    if (notesResult.error) throw new Error(notesResult.error.message);
+    const notes = (notesResult.data ?? []).map((note: any) => ({
+      ...note,
+      gesundheit: note.gesundheit ?? null,
+      safeword: note.safeword ?? null,
+    }));
 
-    for (const n of notes ?? []) {
+    for (const n of notes) {
       const key = (n.email ?? "").toLowerCase();
       if (!key) continue;
       const existing = map.get(key);
@@ -259,21 +271,42 @@ export const upsertCustomerNote = createServerFn({ method: "POST" })
       safeword: data.safeword ?? null,
       admin_note: data.admin_note ?? null,
     };
+    const legacyPayload = {
+      email: emailLower,
+      pseudonym: data.pseudonym ?? null,
+      phone: data.phone ?? null,
+      vorlieben: data.vorlieben ?? null,
+      tabus: data.tabus ?? null,
+      admin_note: [
+        data.admin_note ?? null,
+        data.gesundheit ? `Gesundheit: ${data.gesundheit}` : null,
+        data.safeword ? `Safeword: ${data.safeword}` : null,
+      ].filter(Boolean).join("\n") || null,
+    };
 
     if (existing?.id) {
-      const { error } = await context.supabase
+      let { error } = await context.supabase
         .from("customer_notes")
         .update(payload)
         .eq("id", existing.id);
+      if (error?.message?.includes("does not exist")) {
+        const retry = await context.supabase.from("customer_notes").update(legacyPayload).eq("id", existing.id);
+        error = retry.error;
+      }
       if (error) throw new Error(error.message);
       return { ok: true, id: existing.id };
     }
 
-    const { data: inserted, error } = await context.supabase
+    let { data: inserted, error } = await context.supabase
       .from("customer_notes")
       .insert(payload)
       .select("id")
       .single();
+    if (error?.message?.includes("does not exist")) {
+      const retry = await context.supabase.from("customer_notes").insert(legacyPayload).select("id").single();
+      inserted = retry.data;
+      error = retry.error;
+    }
     if (error) throw new Error(error.message);
     return { ok: true, id: inserted.id };
   });
