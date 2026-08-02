@@ -14,7 +14,12 @@ type StatusTab = "offen" | "wartend" | "geschlossen";
 
 function statusBucket(b: Booking): StatusTab | null {
   const s = b.status;
+  const appointmentIsPast = Boolean(
+    b.requested_start && new Date(b.requested_start).getTime() < Date.now(),
+  );
+  if (b.completed_at || b.fully_paid || b.cash_received_at) return "geschlossen";
   if (s === "cancelled" || s === "declined") return "geschlossen";
+  if ((s === "confirmed" || s === "waiting_deposit") && appointmentIsPast) return "geschlossen";
   if (s === "waiting_deposit") return "wartend";
   if (s === "confirmed") return b.anzahlung_paid ? null : "wartend";
   // pending / rescheduling / open: älter als 24h → geschlossen, sonst offen
@@ -119,7 +124,7 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
     queryFn: async (): Promise<Booking[]> => {
       const { data, error } = await supabase
         .from("bookings")
-        .select("id, slot_id, guest_name, guest_email, guest_phone, duration, duration_minutes, requested_start, message, status, admin_note, anzahlung_paid, created_at")
+        .select("id, slot_id, guest_name, guest_email, guest_phone, duration, duration_minutes, requested_start, message, status, admin_note, anzahlung_paid, completed_at, cash_received_at, fully_paid, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Booking[];
