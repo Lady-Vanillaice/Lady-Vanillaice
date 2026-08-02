@@ -1163,7 +1163,10 @@ const manualBookingInput = z.object({
   guest_name: z.string().trim().min(1).max(120),
   guest_contact: z.string().trim().max(200).optional().nullable(),
   source: z.string().trim().max(60).optional().nullable(),
-  internal_note: z.string().max(1000).optional().nullable(),
+  internal_note: z.string().trim().max(2000).optional().nullable(),
+  preferences: z.string().trim().max(2000).optional().nullable(),
+  taboos: z.string().trim().max(2000).optional().nullable(),
+  health_notes: z.string().trim().max(2000).optional().nullable(),
   booking_type: z.enum(["single", "duo", "content"]),
   duo_partner: z.string().trim().max(120).optional().nullable(),
   total_amount: z.number().positive().max(1_000_000),
@@ -1202,11 +1205,26 @@ export const createManualBooking = createServerFn({ method: "POST" })
     const guestEmail = isEmail
       ? contact
       : `manuell+${crypto.randomUUID().slice(0, 8)}@intern.local`;
-    const contactLine = contact && !isEmail ? `Kontakt: ${contact}\n` : "";
-    const sourceLine = data.source ? `Quelle: ${data.source}\n` : "";
-    const noteLine = data.internal_note ? `Notiz: ${data.internal_note}\n` : "";
-    const message =
-      `${sourceLine}${contactLine}${noteLine}Manuell durch Admin eingetragen.`.trim();
+    const profileSections = [
+      data.preferences ? `Vorlieben & Wünsche:\n${data.preferences}` : null,
+      data.taboos ? `Tabus & Grenzen:\n${data.taboos}` : null,
+      data.health_notes ? `Gesundheitliche Hinweise:\n${data.health_notes}` : null,
+    ].filter(Boolean);
+    const originLines = [
+      data.source ? `Quelle: ${data.source}` : null,
+      contact && !isEmail ? `Kontakt: ${contact}` : null,
+    ].filter(Boolean);
+    const message = [
+      ...originLines,
+      ...profileSections,
+      "—\nManuell durch Admin eingetragen.",
+    ].join("\n\n");
+    const combinedInternalNote = [
+      data.preferences ? `Vorlieben & Wünsche:\n${data.preferences}` : null,
+      data.taboos ? `Tabus & Grenzen:\n${data.taboos}` : null,
+      data.health_notes ? `Gesundheitliche Hinweise:\n${data.health_notes}` : null,
+      data.internal_note ? `Weitere Notiz:\n${data.internal_note}` : null,
+    ].filter(Boolean).join("\n\n") || null;
 
     // First check only real blocked/reserved/booked slots. Open availability
     // windows must not block a manual booking; they are resized below.
@@ -1300,12 +1318,12 @@ export const createManualBooking = createServerFn({ method: "POST" })
       throw new Error(slotErr?.message ?? "Termin konnte nicht angelegt werden.");
     }
 
-    if (data.internal_note || context.userId) {
+    if (combinedInternalNote || context.userId) {
       await supabaseAdmin
         .from("availability_slot_admin_meta")
         .insert({
           slot_id: slot.id,
-          internal_note: data.internal_note ?? null,
+          internal_note: combinedInternalNote,
           created_by: context.userId,
         });
     }
@@ -1327,7 +1345,7 @@ export const createManualBooking = createServerFn({ method: "POST" })
         requested_start: data.starts_at,
         message,
         status: "confirmed",
-        admin_note: data.internal_note ?? null,
+        admin_note: combinedInternalNote,
         anzahlung: data.deposit_amount,
         anzahlung_method: data.deposit_method,
         anzahlung_paid: true,
