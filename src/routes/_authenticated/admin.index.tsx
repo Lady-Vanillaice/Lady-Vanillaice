@@ -46,6 +46,7 @@ type DashboardBooking = {
   cash_received_at: string | null;
   completed_at: string | null;
   fully_paid: boolean | null;
+  created_at: string;
   availability_slots: { starts_at: string }[] | { starts_at: string } | null;
 };
 
@@ -339,7 +340,7 @@ function DashboardOverview() {
     queryKey: ["admin-dashboard-bookings"],
     queryFn: async (): Promise<DashboardBooking[]> => {
       const { data, error } = await supabase.from("bookings")
-        .select("id, guest_name, requested_start, status, anzahlung_paid, anzahlung, anzahlung_method, anzahlung_paid_at, deposit_exemption_reason, bar, cash_received_at, completed_at, fully_paid, availability_slots(starts_at)")
+        .select("id, guest_name, requested_start, status, anzahlung_paid, anzahlung, anzahlung_method, anzahlung_paid_at, deposit_exemption_reason, bar, cash_received_at, completed_at, fully_paid, created_at, availability_slots(starts_at)")
         .in("status", ["confirmed", "pending", "cancelled", "rescheduling"]);
       if (error) throw error;
       return (data ?? []) as DashboardBooking[];
@@ -349,7 +350,11 @@ function DashboardOverview() {
   const pendingRequests = (q.data ?? [])
     .map(booking => ({ booking, start: bookingStart(booking) }))
     .filter((row): row is PaymentRow => Boolean(row.start))
-    .filter(({ booking }) => booking.status === "pending")
+    .filter(({ booking }) => {
+      if (booking.completed_at || booking.fully_paid || booking.cash_received_at) return false;
+      if (!["pending", "rescheduling", "open"].includes(booking.status)) return false;
+      return Date.now() - new Date(booking.created_at).getTime() <= 24 * 60 * 60 * 1000;
+    })
     .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
   const now = new Date();
   const currentMonth = { start: startOfMonth(now), end: endOfMonth(now) };
