@@ -10,7 +10,7 @@ import {
   StatusBadge,
   type Slot,
 } from "@/components/admin/admin-shared";
-import { Trash2, MapPin, ArrowLeft, Eye, EyeOff, CalendarPlus, Copy, Pencil, Save, X } from "lucide-react";
+import { Trash2, MapPin, ArrowLeft, Eye, EyeOff, CalendarPlus, Copy, Pencil, Save, X, Download, Crown } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -130,6 +130,8 @@ function AdminKalenderPage() {
           </div>
 
           <NewSlotForm onCreate={(v) => createMut.mutateAsync(v)} pending={createMut.isPending} />
+
+          <FreeSlotImageExport slots={slotsQ.data ?? []} loading={slotsQ.isLoading} />
 
           <div className="mt-8 space-y-6">
             {slotsQ.isLoading && <p className="text-vanilla/50 text-sm">Lade…</p>}
@@ -255,6 +257,193 @@ function AdminKalenderPage() {
         </div>
       </section>
     </>
+  );
+}
+
+function FreeSlotImageExport({ slots, loading }: { slots: Slot[]; loading: boolean }) {
+  const freeSlots = slots.filter(
+    (slot) =>
+      slot.status === "open" &&
+      !slot.is_hidden &&
+      new Date(slot.ends_at).getTime() > Date.now(),
+  );
+
+  function downloadImage() {
+    if (freeSlots.length === 0) return;
+
+    const width = 1080;
+    const outerPadding = 54;
+    const headerHeight = 270;
+    const rowHeight = 132;
+    const footerHeight = 116;
+    const height = Math.max(720, headerHeight + freeSlots.length * rowHeight + footerHeight);
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const background = "#0b0b0c";
+    const card = "#12100e";
+    const gold = "#d8b676";
+    const softGold = "#8f7448";
+    const vanilla = "#f4ead8";
+    const muted = "#a99d8d";
+
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, width, height);
+
+    const gradient = ctx.createRadialGradient(width / 2, 80, 20, width / 2, 100, width * 0.75);
+    gradient.addColorStop(0, "rgba(216,182,118,0.13)");
+    gradient.addColorStop(1, "rgba(11,11,12,0)");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.strokeStyle = gold;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(outerPadding, outerPadding, width - outerPadding * 2, height - outerPadding * 2);
+    ctx.strokeStyle = softGold;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(outerPadding + 13, outerPadding + 13, width - (outerPadding + 13) * 2, height - (outerPadding + 13) * 2);
+
+    // Crown monogram used in the website header.
+    const crownX = width / 2;
+    const crownY = 92;
+    ctx.strokeStyle = gold;
+    ctx.lineWidth = 5;
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    ctx.moveTo(crownX - 48, crownY + 20);
+    ctx.lineTo(crownX - 58, crownY - 28);
+    ctx.lineTo(crownX - 22, crownY - 2);
+    ctx.lineTo(crownX, crownY - 40);
+    ctx.lineTo(crownX + 22, crownY - 2);
+    ctx.lineTo(crownX + 58, crownY - 28);
+    ctx.lineTo(crownX + 48, crownY + 20);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(crownX - 46, crownY + 36);
+    ctx.lineTo(crownX + 46, crownY + 36);
+    ctx.stroke();
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = gold;
+    ctx.font = '44px Georgia, "Times New Roman", serif';
+    ctx.fillText("LADY VANILLA ICE", width / 2, 180);
+    ctx.fillStyle = vanilla;
+    ctx.font = '22px Arial, sans-serif';
+    ctx.letterSpacing = "8px";
+    ctx.fillText("FREIE TERMINE", width / 2, 225);
+    ctx.letterSpacing = "0px";
+
+    freeSlots.forEach((slot, index) => {
+      const y = headerHeight + index * rowHeight;
+      const start = new Date(slot.starts_at);
+      const end = new Date(slot.ends_at);
+
+      ctx.fillStyle = card;
+      ctx.fillRect(outerPadding + 28, y, width - (outerPadding + 28) * 2, rowHeight - 18);
+      ctx.strokeStyle = "rgba(216,182,118,0.35)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(outerPadding + 28, y, width - (outerPadding + 28) * 2, rowHeight - 18);
+
+      ctx.textAlign = "left";
+      ctx.fillStyle = gold;
+      ctx.font = 'bold 25px Arial, sans-serif';
+      ctx.fillText(format(start, "dd.MM.yyyy", { locale: de }), outerPadding + 58, y + 42);
+
+      ctx.fillStyle = vanilla;
+      ctx.font = '34px Georgia, "Times New Roman", serif';
+      ctx.fillText(
+        `${format(start, "HH:mm", { locale: de })} – ${format(end, "HH:mm", { locale: de })} Uhr`,
+        outerPadding + 58,
+        y + 84,
+      );
+
+      ctx.textAlign = "right";
+      ctx.fillStyle = muted;
+      ctx.font = '22px Arial, sans-serif';
+      const studio = slot.location.length > 34 ? `${slot.location.slice(0, 31)}…` : slot.location;
+      ctx.fillText(studio, width - outerPadding - 58, y + 48);
+
+      const tags = [
+        slot.is_duo ? `DUO${slot.duo_partner ? ` · ${slot.duo_partner}` : ""}` : "",
+        slot.is_content_shoot ? "CONTENT" : "",
+      ].filter(Boolean).join("  ·  ");
+      if (tags) {
+        ctx.fillStyle = gold;
+        ctx.font = 'bold 16px Arial, sans-serif';
+        ctx.fillText(tags, width - outerPadding - 58, y + 82);
+      }
+    });
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = softGold;
+    ctx.font = '18px Arial, sans-serif';
+    ctx.fillText("BUCHUNGSANFRAGE · LADY-VANILLAICE.COM", width / 2, height - 72);
+
+    const link = document.createElement("a");
+    link.download = `lady-vanilla-ice-freie-termine-${format(new Date(), "yyyy-MM-dd")}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  }
+
+  return (
+    <section className="mt-8 border border-champagne/35 bg-card p-5 sm:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-champagne">
+            <Crown size={19} strokeWidth={1.4} />
+            <h2 className="font-display text-2xl">Freie Termine als Bild</h2>
+          </div>
+          <p className="mt-2 text-xs leading-relaxed text-vanilla/55">
+            Übersicht aller zukünftigen, sichtbaren und frei buchbaren Zeitfenster – gestaltet im Lady-Vanilla-Ice-Look.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={downloadImage}
+          disabled={loading || freeSlots.length === 0}
+          className="btn-gold shrink-0 !py-2.5 !px-4 !text-[0.65rem] disabled:opacity-40"
+        >
+          <Download size={14} />
+          Als Bild herunterladen
+        </button>
+      </div>
+
+      <div className="mt-5 overflow-hidden border border-champagne/20">
+        {loading ? (
+          <p className="p-5 text-sm text-vanilla/50">Freie Termine werden geladen…</p>
+        ) : freeSlots.length === 0 ? (
+          <p className="p-5 text-sm text-vanilla/50">Aktuell sind keine freien, sichtbaren Termine vorhanden.</p>
+        ) : (
+          <div className="divide-y divide-champagne/10">
+            {freeSlots.map((slot) => (
+              <div key={slot.id} className="grid grid-cols-[1fr_auto] gap-3 p-4">
+                <div className="min-w-0">
+                  <div className="font-display text-lg text-vanilla">
+                    {format(new Date(slot.starts_at), "EEEE, dd.MM.yyyy", { locale: de })}
+                  </div>
+                  <div className="mt-1 text-xs text-vanilla/55 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span>
+                      {format(new Date(slot.starts_at), "HH:mm", { locale: de })} –{" "}
+                      {format(new Date(slot.ends_at), "HH:mm", { locale: de })} Uhr
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <MapPin size={11} /> {slot.location}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right text-[0.55rem] uppercase tracking-[0.16em] text-champagne">
+                  {slot.is_duo ? "Duo" : slot.is_content_shoot ? "Content" : "Frei"}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
