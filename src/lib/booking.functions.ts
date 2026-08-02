@@ -932,10 +932,6 @@ export const updateBookingType = createServerFn({ method: "POST" })
   id: z.string().uuid(),
   booking_type: z.enum(["single", "duo"]),
   duo_partner: z.string().trim().max(120).optional().nullable(),
-  total_amount: z.number().positive().max(1_000_000),
-  deposit_amount: z.number().positive().max(1_000_000),
-  deposit_method: z.string().trim().min(1).max(100),
-  deposit_paid_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   is_content_shoot: z.boolean(),
 }).parse(d),
   )
@@ -1167,6 +1163,10 @@ const manualBookingInput = z.object({
   internal_note: z.string().max(1000).optional().nullable(),
   booking_type: z.enum(["single", "duo", "content"]),
   duo_partner: z.string().trim().max(120).optional().nullable(),
+  total_amount: z.number().positive().max(1_000_000),
+  deposit_amount: z.number().positive().max(1_000_000),
+  deposit_method: z.string().trim().min(1).max(100),
+  deposit_paid_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 
 export const createManualBooking = createServerFn({ method: "POST" })
@@ -1183,6 +1183,9 @@ export const createManualBooking = createServerFn({ method: "POST" })
     const durationMinutes = Math.round((endsAt.getTime() - startsAt.getTime()) / 60_000);
     if (durationMinutes < 15) {
       throw new Error("Termin muss mindestens 15 Minuten dauern.");
+    }
+    if (!data.deposit_paid_at) {
+      throw new Error("Das Eingangsdatum der Anzahlung fehlt.");
     }
     if (data.deposit_amount > data.total_amount) {
       throw new Error("Die Anzahlung darf nicht höher als der Gesamtpreis sein.");
