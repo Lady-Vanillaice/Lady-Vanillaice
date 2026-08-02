@@ -344,110 +344,39 @@ function DashboardOverview() {
     },
   });
 
-  const now = new Date();
-  const today = startOfDay(now);
-  const week = { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfWeek(now, { weekStartsOn: 1 }) };
-  const month = { start: startOfMonth(now), end: endOfMonth(now) };
-  const bookings = (q.data ?? []).map(booking => ({ booking, start: bookingStart(booking) })).filter((row): row is PaymentRow => Boolean(row.start));
-  const confirmed = bookings.filter(({ booking }) => booking.status === "confirmed");
-  const active = bookings.filter(({ booking }) => booking.status === "confirmed" || booking.status === "pending");
-  const todayBookings = confirmed.filter(({ start }) => startOfDay(new Date(start)).getTime() === today.getTime());
-  const weekBookings = confirmed.filter(({ start }) => isWithinInterval(new Date(start), week));
-
-  const pendingRequests = active
+  const pendingRequests = (q.data ?? [])
+    .map(booking => ({ booking, start: bookingStart(booking) }))
+    .filter((row): row is PaymentRow => Boolean(row.start))
     .filter(({ booking }) => booking.status === "pending")
     .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
-  const openDeposits = active
-    .filter(({ booking }) => !booking.deposit_exemption_reason && Number(booking.anzahlung ?? 0) > 0 && !booking.anzahlung_paid)
-    .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
-  const openCash = confirmed
-    .filter(({ booking }) => Number(booking.bar ?? 0) > 0 && !booking.cash_received_at && !booking.fully_paid)
-    .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
-
-  const revenueRows: RevenueRow[] = (q.data ?? []).flatMap(booking => {
-    const rows: RevenueRow[] = [];
-    if (booking.anzahlung_paid && Number(booking.anzahlung ?? 0) > 0 && booking.anzahlung_paid_at) {
-      rows.push({ booking, kind: "Anzahlung", amount: Number(booking.anzahlung), paidAt: booking.anzahlung_paid_at });
+  const now = new Date();
+  const currentMonth = { start: startOfMonth(now), end: endOfMonth(now) };
+  const monthRevenue = (q.data ?? []).reduce((sum, booking) => {
+    let received = 0;
+    if (booking.anzahlung_paid && Number(booking.anzahlung ?? 0) > 0 && booking.anzahlung_paid_at && isWithinInterval(new Date(booking.anzahlung_paid_at), currentMonth)) {
+      received += Number(booking.anzahlung);
     }
     const cashDate = booking.cash_received_at ?? (booking.fully_paid ? booking.completed_at : null);
-    if (Number(booking.bar ?? 0) > 0 && cashDate) {
-      rows.push({ booking, kind: "Barzahlung", amount: Number(booking.bar), paidAt: cashDate });
+    if (Number(booking.bar ?? 0) > 0 && cashDate && isWithinInterval(new Date(cashDate), currentMonth)) {
+      received += Number(booking.bar);
     }
-    return rows;
-  }).filter(row => isWithinInterval(new Date(row.paidAt), month))
-    .sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime());
-
-  const monthRevenue = revenueRows.reduce((sum, row) => sum + row.amount, 0);
-  const nextBookings = confirmed.filter(({ start }) => new Date(start) >= now).sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()).slice(0, 5);
-
-  const metrics = [
-    { label: "Termine heute", value: todayBookings.length, Icon: Clock3, kind: null as DetailKind },
-    { label: "Termine diese Woche", value: weekBookings.length, Icon: CalendarClock, kind: null as DetailKind },
-    { label: "Neue Anfragen", value: pendingRequests.length, Icon: Mail, kind: null as DetailKind },
-    { label: "Offene Anzahlungen", value: openDeposits.length, Icon: CircleAlert, kind: "deposit" as DetailKind },
-    { label: "Offene Barzahlungen", value: openCash.length, Icon: Wallet, kind: "cash" as DetailKind },
-    { label: "Umsatz diesen Monat", value: eur(monthRevenue), Icon: BadgeEuro, kind: "revenue" as DetailKind },
-  ];
-
+    return sum + received;
+  }, 0);
   return <div className="mb-10">
-    <div className="flex items-baseline justify-between flex-wrap gap-2 mb-5 pb-3 border-b border-champagne/15">
-      <h2 className="font-display text-2xl gold-text">Heute im Blick</h2><span className="text-[0.65rem] uppercase tracking-[0.2em] text-vanilla/45">Stand {format(now, "dd.MM.yyyy · HH:mm", { locale: de })} Uhr</span>
-    </div>
-    {q.isLoading ? <p className="text-sm text-vanilla/50">Dashboard wird geladen…</p> : q.isError ? <p className="text-sm text-bordeaux">Dashboard-Daten konnten nicht geladen werden.</p> : <>
-      <div className="grid sm:grid-cols-2 xl:grid-cols-6 gap-4 mb-5">{metrics.map(({ label, value, Icon, kind }) => {
-        const clickable = Boolean(kind);
-        return <button key={label} type="button" disabled={!clickable} onClick={() => kind && setDetail(detail === kind ? null : kind)} className={`text-left bg-card border p-5 transition ${clickable ? "border-champagne/25 hover:border-champagne/60 cursor-pointer" : "border-champagne/15 cursor-default"}`}>
-          <div className="flex items-start justify-between"><Icon size={18} className="text-champagne mb-3" />{clickable && <ChevronDown size={16} className={`text-champagne transition ${detail === kind ? "rotate-180" : ""}`} />}</div>
-          <div className="font-display text-2xl text-vanilla">{value}</div><div className="mt-1 text-[0.65rem] uppercase tracking-[0.18em] text-vanilla/50">{label}</div>
-        </button>;
-      })}</div>
-
-      {detail === "deposit" && <PaymentDetails title="Offene Anzahlungen" empty="Keine offenen Anzahlungen." rows={openDeposits} amount={row => Number(row.booking.anzahlung ?? 0)} note={row => row.booking.anzahlung_method ? `Zahlungsart: ${row.booking.anzahlung_method}` : "Anzahlung noch nicht erhalten"} />}
-      {detail === "cash" && <PaymentDetails title="Noch beim Termin zu zahlen" empty="Keine offenen Barzahlungen." rows={openCash} amount={row => Number(row.booking.bar ?? 0)} note={() => "Dieser Betrag ist beim Termin noch zu zahlen"} />}
-      {detail === "revenue" && <RevenueDetails rows={revenueRows} total={monthRevenue} />}
-
-      <div className="bg-card border border-champagne/30 p-5 mb-5">
-        <div className="flex items-center justify-between gap-3 mb-4">
-          <div>
-            <h3 className="font-display text-xl text-vanilla">Jetzt erledigen</h3>
-            <p className="text-xs text-vanilla/45 mt-1">Die wichtigsten offenen Aufgaben in sinnvoller Reihenfolge.</p>
-          </div>
-          <span className="text-xs text-champagne">{pendingRequests.length + openDeposits.length + openCash.length} offen</span>
-        </div>
-        {pendingRequests.length + openDeposits.length + openCash.length === 0 ? (
-          <div className="border border-green-700/30 bg-green-700/10 p-3 text-sm text-green-200">Alles erledigt – aktuell ist nichts offen.</div>
-        ) : (
-          <div className="space-y-2">
-            {pendingRequests.slice(0, 4).map(({ booking, start }) => (
-              <Link key={`request-${booking.id}`} to="/admin/buchung/$id" params={{ id: booking.id }} className="flex items-center justify-between gap-3 border border-bordeaux/35 bg-bordeaux/10 p-3 hover:border-bordeaux/70 transition">
-                <div><div className="text-sm text-vanilla">Anfrage von {booking.guest_name} beantworten</div><div className="text-xs text-vanilla/45">{format(new Date(start), "dd.MM.yyyy · HH:mm 'Uhr'", { locale: de })}</div></div>
-                <span className="text-[0.55rem] uppercase tracking-[0.16em] text-bordeaux">Dringend</span>
-              </Link>
-            ))}
-            {openDeposits.slice(0, 4).map(({ booking, start }) => (
-              <Link key={`deposit-${booking.id}`} to="/admin/buchung/$id" params={{ id: booking.id }} className="flex items-center justify-between gap-3 border border-amber-500/30 bg-amber-500/5 p-3 hover:border-amber-500/60 transition">
-                <div><div className="text-sm text-vanilla">Anzahlung bei {booking.guest_name} prüfen</div><div className="text-xs text-vanilla/45">{format(new Date(start), "dd.MM.yyyy · HH:mm 'Uhr'", { locale: de })}</div></div>
-                <span className="text-sm text-amber-200">{eur(Number(booking.anzahlung ?? 0))}</span>
-              </Link>
-            ))}
-            {openCash.slice(0, 4).map(({ booking, start }) => (
-              <Link key={`cash-${booking.id}`} to="/admin/buchung/$id" params={{ id: booking.id }} className="flex items-center justify-between gap-3 border border-champagne/20 p-3 hover:border-champagne/50 transition">
-                <div><div className="text-sm text-vanilla">Barzahlung bei {booking.guest_name} offen</div><div className="text-xs text-vanilla/45">{format(new Date(start), "dd.MM.yyyy · HH:mm 'Uhr'", { locale: de })}</div></div>
-                <span className="text-sm text-champagne">{eur(Number(booking.bar ?? 0))}</span>
-              </Link>
-            ))}
-          </div>
-        )}
+    {q.isLoading ? <p className="text-sm text-vanilla/50">Offene Anfragen werden geladen…</p> : q.isError ? <p className="text-sm text-bordeaux">Offene Anfragen konnten nicht geladen werden.</p> : (
+      <div className="space-y-4">
+        <Link to="/admin/termine" className="block bg-card border border-champagne/35 p-5 hover:border-champagne/70 transition">
+          <Mail size={20} className="text-champagne mb-4" />
+          <div className="font-display text-3xl text-vanilla">{pendingRequests.length}</div>
+          <div className="mt-1 text-[0.65rem] uppercase tracking-[0.18em] text-vanilla/50">Offene Anfragen</div>
+        </Link>
+        <Link to="/admin/kassenbuch" className="block bg-card border border-champagne/20 p-5 hover:border-champagne/60 transition">
+          <BadgeEuro size={20} className="text-champagne mb-4" />
+          <div className="font-display text-3xl text-vanilla">{eur(monthRevenue)}</div>
+          <div className="mt-1 text-[0.65rem] uppercase tracking-[0.18em] text-vanilla/50">Umsatz {format(now, "MMMM yyyy", { locale: de })}</div>
+        </Link>
       </div>
-
-      <div className="bg-card border border-champagne/15 p-5">
-        <div className="flex items-center justify-between gap-3 mb-4"><h3 className="font-display text-xl text-vanilla">Die nächsten Termine</h3><Link to="/admin/terminplan" className="text-xs uppercase tracking-[0.16em] text-champagne hover:text-vanilla transition">Terminplan <ArrowRight size={12} className="inline" /></Link></div>
-        {nextBookings.length === 0 ? <p className="text-sm text-vanilla/50">Keine kommenden bestätigten Termine.</p> : <div className="divide-y divide-champagne/10">{nextBookings.map(({ booking, start }) => <Link key={booking.id} to="/admin/buchung/$id" params={{ id: booking.id }} className="flex flex-col items-start gap-2 py-4 first:pt-0 last:pb-0 group">
-          <div><div className="text-vanilla group-hover:text-champagne transition">{booking.guest_name}</div><div className="text-xs text-vanilla/50">{format(new Date(start), "EEEE, dd.MM.yyyy · HH:mm 'Uhr'", { locale: de })}</div></div>
-          <div className="text-left"><div className="text-sm text-champagne">Noch zu zahlen: {eur((!booking.anzahlung_paid && !booking.deposit_exemption_reason ? Number(booking.anzahlung ?? 0) : 0) + (!booking.cash_received_at && !booking.fully_paid ? Number(booking.bar ?? 0) : 0))}</div><div className="text-[0.55rem] uppercase tracking-[0.16em] text-vanilla/45">Termin öffnen</div></div>
-        </Link>)}</div>}
-      </div>
-    </>}
+    )}
   </div>;
 }
 
