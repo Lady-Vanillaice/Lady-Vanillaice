@@ -141,6 +141,12 @@ export const Route = createFileRoute("/email/unsubscribe")({
           return Response.json({ error: 'Failed to process unsubscribe' }, { status: 500 })
         }
 
+        await supabase.from('newsletter_subscribers').update({
+          status: 'unsubscribed',
+          unsubscribed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }).eq('email', tokenRecord.email.toLowerCase())
+
         console.log('Email unsubscribed', {
           email_redacted: redactEmail(tokenRecord.email),
         })
