@@ -139,6 +139,7 @@ const [overrideDate, setOverrideDate] = useState("");
   const [anzahlungPaidDate, setAnzahlungPaidDate] = useState<string>("");
   const [paymentSaved, setPaymentSaved] = useState(false);
   const [depositPartnerRuby, setDepositPartnerRuby] = useState<boolean>(false);
+  const [includeDepositInfo, setIncludeDepositInfo] = useState<boolean>(false);
 
   // Content-Dreh Antwort
   const [cdrProposedDate, setCdrProposedDate] = useState("");
@@ -324,6 +325,7 @@ const depositDateMut = useMutation({
   const personalMsgMut = useMutation({
     mutationFn: (v: {
       message: string;
+      includeDepositInfo: boolean;
       depositOverride?: number | null;
       barOverride?: number | null;
       depositPartnerName?: string | null;
@@ -371,6 +373,7 @@ const depositDateMut = useMutation({
           data: {
             id,
             message: msg,
+            includeDepositInfo,
             depositOverride,
             barOverride,
             depositPartnerName: depositPartnerRuby ? RUBY_JUNE_NAME : null,
@@ -387,7 +390,7 @@ const depositDateMut = useMutation({
       }
     }, 400);
     return () => clearTimeout(t);
-  }, [confirmationNote, previewOpen, id, previewPersonalMessageFn, anzahlungInput, barInput, depositPartnerRuby]);
+  }, [confirmationNote, previewOpen, id, previewPersonalMessageFn, anzahlungInput, barInput, depositPartnerRuby, includeDepositInfo]);
 
   const contentdrehReplyMut = useMutation({
     mutationFn: (v: { proposedDate: string; price: string; depositAmount?: string; message?: string }) =>
@@ -834,9 +837,9 @@ const depositDateMut = useMutation({
               </div>
               <div>
                 <span className="text-champagne">1. „Nachricht senden"</span> (unten in diesem Kasten) →
-                der Gast bekommt eine <strong>eigenständige E-Mail</strong> nur mit deinem Text,
-                Kontaktdaten und Hinweis auf die 50 %-Anzahlung. Nutze das für lockere Kontaktaufnahme,
-                Rückfragen oder wenn der Termin noch nicht steht.
+                der Gast bekommt eine <strong>eigenständige E-Mail</strong> mit deinem Text und
+                Kontaktdaten. Der Hinweis auf die 50 %-Anzahlung wird nur mitgeschickt, wenn du ihn
+                unten bewusst aktivierst. Nutze das für lockere Kontaktaufnahme oder Rückfragen.
               </div>
               <div>
                 <span className="text-champagne">2. „Bestätigen"</span> (oben, Status-Buttons) →
@@ -880,6 +883,22 @@ const depositDateMut = useMutation({
               maxLength={2000}
               className="input-luxe w-full resize-y min-h-[120px] text-sm leading-relaxed"
             />
+            <label className="mt-3 flex items-start gap-3 border border-champagne/25 bg-anthracite/40 p-3 cursor-pointer hover:bg-anthracite/60 transition-colors">
+              <input
+                type="checkbox"
+                checked={includeDepositInfo}
+                onChange={(e) => setIncludeDepositInfo(e.target.checked)}
+                className="mt-1 accent-champagne"
+              />
+              <div className="flex-1">
+                <div className="text-[0.75rem] text-vanilla leading-snug">
+                  50-%-Anzahlungshinweis mitsenden
+                </div>
+                <div className="text-[0.65rem] text-vanilla/55 mt-1 leading-snug">
+                  Nur aktivieren, wenn ihr den Termin verbindlich vereinbaren möchtet. Ohne Häkchen enthält die Nachricht keinen Anzahlungshinweis.
+                </div>
+              </div>
+            </label>
             {isDuoBooking ? (
               <label className="mt-3 flex items-start gap-3 border border-champagne/25 bg-anthracite/40 p-3 cursor-pointer hover:bg-anthracite/60 transition-colors">
                 <input
@@ -911,13 +930,14 @@ const depositDateMut = useMutation({
                   if (!msg) return;
                   if (
                     confirm(
-                      'Persönliche Nachricht jetzt als eigene E-Mail an den Gast senden?\n\nDie E-Mail enthält deinen Text sowie Kontaktmöglichkeiten (E-Mail & WhatsApp) und den Hinweis auf die 50 %-Anzahlung.\n\nHinweis: Für „Termin reserviert" oder „Termin final bestätigt" musst du stattdessen die entsprechenden Buttons drücken — dieser Text wird dort automatisch mitgeschickt.',
+                      `Persönliche Nachricht jetzt als eigene E-Mail an den Gast senden?\n\nDie E-Mail enthält deinen Text sowie Kontaktmöglichkeiten (E-Mail & WhatsApp)${includeDepositInfo ? " und den Hinweis auf die 50 %-Anzahlung" : ""}.\n\nHinweis: Für „Termin reserviert" oder „Termin final bestätigt" musst du stattdessen die entsprechenden Buttons drücken — dieser Text wird dort automatisch mitgeschickt.`,
                     )
                   ) {
                     const parsedDeposit = Number((anzahlungInput || "").replace(",", "."));
                     const parsedBar = Number((barInput || "").replace(",", "."));
                     personalMsgMut.mutate({
                       message: msg,
+                      includeDepositInfo,
                       depositOverride: Number.isFinite(parsedDeposit) && parsedDeposit > 0 ? parsedDeposit : null,
                       barOverride: Number.isFinite(parsedBar) && parsedBar >= 0 ? parsedBar : null,
                       depositPartnerName: depositPartnerRuby ? RUBY_JUNE_NAME : null,
