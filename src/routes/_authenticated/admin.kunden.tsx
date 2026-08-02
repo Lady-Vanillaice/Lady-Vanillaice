@@ -26,6 +26,7 @@ function AdminKundenPage() {
   const listQ = useQuery({
     queryKey: ["admin-customers"],
     queryFn: () => listFn(),
+    retry: false,
   });
 
   const upsertMut = useMutation({
@@ -75,7 +76,7 @@ function AdminKundenPage() {
             Kunden<em className="font-script gold-text not-italic">liste</em>
           </>
         }
-        intro="Alle Gäste mit bestätigten Terminen — mit Pseudonym, Kontakt, Vorlieben und Tabus."
+        intro="Alle Gäste mit erfolgreich abgeschlossenen Sessions aus dem Kassenbuch — mit Pseudonym, Kontakt, Vorlieben und Tabus."
       />
       <section className="py-16">
         <div className="container-luxe max-w-5xl">
@@ -98,6 +99,12 @@ function AdminKundenPage() {
           </div>
 
           {listQ.isLoading && <p className="text-vanilla/50 text-sm">Lade…</p>}
+          {listQ.isError && (
+            <div className="border border-bordeaux/50 bg-bordeaux/10 p-4 text-sm text-vanilla/80">
+              <p>Die Kunden konnten nicht geladen werden: {(listQ.error as Error).message}</p>
+              <button type="button" onClick={() => listQ.refetch()} className="btn-outline-gold !py-2 !px-3 !text-[0.65rem] mt-3">Erneut laden</button>
+            </div>
+          )}
           {listQ.data && filtered.length === 0 && (
             <p className="text-vanilla/50 text-sm border border-dashed border-champagne/20 p-6 text-center">
               Noch keine bestätigten Kunden.
