@@ -98,6 +98,8 @@ function AdminHubPage() {
       <InstallAdminApp />
       <PushNotificationsCard />
 
+      <DashboardOverview />
+
       <section className="mb-10">
         <div className="flex items-baseline justify-between flex-wrap gap-2 mb-4 pb-3 border-b border-champagne/15">
           <h2 className="font-display text-2xl gold-text">Schnellzugriff</h2>
@@ -127,7 +129,6 @@ function AdminHubPage() {
         </div>
       </section>
 
-      <DashboardOverview />
       <div className="space-y-9 mb-12">{HUB_GROUPS.map(group => <div key={group.label}>
         <div className="flex items-baseline justify-between flex-wrap gap-2 mb-5 pb-3 border-b border-champagne/15">
           <h2 className="font-display text-2xl gold-text">{group.label}</h2><span className="text-[0.65rem] uppercase tracking-[0.2em] text-vanilla/45">{group.hint}</span>
@@ -368,7 +369,7 @@ function DashboardOverview() {
         <Link to="/admin/termine" className="block bg-card border border-champagne/35 p-5 hover:border-champagne/70 transition">
           <Mail size={20} className="text-champagne mb-4" />
           <div className="font-display text-3xl text-vanilla">{pendingRequests.length}</div>
-          <div className="mt-1 text-[0.65rem] uppercase tracking-[0.18em] text-vanilla/50">Offene Anfragen</div>
+          <div className="mt-1 text-[0.65rem] uppercase tracking-[0.18em] text-vanilla/50">Unbeantwortete Anfragen</div>
         </Link>
         <Link to="/admin/kassenbuch" className="block bg-card border border-champagne/20 p-5 hover:border-champagne/60 transition">
           <BadgeEuro size={20} className="text-champagne mb-4" />
