@@ -35,6 +35,8 @@ export type CashBookEntry = {
   status: "open" | "completed" | "cancelled" | "rescheduling";
   notiz: string | null;
   created_at: string;
+  payment_kind: "deposit" | "cash" | "pending" | "manual";
+  payment_date: string | null;
 };
 
 async function ensureAdmin(supabase: any, userId: string) {
@@ -92,36 +94,53 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
         durchgefuehrt_datum: !isStudioRent && Number(e.bar) > 0 ? e.datum : null,
         gesamt: isStudioRent ? 0 : Number(e.gesamt), status: "completed",
         notiz: e.notiz, created_at: e.created_at,
+        payment_kind: "manual", payment_date: e.datum,
       };
     });
 
-    const bookings: CashBookEntry[] = (bookingRes.data ?? []).map((b: any) => {
+    const bookings: CashBookEntry[] = (bookingRes.data ?? []).flatMap((b: any) => {
       const slot = (Array.isArray(b.availability_slots) ? b.availability_slots[0] : b.availability_slots) as {
         starts_at?: string; ends_at?: string; location?: string; location_address?: string | null; is_duo?: boolean; is_content_shoot?: boolean;
       } | null;
       const termin = dateOnly(b.requested_start ?? slot?.starts_at) ?? dateOnly(b.created_at)!;
-      const anzahlung = b.anzahlung_paid ? Number(b.anzahlung ?? 0) : 0;
-      const bar = b.cash_received_at || b.fully_paid ? Number(b.bar ?? 0) : 0;
+      const plannedDeposit = Number(b.anzahlung ?? 0);
+      const plannedCash = Number(b.bar ?? 0);
+      const depositDate = dateOnly(b.anzahlung_paid_at);
+      const cashDate = dateOnly(b.cash_received_at) ?? (b.fully_paid ? dateOnly(b.completed_at) : null);
       const status: CashBookEntry["status"] = b.status === "cancelled" ? "cancelled" : b.status === "rescheduling" ? "rescheduling" : b.fully_paid || b.completed_at ? "completed" : "open";
       const art = slot?.is_duo ? (slot?.is_content_shoot ? "Duo + Content" : "Duo") : (slot?.is_content_shoot ? "Single + Content" : "Single");
-      return {
-        id: `booking:${b.id}`, source: "booking", entry_type: "income", expense_category: null,
+      const common = {
+        source: "booking" as const, entry_type: "income" as const, expense_category: null,
         expense_amount: 0, payment_method: null, booking_id: b.id, termin_datum: termin,
         termin_start: b.requested_start ?? slot?.starts_at ?? null, termin_ende: slot?.ends_at ?? null,
         studio: b.studio_override?.trim() || slot?.location || "—",
         studio_address: b.studio_address_override?.trim() || slot?.location_address || null,
-        kunde: b.guest_name, art, dauer: durationLabel(b.duration_minutes, b.duration), anzahlung,
-        anzahlung_vorgemerkt: Number(b.anzahlung ?? 0),
-        anzahlung_method: b.anzahlung_method ?? null, anzahlung_datum: dateOnly(b.anzahlung_paid_at),
+        kunde: b.guest_name, art, dauer: durationLabel(b.duration_minutes, b.duration),
+        anzahlung_vorgemerkt: plannedDeposit,
+        anzahlung_method: b.anzahlung_method ?? null, anzahlung_datum: depositDate,
         deposit_exemption_reason: b.deposit_exemption_reason ?? null, deposit_guarantor: b.deposit_guarantor ?? null,
-        bar, restbetrag_vorgemerkt: Number(b.bar ?? 0), bar_datum: dateOnly(b.cash_received_at), durchgefuehrt_datum: dateOnly(b.completed_at), gesamt: anzahlung + bar,
+        restbetrag_vorgemerkt: plannedCash, bar_datum: cashDate, durchgefuehrt_datum: dateOnly(b.completed_at),
         status, notiz: b.admin_note ?? null, created_at: b.created_at,
       };
+      const entries: CashBookEntry[] = [];
+      if (b.anzahlung_paid && plannedDeposit > 0 && depositDate) entries.push({
+        ...common, id: `booking:${b.id}:deposit`, payment_kind: "deposit", payment_date: depositDate,
+        anzahlung: plannedDeposit, bar: 0, gesamt: plannedDeposit,
+      });
+      if (plannedCash > 0 && cashDate) entries.push({
+        ...common, id: `booking:${b.id}:cash`, payment_kind: "cash", payment_date: cashDate,
+        anzahlung: 0, bar: plannedCash, gesamt: plannedCash,
+      });
+      if (plannedCash > 0 && !cashDate) entries.push({
+        ...common, id: `booking:${b.id}:pending`, payment_kind: "pending", payment_date: null,
+        anzahlung: 0, bar: 0, gesamt: 0,
+      });
+      return entries;
     });
 
     return [...manual, ...bookings].sort((a, b) => {
-      const ad = a.termin_start || a.termin_datum;
-      const bd = b.termin_start || b.termin_datum;
+      const ad = a.payment_date || a.termin_start || a.termin_datum;
+      const bd = b.payment_date || b.termin_start || b.termin_datum;
       return ad < bd ? 1 : ad > bd ? -1 : 0;
     });
   });
