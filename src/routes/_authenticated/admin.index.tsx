@@ -13,7 +13,7 @@ import { PageHeader } from "@/components/site/PageHeader";
 import {
   LogOut, Calendar, Mail, ShieldCheck, CheckCircle2, XCircle, MessageSquare, Quote,
   Camera, Sparkles, Wallet, RotateCcw, CalendarClock, Users, Clock3, BadgeEuro,
-  CircleAlert, ArrowRight, ChevronDown, Download, Share, Bell, BellOff,
+  CircleAlert, ArrowRight, ChevronDown, Download, Share, Bell, BellOff, Send,
 } from "lucide-react";
 import { endOfMonth, endOfWeek, format, isWithinInterval, startOfDay, startOfMonth, startOfWeek } from "date-fns";
 import { de } from "date-fns/locale";
@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_authenticated/admin/")({
 });
 
 type HubCard = {
-  to: "/admin/kalender" | "/admin/terminplan" | "/admin/termine" | "/admin/duo" | "/admin/contentdreh" | "/admin/custom" | "/admin/fotoshooting" | "/admin/kassenbuch" | "/admin/erfahrungsberichte" | "/admin/umplanen" | "/admin/kunden" | "/admin/agb";
+  to: "/admin/kalender" | "/admin/terminplan" | "/admin/termine" | "/admin/duo" | "/admin/contentdreh" | "/admin/custom" | "/admin/fotoshooting" | "/admin/kassenbuch" | "/admin/erfahrungsberichte" | "/admin/umplanen" | "/admin/kunden" | "/admin/agb" | "/admin/newsletter";
   title: string;
   description: string;
   Icon: typeof Calendar;
@@ -71,6 +71,7 @@ const HUB_GROUPS: HubGroup[] = [
     { to: "/admin/kassenbuch", title: "Kassenbuch", description: "Einnahmen, Anzahlungen und Bar-Beträge.", Icon: Wallet },
   ]},
   { label: "Inhalte", hint: "Website-Inhalte pflegen", cards: [
+    { to: "/admin/newsletter", title: "Neue Termine versenden", description: "Newsletter an bestätigte Empfänger senden.", Icon: Send },
     { to: "/admin/erfahrungsberichte", title: "Erfahrungsberichte", description: "Eingereichte Erfahrungsberichte freigeben.", Icon: Quote },
     { to: "/admin/agb", title: "AGB", description: "AGB-Text bearbeiten und einfügen.", Icon: MessageSquare },
   ]},

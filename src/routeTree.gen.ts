@@ -15,6 +15,7 @@ import { Route as TabusRouteImport } from './routes/tabus'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as PreiseRouteImport } from './routes/preise'
 import { Route as OnlineRouteImport } from './routes/online'
+import { Route as NewsletterBestaetigenRouteImport } from './routes/newsletter-bestaetigen'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LeistungenRouteImport } from './routes/leistungen'
 import { Route as KontaktRouteImport } from './routes/kontakt'
@@ -43,6 +44,7 @@ import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/em
 import { Route as AuthenticatedAdminUmplanenRouteImport } from './routes/_authenticated/admin.umplanen'
 import { Route as AuthenticatedAdminTerminplanRouteImport } from './routes/_authenticated/admin.terminplan'
 import { Route as AuthenticatedAdminTermineRouteImport } from './routes/_authenticated/admin.termine'
+import { Route as AuthenticatedAdminNewsletterRouteImport } from './routes/_authenticated/admin.newsletter'
 import { Route as AuthenticatedAdminKundenRouteImport } from './routes/_authenticated/admin.kunden'
 import { Route as AuthenticatedAdminKassenbuchRouteImport } from './routes/_authenticated/admin.kassenbuch'
 import { Route as AuthenticatedAdminKalenderRouteImport } from './routes/_authenticated/admin.kalender'
@@ -90,6 +92,11 @@ const PreiseRoute = PreiseRouteImport.update({
 const OnlineRoute = OnlineRouteImport.update({
   id: '/online',
   path: '/online',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewsletterBestaetigenRoute = NewsletterBestaetigenRouteImport.update({
+  id: '/newsletter-bestaetigen',
+  path: '/newsletter-bestaetigen',
   getParentRoute: () => rootRouteImport,
 } as any)
 const McpRoute = McpRouteImport.update({
@@ -236,6 +243,12 @@ const AuthenticatedAdminTermineRoute =
     path: '/termine',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminNewsletterRoute =
+  AuthenticatedAdminNewsletterRouteImport.update({
+    id: '/newsletter',
+    path: '/newsletter',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminKundenRoute =
   AuthenticatedAdminKundenRouteImport.update({
     id: '/kunden',
@@ -358,6 +371,7 @@ export interface FileRoutesByFullPath {
   '/kontakt': typeof KontaktRoute
   '/leistungen': typeof LeistungenRoute
   '/mcp': typeof McpRoute
+  '/newsletter-bestaetigen': typeof NewsletterBestaetigenRoute
   '/online': typeof OnlineRoute
   '/preise': typeof PreiseRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -381,6 +395,7 @@ export interface FileRoutesByFullPath {
   '/admin/kalender': typeof AuthenticatedAdminKalenderRoute
   '/admin/kassenbuch': typeof AuthenticatedAdminKassenbuchRoute
   '/admin/kunden': typeof AuthenticatedAdminKundenRoute
+  '/admin/newsletter': typeof AuthenticatedAdminNewsletterRoute
   '/admin/termine': typeof AuthenticatedAdminTermineRoute
   '/admin/terminplan': typeof AuthenticatedAdminTerminplanRoute
   '/admin/umplanen': typeof AuthenticatedAdminUmplanenRoute
@@ -411,6 +426,7 @@ export interface FileRoutesByTo {
   '/kontakt': typeof KontaktRoute
   '/leistungen': typeof LeistungenRoute
   '/mcp': typeof McpRoute
+  '/newsletter-bestaetigen': typeof NewsletterBestaetigenRoute
   '/online': typeof OnlineRoute
   '/preise': typeof PreiseRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -433,6 +449,7 @@ export interface FileRoutesByTo {
   '/admin/kalender': typeof AuthenticatedAdminKalenderRoute
   '/admin/kassenbuch': typeof AuthenticatedAdminKassenbuchRoute
   '/admin/kunden': typeof AuthenticatedAdminKundenRoute
+  '/admin/newsletter': typeof AuthenticatedAdminNewsletterRoute
   '/admin/termine': typeof AuthenticatedAdminTermineRoute
   '/admin/terminplan': typeof AuthenticatedAdminTerminplanRoute
   '/admin/umplanen': typeof AuthenticatedAdminUmplanenRoute
@@ -465,6 +482,7 @@ export interface FileRoutesById {
   '/kontakt': typeof KontaktRoute
   '/leistungen': typeof LeistungenRoute
   '/mcp': typeof McpRoute
+  '/newsletter-bestaetigen': typeof NewsletterBestaetigenRoute
   '/online': typeof OnlineRoute
   '/preise': typeof PreiseRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -488,6 +506,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/kalender': typeof AuthenticatedAdminKalenderRoute
   '/_authenticated/admin/kassenbuch': typeof AuthenticatedAdminKassenbuchRoute
   '/_authenticated/admin/kunden': typeof AuthenticatedAdminKundenRoute
+  '/_authenticated/admin/newsletter': typeof AuthenticatedAdminNewsletterRoute
   '/_authenticated/admin/termine': typeof AuthenticatedAdminTermineRoute
   '/_authenticated/admin/terminplan': typeof AuthenticatedAdminTerminplanRoute
   '/_authenticated/admin/umplanen': typeof AuthenticatedAdminUmplanenRoute
@@ -520,6 +539,7 @@ export interface FileRouteTypes {
     | '/kontakt'
     | '/leistungen'
     | '/mcp'
+    | '/newsletter-bestaetigen'
     | '/online'
     | '/preise'
     | '/sitemap.xml'
@@ -543,6 +563,7 @@ export interface FileRouteTypes {
     | '/admin/kalender'
     | '/admin/kassenbuch'
     | '/admin/kunden'
+    | '/admin/newsletter'
     | '/admin/termine'
     | '/admin/terminplan'
     | '/admin/umplanen'
@@ -573,6 +594,7 @@ export interface FileRouteTypes {
     | '/kontakt'
     | '/leistungen'
     | '/mcp'
+    | '/newsletter-bestaetigen'
     | '/online'
     | '/preise'
     | '/sitemap.xml'
@@ -595,6 +617,7 @@ export interface FileRouteTypes {
     | '/admin/kalender'
     | '/admin/kassenbuch'
     | '/admin/kunden'
+    | '/admin/newsletter'
     | '/admin/termine'
     | '/admin/terminplan'
     | '/admin/umplanen'
@@ -626,6 +649,7 @@ export interface FileRouteTypes {
     | '/kontakt'
     | '/leistungen'
     | '/mcp'
+    | '/newsletter-bestaetigen'
     | '/online'
     | '/preise'
     | '/sitemap.xml'
@@ -649,6 +673,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/kalender'
     | '/_authenticated/admin/kassenbuch'
     | '/_authenticated/admin/kunden'
+    | '/_authenticated/admin/newsletter'
     | '/_authenticated/admin/termine'
     | '/_authenticated/admin/terminplan'
     | '/_authenticated/admin/umplanen'
@@ -681,6 +706,7 @@ export interface RootRouteChildren {
   KontaktRoute: typeof KontaktRoute
   LeistungenRoute: typeof LeistungenRoute
   McpRoute: typeof McpRoute
+  NewsletterBestaetigenRoute: typeof NewsletterBestaetigenRoute
   OnlineRoute: typeof OnlineRoute
   PreiseRoute: typeof PreiseRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -744,6 +770,13 @@ declare module '@tanstack/react-router' {
       path: '/online'
       fullPath: '/online'
       preLoaderRoute: typeof OnlineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/newsletter-bestaetigen': {
+      id: '/newsletter-bestaetigen'
+      path: '/newsletter-bestaetigen'
+      fullPath: '/newsletter-bestaetigen'
+      preLoaderRoute: typeof NewsletterBestaetigenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mcp': {
@@ -942,6 +975,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminTermineRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/newsletter': {
+      id: '/_authenticated/admin/newsletter'
+      path: '/newsletter'
+      fullPath: '/admin/newsletter'
+      preLoaderRoute: typeof AuthenticatedAdminNewsletterRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/kunden': {
       id: '/_authenticated/admin/kunden'
       path: '/kunden'
@@ -1081,6 +1121,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminKalenderRoute: typeof AuthenticatedAdminKalenderRoute
   AuthenticatedAdminKassenbuchRoute: typeof AuthenticatedAdminKassenbuchRoute
   AuthenticatedAdminKundenRoute: typeof AuthenticatedAdminKundenRoute
+  AuthenticatedAdminNewsletterRoute: typeof AuthenticatedAdminNewsletterRoute
   AuthenticatedAdminTermineRoute: typeof AuthenticatedAdminTermineRoute
   AuthenticatedAdminTerminplanRoute: typeof AuthenticatedAdminTerminplanRoute
   AuthenticatedAdminUmplanenRoute: typeof AuthenticatedAdminUmplanenRoute
@@ -1100,6 +1141,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminKalenderRoute: AuthenticatedAdminKalenderRoute,
   AuthenticatedAdminKassenbuchRoute: AuthenticatedAdminKassenbuchRoute,
   AuthenticatedAdminKundenRoute: AuthenticatedAdminKundenRoute,
+  AuthenticatedAdminNewsletterRoute: AuthenticatedAdminNewsletterRoute,
   AuthenticatedAdminTermineRoute: AuthenticatedAdminTermineRoute,
   AuthenticatedAdminTerminplanRoute: AuthenticatedAdminTerminplanRoute,
   AuthenticatedAdminUmplanenRoute: AuthenticatedAdminUmplanenRoute,
@@ -1141,6 +1183,7 @@ const rootRouteChildren: RootRouteChildren = {
   KontaktRoute: KontaktRoute,
   LeistungenRoute: LeistungenRoute,
   McpRoute: McpRoute,
+  NewsletterBestaetigenRoute: NewsletterBestaetigenRoute,
   OnlineRoute: OnlineRoute,
   PreiseRoute: PreiseRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
