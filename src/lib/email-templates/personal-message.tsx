@@ -22,13 +22,14 @@ interface Props {
   duration?: string
   depositPartnerName?: string
   depositPartnerEmail?: string
+  includeDepositInfo?: boolean
 }
 
 const EMAIL_ADDRESS = 'Lady-vanillaice@gmx.net'
 const WHATSAPP_NUMBER = '+4915170568230'
 const WHATSAPP_LINK = 'https://wa.me/4915170568230'
 
-const Email = ({ guestName, message, depositAmount, totalAmount, restAmount, duration, depositPartnerName, depositPartnerEmail }: Props) => (
+const Email = ({ guestName, message, depositAmount, totalAmount, restAmount, duration, depositPartnerName, depositPartnerEmail, includeDepositInfo = false }: Props) => (
   <Html lang="de" dir="ltr">
     <Head />
     <Preview>Eine persönliche Nachricht von Lady Vanilla Ice.</Preview>
@@ -65,6 +66,8 @@ const Email = ({ guestName, message, depositAmount, totalAmount, restAmount, dur
           </Button>
         </Section>
 
+        {includeDepositInfo ? (
+          <>
         <Hr style={hr} />
 
         <Heading as="h2" style={h2}>Anzahlung – Termin fixieren</Heading>
@@ -121,6 +124,8 @@ const Email = ({ guestName, message, depositAmount, totalAmount, restAmount, dur
               </a>
             </Text>
           </Section>
+        ) : null}
+          </>
         ) : null}
 
         <Text style={signature}>— Lady Vanilla Ice</Text>
