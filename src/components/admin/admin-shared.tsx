@@ -520,6 +520,9 @@ export type ManualBookingValues = {
   guest_contact?: string | null;
   source?: string | null;
   internal_note?: string | null;
+  preferences?: string | null;
+  taboos?: string | null;
+  health_notes?: string | null;
   booking_type: "single" | "duo" | "content";
   duo_partner?: string | null;
   total_amount: number;
@@ -548,6 +551,9 @@ export function ManualBookingForm({
   const [source, setSource] = useState("Telegram");
   const [contact, setContact] = useState("");
   const [note, setNote] = useState("");
+  const [preferences, setPreferences] = useState("");
+  const [taboos, setTaboos] = useState("");
+  const [healthNotes, setHealthNotes] = useState("");
   const [bookingType, setBookingType] =
     useState<"single" | "duo" | "content">("single");
   const [duoPartner, setDuoPartner] = useState("");
@@ -577,12 +583,12 @@ export function ManualBookingForm({
     };
     setGuestName(name);
     setContact(phone || customer.email);
+    setPreferences(profile.vorlieben ?? "");
+    setTaboos(profile.tabus ?? "");
+    setHealthNotes(profile.gesundheit ?? "");
     setNote([
-      profile.vorlieben ? `Vorlieben: ${profile.vorlieben}` : null,
-      profile.tabus ? `Tabus: ${profile.tabus}` : null,
-      profile.gesundheit ? `Gesundheit: ${profile.gesundheit}` : null,
       profile.safeword ? `Safeword: ${profile.safeword}` : null,
-      profile.admin ? `Interne Kundennotiz: ${profile.admin}` : null,
+      profile.admin ?? null,
     ].filter(Boolean).join("\n"));
     setCustomerOpen(false);
   };
@@ -638,6 +644,9 @@ export function ManualBookingForm({
         guest_contact: contact.trim() || null,
         source: source.trim() || null,
         internal_note: note.trim() || null,
+        preferences: preferences.trim() || null,
+        taboos: taboos.trim() || null,
+        health_notes: healthNotes.trim() || null,
         booking_type: bookingType,
         duo_partner:
           bookingType === "duo" ? duoPartner.trim() : null,
@@ -653,6 +662,9 @@ export function ManualBookingForm({
       setGuestName("");
       setContact("");
       setNote("");
+      setPreferences("");
+      setTaboos("");
+      setHealthNotes("");
       setBookingType("single");
       setDuoPartner("");
       setTotalAmount("");
@@ -844,16 +856,60 @@ export function ManualBookingForm({
         />
       </div>
 
+      <div className="border border-champagne/20 bg-anthracite/20 p-4 space-y-4">
+        <div>
+          <div className="eyebrow text-champagne">Persönliche Angaben</div>
+          <p className="mt-1 text-[0.7rem] leading-relaxed text-vanilla/55">
+            Diese Angaben werden in der Buchung und zusätzlich in der internen Notiz gespeichert.
+          </p>
+        </div>
+        <div>
+          <label className="eyebrow block mb-1">Vorlieben &amp; Wünsche (optional)</label>
+          <textarea
+            value={preferences}
+            onChange={(e) => setPreferences(e.target.value)}
+            placeholder="Was ist gewünscht? Welche Vorlieben wurden besprochen?"
+            rows={3}
+            maxLength={2000}
+            className="input-luxe !py-2 resize-y"
+          />
+        </div>
+        <div>
+          <label className="eyebrow block mb-1">Tabus &amp; Grenzen (optional)</label>
+          <textarea
+            value={taboos}
+            onChange={(e) => setTaboos(e.target.value)}
+            placeholder="Tabus, klare Grenzen und ausgeschlossene Praktiken"
+            rows={3}
+            maxLength={2000}
+            className="input-luxe !py-2 resize-y"
+          />
+        </div>
+        <div>
+          <label className="eyebrow block mb-1">Gesundheitliche Hinweise (optional)</label>
+          <textarea
+            value={healthNotes}
+            onChange={(e) => setHealthNotes(e.target.value)}
+            placeholder="Allergien, Verletzungen, Medikamente oder andere wichtige Hinweise"
+            rows={3}
+            maxLength={2000}
+            className="input-luxe !py-2 resize-y"
+          />
+          <p className="mt-1 text-[0.65rem] text-vanilla/45">Nur im geschützten Adminbereich sichtbar.</p>
+        </div>
+      </div>
+
       <div>
         <label className="eyebrow block mb-1">
-          Interne Notiz (optional)
+          Weitere interne Notiz (optional)
         </label>
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Wünsche, Tabus, Absprachen – nur für dich sichtbar"
+          placeholder="Weitere Absprachen oder organisatorische Hinweise"
           rows={3}
-          className="input-luxe !py-2 resize-none"
+          maxLength={2000}
+          className="input-luxe !py-2 resize-y"
         />
       </div>
 
