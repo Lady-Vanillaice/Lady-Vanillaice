@@ -25,6 +25,7 @@ function Buchung() {
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [agree, setAgree] = useState(false);
+  const [marketingConsent, setMarketingConsent] = useState(false);
   const submit = useServerFn(submitBooking);
   const notifyWhatsApp = useServerFn(sendBookingWhatsApp);
   const tr = useTr();
@@ -104,6 +105,7 @@ function Buchung() {
           duration_minutes: durationMinutes,
           duration_label: durationLabel,
           age_confirmed: true,
+          marketing_consent: marketingConsent,
         },
       });
 
@@ -125,6 +127,7 @@ function Buchung() {
       setStatus("sent");
       (e.target as HTMLFormElement).reset();
       setAgree(false);
+      setMarketingConsent(false);
     } catch (err) {
       setStatus("error");
       setErrorMsg(
@@ -292,6 +295,14 @@ function Buchung() {
                     <>I am 18+ and consent to the confidential processing of my data for scheduling in accordance with the <a href="/datenschutz" className="text-champagne hover:underline">privacy policy</a>.</>
                   )}
                 </span>
+              </label>
+
+              <label className="flex items-start gap-3 text-sm text-vanilla/70 cursor-pointer border border-champagne/20 p-4">
+                <input type="checkbox" checked={marketingConsent} onChange={(e) => setMarketingConsent(e.target.checked)} className="mt-1 accent-[var(--color-champagne)]" />
+                <span>{tr(
+                  "Ich möchte freiwillig per E-Mail über neue verfügbare Termine informiert werden. Nach dem Absenden erhalte ich eine Bestätigungs-E-Mail. Ich kann mich jederzeit wieder abmelden.",
+                  "I voluntarily want to receive emails about newly available appointments. I will receive a confirmation email and can unsubscribe at any time."
+                )}</span>
               </label>
 
               <div className="pt-2">
