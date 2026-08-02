@@ -16,6 +16,7 @@ import {
   sendPersonalMessage,
   sendContentdrehReply,
   previewPersonalMessage,
+  retryEmail,
 } from "@/lib/booking.functions";
 import { PageHeader } from "../../components/site/PageHeader";
 import {
@@ -336,6 +337,15 @@ const depositDateMut = useMutation({
     onError: (err) => {
       alert(`Fehler: ${(err as Error).message}`);
     },
+  });
+  const retryEmailFn = useServerFn(retryEmail);
+  const retryEmailMut = useMutation({
+    mutationFn: (logId: string) => retryEmailFn({ data: { logId } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-booking-detail", id] });
+      alert("Die E-Mail wurde erfolgreich versendet.");
+    },
+    onError: (err) => alert(`E-Mail konnte nicht versendet werden: ${(err as Error).message}`),
   });
 
   const [previewHtml, setPreviewHtml] = useState<string>("");
@@ -1568,6 +1578,12 @@ const depositDateMut = useMutation({
                           >
                             Nachricht ansehen
                           </Link>
+                          {(entry.status === "pending" || entry.status === "failed" || entry.status === "dlq") && <>
+                            {" · "}
+                            <button type="button" disabled={retryEmailMut.isPending} onClick={() => retryEmailMut.mutate(entry.id)} className="text-champagne hover:underline disabled:opacity-40">
+                              {retryEmailMut.isPending ? "Sende erneut…" : "Erneut senden"}
+                            </button>
+                          </>}
                         </div>
                         {entry.error_message && (
                           <div className="text-[0.65rem] text-bordeaux mt-1">
