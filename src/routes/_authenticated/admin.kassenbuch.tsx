@@ -81,18 +81,20 @@ function KassenbuchPage() {
   const [travelLogPending, setTravelLogPending] = useState(false);
 
   const filtered = useMemo(() => data.filter((e) => {
-    const monthDate = e.termin_datum;
+    const monthDate = e.payment_date ?? e.termin_datum;
     const haystack = `${e.kunde} ${e.studio} ${e.studio_address ?? ""} ${e.art} ${e.dauer ?? ""} ${e.expense_category ?? ""} ${e.payment_method ?? ""}`.toLowerCase();
-    const paymentMethod = e.entry_type === "expense" ? e.payment_method : e.anzahlung_method;
+    const paymentMethod = e.entry_type === "expense" ? e.payment_method : e.payment_kind === "cash" ? "Bar" : e.anzahlung_method;
     return (!month || monthDate.startsWith(month)) && (!studioFilter || e.studio === studioFilter) && (!methodFilter || paymentMethod === methodFilter) && (!statusFilter || e.status === statusFilter) && (!search || haystack.includes(search.toLowerCase()));
   }).sort((a, b) => {
-    const dateOrder = a.termin_datum.localeCompare(b.termin_datum);
+    const dateOrder = (a.payment_date ?? a.termin_datum).localeCompare(b.payment_date ?? b.termin_datum);
     return dateOrder || (a.termin_start ?? "99:99").localeCompare(b.termin_start ?? "99:99");
   }), [data, month, studioFilter, methodFilter, statusFilter, search]);
 
   const incomeEntries = filtered.filter(e => e.entry_type === "income");
+  const receivedIncomeEntries = incomeEntries.filter(e => e.payment_date && e.gesamt > 0);
   const expenseEntries = filtered.filter(e => e.entry_type === "expense");
-  const totals = incomeEntries.reduce((a, e) => { a.anzahlung += e.anzahlung; a.bar += e.bar; a.gesamt += e.gesamt; if (e.status === "cancelled") a.storno += e.anzahlung; if (e.status === "completed") a.termine += 1; return a; }, { anzahlung: 0, bar: 0, gesamt: 0, storno: 0, termine: 0 });
+  const totals = receivedIncomeEntries.reduce((a, e) => { a.anzahlung += e.anzahlung; a.bar += e.bar; a.gesamt += e.gesamt; if (e.status === "cancelled") a.storno += e.anzahlung; return a; }, { anzahlung: 0, bar: 0, gesamt: 0, storno: 0 });
+  const completedAppointments = new Set(data.filter(e => e.booking_id && e.status === "completed" && e.termin_datum.startsWith(month)).map(e => e.booking_id)).size;
   const totalExpenses = expenseEntries.reduce((sum, e) => sum + e.expense_amount, 0);
   const balance = totals.gesamt - totalExpenses;
   const totalNet = totals.gesamt / 1.19;
@@ -119,7 +121,9 @@ function KassenbuchPage() {
     const parts = studioParts(e);
     return parts.address ? `${parts.studio}\n${parts.address}` : parts.studio;
   };
-  const rows = () => incomeEntries.map(e => [dateLabel(e.termin_datum), appointmentTime(e), e.kunde, e.art, studioText(e), e.dauer ?? "—", dateLabel(e.anzahlung_datum), bookingAmount(e.anzahlung, e.anzahlung_vorgemerkt), depositText(e), dateLabel(e.bar_datum), bookingAmount(e.bar, e.restbetrag_vorgemerkt), eur(e.gesamt), statusLabel[e.status]]);
+  const paymentLabel = (e: CashBookEntry) => e.payment_kind === "deposit" ? "Anzahlung" : e.payment_kind === "cash" ? "Restzahlung" : e.payment_kind === "pending" ? "Restzahlung offen" : "Manuelle Zahlung";
+  const paymentMethodText = (e: CashBookEntry) => e.payment_kind === "cash" ? "Bar" : depositText(e);
+  const rows = () => receivedIncomeEntries.map(e => [dateLabel(e.payment_date), paymentLabel(e), eur(e.gesamt), paymentMethodText(e), e.kunde, dateLabel(e.termin_datum), appointmentTime(e), e.art, studioText(e), e.dauer ?? "—", statusLabel[e.status]]);
 
   const createMut = useMutation({ mutationFn: () => create({ data: { studio, datum, kunde, anzahlung: Number(anzahlung.replace(",", ".")) || 0, anzahlung_method: anzahlungMethod || null, bar: Number(bar.replace(",", ".")) || 0, notiz: notiz || null } }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["cashbook"] }); setKunde(""); setAnzahlung("0"); setBar("0"); setNotiz(""); } });
   const expenseMut = useMutation({ mutationFn: () => createExpense({ data: { studio: expenseStudio, datum: expenseDate, betrag: Number(expenseAmount.replace(",", ".")), zahlungsart: expenseMethod, notiz: expenseNote || null } }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["cashbook"] }); setExpenseAmount(""); setExpenseMethod(""); setExpenseNote(""); } });
@@ -134,8 +138,8 @@ function KassenbuchPage() {
       alert(`Die Kassenbuchdaten konnten nicht geladen werden: ${(error as Error).message}`);
       return false;
     }
-    if (!incomeEntries.length) {
-      alert(`Für ${month || "den gewählten Zeitraum"} wurden keine Termine gefunden.`);
+    if (!receivedIncomeEntries.length) {
+      alert(`Für ${month || "den gewählten Zeitraum"} wurden keine Zahlungseingänge gefunden.`);
       return false;
     }
     return true;
@@ -148,12 +152,12 @@ function KassenbuchPage() {
     const monthLabel = format(parseISO(`${month}-01`), "LLLL yyyy", { locale: de });
     doc.setFont("helvetica", "bold"); doc.setFontSize(20); doc.text("KASSENBUCH", 28, 40); doc.setFontSize(11); doc.text(monthLabel, 28, 58);
     autoTable(doc, mobile ? {
-      startY: 92, head: [["Termin / Kunde", "Studio / Adresse", "Zahlung", "Gesamt"]],
-      body: incomeEntries.map(e => [`${dateLabel(e.termin_datum)} · ${appointmentTime(e)}\n${e.kunde}\n${statusLabel[e.status]}`, `${studioText(e)}\n${e.art}\n${e.dauer ?? ""}`, e.deposit_exemption_reason ? depositText(e) : `Anz.: ${bookingAmount(e.anzahlung, e.anzahlung_vorgemerkt)} ${e.anzahlung_method ?? ""}\nRest: ${bookingAmount(e.bar, e.restbetrag_vorgemerkt)}`, eur(e.gesamt)]),
+      startY: 92, head: [["Zahlung / Kunde", "Session", "Studio / Art", "Betrag"]],
+      body: receivedIncomeEntries.map(e => [`${dateLabel(e.payment_date)} · ${paymentLabel(e)}\n${e.kunde}\n${paymentMethodText(e)}`, `${dateLabel(e.termin_datum)} · ${appointmentTime(e)}\n${e.dauer ?? ""}`, `${studioText(e)}\n${e.art}`, eur(e.gesamt)]),
       foot: [["SUMME", "", "", eur(totals.gesamt)]], styles: { fontSize: 7.5, cellPadding: 4, overflow: "linebreak" }, headStyles: { fillColor: [15, 15, 15] }, footStyles: { fillColor: [239, 229, 207], textColor: 15 },
     } : {
-      startY: 92, head: [["Termin", "Uhrzeit", "Kunde", "Art", "Studio / Adresse", "Dauer", "Anzahlung am", "Anzahlung", "Zahlungsart / Ausnahme", "Rest erhalten am", "Restbetrag", "Erhalten gesamt", "Status"]], body: rows(),
-      foot: [["SUMME", "", "", "", "", "", "", eur(totals.anzahlung), "", "", eur(totals.bar), eur(totals.gesamt), ""]], styles: { fontSize: 5.2, cellPadding: 3, overflow: "linebreak" }, headStyles: { fillColor: [15, 15, 15] }, footStyles: { fillColor: [239, 229, 207], textColor: 15 },
+      startY: 92, head: [["Zahlungseingang", "Vorgang", "Betrag", "Zahlungsart", "Kunde", "Session am", "Uhrzeit", "Art", "Studio / Adresse", "Dauer", "Status"]], body: rows(),
+      foot: [["SUMME", "", eur(totals.gesamt), "", "", "", "", "", "", "", ""]], styles: { fontSize: 6, cellPadding: 3, overflow: "linebreak" }, headStyles: { fillColor: [15, 15, 15] }, footStyles: { fillColor: [239, 229, 207], textColor: 15 },
     });
     const tableEndY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 92;
     let summaryY = tableEndY + 18;
@@ -174,8 +178,8 @@ function KassenbuchPage() {
 
   function exportCsv() {
     if (!canExport()) return;
-    const head = ["Termin", "Uhrzeit von–bis", "Kunde", "Art", "Studio", "Adresse", "Dauer", "Anzahlung erhalten am", "Anzahlung", "Zahlungsart / Ausnahme", "Rest erhalten am", "Restbetrag", "Erhalten gesamt", "Status"];
-    const raw = incomeEntries.map(e => [e.termin_datum, appointmentTime(e), e.kunde, e.art, e.studio, e.studio_address ?? "", e.dauer ?? "", e.anzahlung_datum ?? "", bookingAmount(e.anzahlung, e.anzahlung_vorgemerkt), depositText(e), e.bar_datum ?? "", bookingAmount(e.bar, e.restbetrag_vorgemerkt), e.gesamt.toFixed(2).replace(".", ","), statusLabel[e.status]]);
+    const head = ["Zahlungseingang", "Vorgang", "Betrag", "Zahlungsart", "Kunde", "Session am", "Uhrzeit von–bis", "Art", "Studio", "Adresse", "Dauer", "Status"];
+    const raw = receivedIncomeEntries.map(e => [e.payment_date ?? "", paymentLabel(e), e.gesamt.toFixed(2).replace(".", ","), paymentMethodText(e), e.kunde, e.termin_datum, appointmentTime(e), e.art, e.studio, e.studio_address ?? "", e.dauer ?? "", statusLabel[e.status]]);
     const csv = [head, ...raw].map(r => r.map(v => `"${String(v).replaceAll('"', '""')}"`).join(";")).join("\n");
     download(`kassenbuch-${month}.csv`, `\uFEFF${csv}`, "text/csv;charset=utf-8");
   }
@@ -187,13 +191,13 @@ function KassenbuchPage() {
 
   function exportExcel() {
     if (!canExport()) return;
-    const table = [["Termin", "Uhrzeit", "Kunde", "Art", "Studio / Adresse", "Dauer", "Anzahlung erhalten am", "Anzahlung", "Zahlungsart / Ausnahme", "Rest erhalten am", "Restbetrag", "Erhalten gesamt", "Status"], ...rows()].map(r => `<tr>${r.map(v => `<td>${String(v).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll("\n", "<br>")}</td>`).join("")}</tr>`).join("");
+    const table = [["Zahlungseingang", "Vorgang", "Betrag", "Zahlungsart", "Kunde", "Session am", "Uhrzeit", "Art", "Studio / Adresse", "Dauer", "Status"], ...rows()].map(r => `<tr>${r.map(v => `<td>${String(v).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll("\n", "<br>")}</td>`).join("")}</tr>`).join("");
     download(`kassenbuch-${month}.xls`, `\uFEFF<html><head><meta charset="utf-8"></head><body><table>${table}</table></body></html>`, "application/vnd.ms-excel");
   }
 
   async function exportTravelLog() {
-    if (!canExport()) return;
-    const appointments = incomeEntries
+    const appointments = data
+      .filter(entry => entry.termin_datum.startsWith(month))
       .filter(entry => entry.source === "booking" && entry.status !== "cancelled")
       .map(entry => ({
         date: entry.termin_datum,
@@ -285,7 +289,7 @@ function KassenbuchPage() {
     <section className="py-8 md:py-12"><div className="container-luxe max-w-[1500px] space-y-6">
       <Link to="/admin" className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-vanilla/60 hover:text-champagne"><ArrowLeft size={14} /> Zurück zum Admin</Link>
       {error && <div className="border border-bordeaux bg-bordeaux/10 p-4 text-bordeaux">Kassenbuchdaten konnten nicht geladen werden: {(error as Error).message}</div>}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3"><Stat label="Anzahlungen" value={eur(totals.anzahlung)} /><Stat label="Bar erhalten" value={eur(totals.bar)} /><Stat label="Ausgaben" value={eur(totalExpenses)} /><Stat label="Saldo" value={eur(balance)} gold /><Stat label="Erledigte Termine" value={String(totals.termine)} /></div>
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3"><Stat label="Anzahlungen" value={eur(totals.anzahlung)} /><Stat label="Restzahlungen" value={eur(totals.bar)} /><Stat label="Ausgaben" value={eur(totalExpenses)} /><Stat label="Saldo" value={eur(balance)} gold /><Stat label="Erledigte Termine" value={String(completedAppointments)} /></div>
       <div className="bg-card border border-champagne/20 p-4 grid sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 items-end">
         <Field label="Monat"><input type="month" value={month} onChange={e => setMonth(e.target.value)} className="luxe-input" /></Field>
         <Field label="Studio"><select value={studioFilter} onChange={e => setStudioFilter(e.target.value)} className="luxe-input"><option value="">Alle</option>{studios.map(v => <option key={v}>{v}</option>)}</select></Field>
@@ -297,8 +301,8 @@ function KassenbuchPage() {
       <form onSubmit={e => { e.preventDefault(); createMut.mutate(); }} className="bg-card border border-champagne/20 p-4 space-y-4"><h2 className="eyebrow">Manueller Eintrag</h2><div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3"><Field label="Datum"><input required type="date" value={datum} onChange={e => setDatum(e.target.value)} className="luxe-input" /></Field><Field label="Kunde"><input required value={kunde} onChange={e => setKunde(e.target.value)} className="luxe-input" /></Field><Field label="Studio"><input required value={studio} onChange={e => setStudio(e.target.value)} className="luxe-input" /></Field><Field label="Zahlungsart"><input value={anzahlungMethod} onChange={e => setAnzahlungMethod(e.target.value)} className="luxe-input" /></Field><Field label="Anzahlung (€)"><input value={anzahlung} onChange={e => setAnzahlung(e.target.value)} className="luxe-input" /></Field><Field label="Bar (€)"><input value={bar} onChange={e => setBar(e.target.value)} className="luxe-input" /></Field><div className="md:col-span-2"><Field label="Notiz"><input value={notiz} onChange={e => setNotiz(e.target.value)} className="luxe-input" /></Field></div></div><button className="btn-gold inline-flex gap-2"><Plus size={15} /> Eintrag speichern</button></form>
       <form onSubmit={e => { e.preventDefault(); expenseMut.mutate(); }} className="bg-card border border-bordeaux/50 p-4 space-y-4"><h2 className="eyebrow text-champagne">Ausgabe – Studiomiete</h2><div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3"><Field label="Datum"><input required type="date" value={expenseDate} onChange={e => setExpenseDate(e.target.value)} className="luxe-input" /></Field><Field label="Studio"><input required value={expenseStudio} onChange={e => setExpenseStudio(e.target.value)} placeholder="z. B. Studio60" className="luxe-input" /></Field><Field label="Betrag (€)"><input required inputMode="decimal" value={expenseAmount} onChange={e => setExpenseAmount(e.target.value)} className="luxe-input" /></Field><Field label="Bezahlt mit"><input required value={expenseMethod} onChange={e => setExpenseMethod(e.target.value)} placeholder="Bar, Karte, Überweisung …" className="luxe-input" /></Field><div className="md:col-span-4"><Field label="Notiz (optional)"><input value={expenseNote} onChange={e => setExpenseNote(e.target.value)} className="luxe-input" /></Field></div></div><button disabled={expenseMut.isPending} className="btn-gold inline-flex gap-2"><Plus size={15} />{expenseMut.isPending ? "Speichere…" : "Studiomiete speichern"}</button>{expenseMut.error && <p className="text-sm text-bordeaux">{(expenseMut.error as Error).message}</p>}</form>
       {expenseEntries.length > 0 && <div className="bg-card border border-bordeaux/40 overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-[10px] uppercase text-vanilla/50">{["Datum", "Ausgabe", "Studio", "Zahlungsart", "Betrag", ""].map(h => <th key={h} className="p-3 text-left">{h}</th>)}</tr></thead><tbody>{expenseEntries.map(e => <tr key={e.id} className="border-t border-champagne/10"><td className="p-3">{dateLabel(e.termin_datum)}</td><td className="p-3">Studiomiete</td><td className="p-3">{e.studio}</td><td className="p-3">{e.payment_method}</td><td className="p-3 text-bordeaux">− {eur(e.expense_amount)}</td><td className="p-3"><button onClick={() => confirm("Ausgabe löschen?") && deleteMut.mutate(e.id)}><Trash2 size={15} /></button></td></tr>)}</tbody></table></div>}
-      <div className="md:hidden space-y-3">{isLoading ? <div>Lade…</div> : error ? <div className="text-bordeaux">Fehler beim Laden</div> : incomeEntries.map(e => <article key={e.id} className="bg-card border border-champagne/20 p-4 space-y-2"><div className="flex justify-between"><div><strong>{e.kunde}</strong><div className="text-xs text-vanilla/55">{dateLabel(e.termin_datum)} · {appointmentTime(e)} · {e.art}</div></div><span className="text-champagne">{eur(e.gesamt)}</span></div><div className="text-sm">{e.studio}</div>{e.studio_address && <div className="text-xs text-vanilla/55">{e.studio_address}</div>}<div className="text-xs">Anzahlung: {bookingAmount(e.anzahlung, e.anzahlung_vorgemerkt)} · {depositText(e)}<br />Restbetrag: {bookingAmount(e.bar, e.restbetrag_vorgemerkt)}</div><div className="flex justify-between"><span className={`status-${e.status}`}>{statusLabel[e.status]}</span>{e.source === "booking" ? <button onClick={() => setEditing(e)} className="text-champagne text-xs uppercase">Bearbeiten</button> : <button onClick={() => confirm("Löschen?") && deleteMut.mutate(e.id)}><Trash2 size={15} /></button>}</div></article>)}</div>
-      <div className="hidden md:block bg-card border border-champagne/20 overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-sm min-w-[1650px]"><thead><tr className="text-[10px] uppercase text-vanilla/50">{["Termin", "Uhrzeit", "Kunde", "Art", "Studio / Adresse", "Dauer", "Anzahlung am", "Anzahlung", "Zahlungsart / Ausnahme", "Rest erhalten am", "Restbetrag", "Erhalten gesamt", "Status", ""].map(h => <th key={h} className="p-3 text-left">{h}</th>)}</tr></thead><tbody>{incomeEntries.map(e => <tr key={e.id} className="border-t border-champagne/10"><td className="p-3">{dateLabel(e.termin_datum)}</td><td className="p-3">{appointmentTime(e)}</td><td className="p-3 font-medium">{e.kunde}</td><td className="p-3">{e.art}</td><td className="p-3"><div>{e.studio}</div>{e.studio_address && <div className="text-xs text-vanilla/50 mt-1">{e.studio_address}</div>}</td><td className="p-3">{e.dauer ?? "—"}</td><td className="p-3">{dateLabel(e.anzahlung_datum)}</td><td className="p-3">{bookingAmount(e.anzahlung, e.anzahlung_vorgemerkt)}</td><td className="p-3">{depositText(e)}</td><td className="p-3">{dateLabel(e.bar_datum)}</td><td className="p-3">{bookingAmount(e.bar, e.restbetrag_vorgemerkt)}</td><td className="p-3 text-champagne">{eur(e.gesamt)}</td><td className="p-3"><span className={`status-${e.status}`}>{statusLabel[e.status]}</span></td><td className="p-3">{e.source === "booking" ? <button onClick={() => setEditing(e)} className="text-champagne text-xs uppercase">Bearbeiten</button> : <button onClick={() => confirm("Löschen?") && deleteMut.mutate(e.id)}><Trash2 size={15} /></button>}</td></tr>)}</tbody></table></div></div>
+      <div className="md:hidden space-y-3">{isLoading ? <div>Lade…</div> : error ? <div className="text-bordeaux">Fehler beim Laden</div> : incomeEntries.map(e => <article key={e.id} className="bg-card border border-champagne/20 p-4 space-y-2"><div className="flex justify-between"><div><strong>{e.kunde}</strong><div className="text-xs text-champagne">{paymentLabel(e)}{e.payment_date ? ` · ${dateLabel(e.payment_date)}` : ""}</div></div><span className="text-champagne">{e.payment_kind === "pending" ? `${eur(e.restbetrag_vorgemerkt)} offen` : eur(e.gesamt)}</span></div><div className="text-xs text-vanilla/55">Session: {dateLabel(e.termin_datum)} · {appointmentTime(e)} · {e.art}</div><div className="text-sm">{e.studio}</div>{e.studio_address && <div className="text-xs text-vanilla/55">{e.studio_address}</div>}<div className="text-xs">Zahlungsart: {paymentMethodText(e)}</div><div className="flex justify-between"><span className={`status-${e.status}`}>{statusLabel[e.status]}</span>{e.source === "booking" ? <button onClick={() => setEditing(e)} className="text-champagne text-xs uppercase">Bearbeiten</button> : <button onClick={() => confirm("Löschen?") && deleteMut.mutate(e.id)}><Trash2 size={15} /></button>}</div></article>)}</div>
+      <div className="hidden md:block bg-card border border-champagne/20 overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-sm min-w-[1250px]"><thead><tr className="text-[10px] uppercase text-vanilla/50">{["Zahlungseingang", "Vorgang", "Betrag", "Zahlungsart", "Kunde", "Session am", "Uhrzeit", "Art", "Studio / Adresse", "Dauer", "Status", ""].map(h => <th key={h} className="p-3 text-left">{h}</th>)}</tr></thead><tbody>{incomeEntries.map(e => <tr key={e.id} className="border-t border-champagne/10"><td className="p-3">{dateLabel(e.payment_date)}</td><td className="p-3">{paymentLabel(e)}</td><td className="p-3 text-champagne">{e.payment_kind === "pending" ? `${eur(e.restbetrag_vorgemerkt)} offen` : eur(e.gesamt)}</td><td className="p-3">{paymentMethodText(e)}</td><td className="p-3 font-medium">{e.kunde}</td><td className="p-3">{dateLabel(e.termin_datum)}</td><td className="p-3">{appointmentTime(e)}</td><td className="p-3">{e.art}</td><td className="p-3"><div>{e.studio}</div>{e.studio_address && <div className="text-xs text-vanilla/50 mt-1">{e.studio_address}</div>}</td><td className="p-3">{e.dauer ?? "—"}</td><td className="p-3"><span className={`status-${e.status}`}>{statusLabel[e.status]}</span></td><td className="p-3">{e.source === "booking" ? <button onClick={() => setEditing(e)} className="text-champagne text-xs uppercase">Bearbeiten</button> : <button onClick={() => confirm("Löschen?") && deleteMut.mutate(e.id)}><Trash2 size={15} /></button>}</td></tr>)}</tbody></table></div></div>
       <div className="border border-champagne/30 bg-card p-4">
         <div className="eyebrow text-champagne mb-3">Gesamtsumme</div>
         <div className="grid sm:grid-cols-3 gap-3">
@@ -316,8 +320,8 @@ function KassenbuchPage() {
 function AccountingDialog({ entry, onClose, onSave }: { entry: CashBookEntry; onClose: () => void; onSave: (data: any) => Promise<void> }) {
   const [studio, setStudio] = useState(entry.studio === "—" ? "" : entry.studio);
   const [address, setAddress] = useState(entry.studio_address ?? "");
-  const [a, setA] = useState(String(entry.anzahlung)); const [method, setMethod] = useState(entry.anzahlung_method ?? ""); const [aDate, setADate] = useState(entry.anzahlung_datum ?? "");
-  const [bar, setBar] = useState(String(entry.bar)); const [barDate, setBarDate] = useState(entry.bar_datum ?? ""); const [status, setStatus] = useState<CashBookEntry["status"]>(entry.status); const [full, setFull] = useState(entry.status === "completed");
+  const [a, setA] = useState(String(entry.anzahlung_vorgemerkt)); const [method, setMethod] = useState(entry.anzahlung_method ?? ""); const [aDate, setADate] = useState(entry.anzahlung_datum ?? "");
+  const [bar, setBar] = useState(String(entry.restbetrag_vorgemerkt)); const [barDate, setBarDate] = useState(entry.bar_datum ?? ""); const [status, setStatus] = useState<CashBookEntry["status"]>(entry.status); const [full, setFull] = useState(entry.status === "completed");
   const [reason, setReason] = useState<DepositExemptionReason | "">(entry.deposit_exemption_reason ?? ""); const [saving, setSaving] = useState(false);
   const hasExemption = Boolean(reason);
   async function save() {
