@@ -1431,12 +1431,15 @@ const depositDateMut = useMutation({
               <label className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 block mb-1">
                 Zahlungsart der Anzahlung
               </label>
-              <div className="flex flex-wrap gap-2 mb-2">
+              {depositExemptionReason ? (
+                <div className="border border-green-700/40 bg-green-700/10 px-3 py-3 text-sm text-green-200">
+                  Nicht erforderlich – für diesen Termin wurde keine Anzahlung vereinbart.
+                </div>
+              ) : <><div className="flex flex-wrap gap-2 mb-2">
                 {["Bank", "PayPal", "Bar", "Sonstige"].map((opt) => (
                   <button
                     key={opt}
                     type="button"
-                    disabled={Boolean(depositExemptionReason)}
                     onClick={() => setAnzahlungMethod(opt)}
                     className={`text-[0.65rem] uppercase tracking-[0.15em] px-3 py-1.5 border transition ${
                       anzahlungMethod === opt
@@ -1451,14 +1454,14 @@ const depositDateMut = useMutation({
               <input
                 type="text"
                 value={anzahlungMethod}
-                disabled={Boolean(depositExemptionReason)}
                 onChange={(e) => setAnzahlungMethod(e.target.value)}
                 placeholder="z. B. Bank, PayPal, Revolut …"
-                className="input-luxe w-full disabled:opacity-40"
+                className="input-luxe w-full"
               />
               <p className="mt-1.5 text-[0.6rem] text-vanilla/40 leading-relaxed">
                 Optional — nur für deine interne Übersicht (wird nicht an den Gast gesendet).
               </p>
+              </>}
             </div>
       {total ? (
   <p className="mt-4 text-[0.65rem] text-vanilla/40 leading-relaxed">
@@ -1477,13 +1480,16 @@ const depositDateMut = useMutation({
   <label className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 block mb-1">
     Anzahlung eingegangen am
   </label>
-  <input
+  {depositExemptionReason ? (
+    <div className="border border-green-700/40 bg-green-700/10 px-3 py-3 text-sm text-green-200">
+      Nicht erforderlich – keine Anzahlung vereinbart.
+    </div>
+  ) : <input
     type="date"
     value={anzahlungPaidDate}
-    disabled={Boolean(depositExemptionReason)}
     onChange={(e) => setAnzahlungPaidDate(e.target.value)}
-    className="input-luxe w-full disabled:opacity-40"
-  />
+    className="input-luxe w-full"
+  />}
 </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               {(booking.anzahlung || 0) > 0 && (

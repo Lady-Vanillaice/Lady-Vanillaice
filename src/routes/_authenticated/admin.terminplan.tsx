@@ -31,6 +31,7 @@ type Entry = {
   admin_note: string | null;
   guest_wish: string | null;
   anzahlung_paid: boolean | null;
+  deposit_exemption_reason: string | null;
   anzahlung: number | null;
   bar: number | null;
 };
@@ -59,7 +60,7 @@ function TerminplanPage() {
       const { data, error } = await supabase
         .from("bookings")
         .select(
-          "id, guest_name, guest_email, guest_phone, duration, duration_minutes, requested_start, admin_note, anzahlung_paid, anzahlung, bar, message, availability_slots(starts_at, ends_at, location, is_duo, duo_partner, is_content_shoot)",
+          "id, guest_name, guest_email, guest_phone, duration, duration_minutes, requested_start, admin_note, anzahlung_paid, deposit_exemption_reason, anzahlung, bar, message, availability_slots(starts_at, ends_at, location, is_duo, duo_partner, is_content_shoot)",
         )
         .eq("status", "confirmed");
       if (error) throw error;
@@ -97,6 +98,7 @@ function TerminplanPage() {
           admin_note: b.admin_note,
           guest_wish: b.message,
           anzahlung_paid: b.anzahlung_paid,
+          deposit_exemption_reason: b.deposit_exemption_reason,
           anzahlung: b.anzahlung != null ? Number(b.anzahlung) : null,
 bar: b.bar != null ? Number(b.bar) : null,
         } as Entry;
@@ -349,10 +351,12 @@ function DayPlanDownloadButton({ day, items }: { day: Date; items: Entry[] }) {
       ctx.fillText(`Studio: ${entry.location || "—"}`, left, y + 161);
 
       ctx.textAlign = "right";
-      ctx.fillStyle = entry.anzahlung_paid ? "#9fc8a8" : "#e0b26d";
+      ctx.fillStyle = entry.anzahlung_paid || entry.deposit_exemption_reason ? "#9fc8a8" : "#e0b26d";
       ctx.font = 'bold 20px Arial, sans-serif';
       ctx.fillText(
-        `Anzahlung: ${(entry.anzahlung ?? 0).toLocaleString("de-DE")} € · ${entry.anzahlung_paid ? "BEZAHLT" : "OFFEN"}`,
+        entry.deposit_exemption_reason
+          ? "Keine Anzahlung vereinbart"
+          : `Anzahlung: ${(entry.anzahlung ?? 0).toLocaleString("de-DE")} € · ${entry.anzahlung_paid ? "BEZAHLT" : "OFFEN"}`,
         right,
         y + 113,
       );
@@ -416,12 +420,12 @@ function EntryCard({ e }: { e: Entry }) {
           <span className="font-medium text-lg text-vanilla">{e.guest_name}</span>
           <span
             className={`text-[0.5rem] uppercase tracking-[0.16em] px-1.5 py-0.5 ${
-              e.anzahlung_paid
+              e.anzahlung_paid || e.deposit_exemption_reason
                 ? "bg-green-700/30 text-green-200"
                 : "bg-amber-700/30 text-amber-200"
             }`}
           >
-            {e.anzahlung_paid ? "Anzahlung ok" : "Anzahlung offen"}
+            {e.deposit_exemption_reason ? "Keine Anzahlung" : e.anzahlung_paid ? "Anzahlung ok" : "Anzahlung offen"}
           </span>
         </div>
 
