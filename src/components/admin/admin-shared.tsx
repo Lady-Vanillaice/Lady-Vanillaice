@@ -79,6 +79,7 @@ export type Booking = {
   admin_note: string | null;
   created_at: string;
   anzahlung_paid?: boolean | null;
+  deposit_exemption_reason?: "regular_customer" | "trust" | "exception" | "colleague_guarantees" | "spontaneous" | null;
   completed_at?: string | null;
   cash_received_at?: string | null;
   fully_paid?: boolean | null;
@@ -527,8 +528,9 @@ export type ManualBookingValues = {
   duo_partner?: string | null;
   total_amount: number;
   deposit_amount: number;
-  deposit_method: string;
-  deposit_paid_at: string;
+  deposit_method: string | null;
+  deposit_paid_at: string | null;
+  deposit_exemption_reason: "regular_customer" | "trust" | "exception" | "colleague_guarantees" | "spontaneous" | null;
 };
 
 export function ManualBookingForm({
@@ -559,6 +561,8 @@ export function ManualBookingForm({
   const [duoPartner, setDuoPartner] = useState("");
   const [totalAmount, setTotalAmount] = useState("");
   const [depositAmount, setDepositAmount] = useState("");
+  const [shortSessionPrice, setShortSessionPrice] = useState("");
+  const [depositExemptionReason, setDepositExemptionReason] = useState<ManualBookingValues["deposit_exemption_reason"]>(null);
   const [depositMethod, setDepositMethod] = useState("Überweisung");
   const [depositPaidAt, setDepositPaidAt] = useState(() => new Date().toISOString().slice(0, 10));
   const [err, setErr] = useState<string | null>(null);
@@ -619,11 +623,11 @@ export function ManualBookingForm({
       setErr("Bitte den Gesamtpreis eintragen.");
       return;
     }
-    if (!Number.isFinite(deposit) || deposit <= 0 || deposit > total) {
+    if (!depositExemptionReason && (!Number.isFinite(deposit) || deposit <= 0 || deposit > total)) {
       setErr("Die erhaltene Anzahlung muss größer als 0 € und höchstens so hoch wie der Gesamtpreis sein.");
       return;
     }
-    if (!depositMethod.trim() || !depositPaidAt) {
+    if (!depositExemptionReason && (!depositMethod.trim() || !depositPaidAt)) {
       setErr("Bitte Zahlungsart und Eingangsdatum der Anzahlung angeben.");
       return;
     }
@@ -651,9 +655,10 @@ export function ManualBookingForm({
         duo_partner:
           bookingType === "duo" ? duoPartner.trim() : null,
         total_amount: total,
-        deposit_amount: deposit,
-        deposit_method: depositMethod.trim(),
-        deposit_paid_at: depositPaidAt,
+        deposit_amount: depositExemptionReason ? 0 : deposit,
+        deposit_method: depositExemptionReason ? null : depositMethod.trim(),
+        deposit_paid_at: depositExemptionReason ? null : depositPaidAt,
+        deposit_exemption_reason: depositExemptionReason,
       });
 
       setOk(true);
@@ -669,6 +674,8 @@ export function ManualBookingForm({
       setDuoPartner("");
       setTotalAmount("");
       setDepositAmount("");
+      setShortSessionPrice("");
+      setDepositExemptionReason(null);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Fehler");
     }
@@ -919,10 +926,12 @@ export function ManualBookingForm({
           <p className="mt-1 text-[0.7rem] text-vanilla/55">Die Anzahlung wird als bereits erhalten gespeichert. Der Restbetrag wird automatisch berechnet und ins Kassenbuch übernommen.</p>
         </div>
         <div className="grid sm:grid-cols-2 gap-3">
+          <div><label className="eyebrow block mb-1">Kurzsession</label><select value={shortSessionPrice} onChange={(e) => { const value = e.target.value; setShortSessionPrice(value); if (value) setTotalAmount(value); }} className="input-luxe !py-2"><option value="">Preis auswählen</option><option value="60">60 €</option><option value="75">75 €</option><option value="100">100 €</option></select></div>
+          <div><label className="eyebrow block mb-1">Anzahlungsregel</label><select value={depositExemptionReason ?? ""} onChange={(e) => { const value = e.target.value as ManualBookingValues["deposit_exemption_reason"] | ""; setDepositExemptionReason(value || null); if (value) setDepositAmount("0"); }} className="input-luxe !py-2"><option value="">Normale Anzahlung</option><option value="regular_customer">Keine Anzahlung – Stammkunde</option><option value="trust">Keine Anzahlung – Vertrauensbasis</option><option value="exception">Keine Anzahlung – Ausnahme</option><option value="colleague_guarantees">Keine Anzahlung – Kollegin bürgt</option><option value="spontaneous">Keine Anzahlung – Spontaner Termin</option></select></div>
           <div><label className="eyebrow block mb-1">Gesamtpreis (€)</label><input required inputMode="decimal" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} placeholder="z. B. 450" className="input-luxe !py-2" /></div>
-          <div><label className="eyebrow block mb-1">Anzahlung erhalten (€)</label><input required inputMode="decimal" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} placeholder="z. B. 150" className="input-luxe !py-2" /></div>
-          <div><label className="eyebrow block mb-1">Zahlungsart</label><select value={depositMethod} onChange={(e) => setDepositMethod(e.target.value)} className="input-luxe !py-2"><option>Überweisung</option><option>PayPal</option><option>Bar</option><option>Sonstige</option></select></div>
-          <div><label className="eyebrow block mb-1">Anzahlung eingegangen am</label><input required type="date" value={depositPaidAt} onChange={(e) => setDepositPaidAt(e.target.value)} className="input-luxe !py-2" /></div>
+          <div><label className="eyebrow block mb-1">Anzahlung erhalten (€)</label><input required={!depositExemptionReason} disabled={Boolean(depositExemptionReason)} inputMode="decimal" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} placeholder="z. B. 150" className="input-luxe !py-2 disabled:opacity-40" /></div>
+          <div><label className="eyebrow block mb-1">Zahlungsart</label><select disabled={Boolean(depositExemptionReason)} value={depositMethod} onChange={(e) => setDepositMethod(e.target.value)} className="input-luxe !py-2 disabled:opacity-40"><option>Überweisung</option><option>PayPal</option><option>Bar</option><option>Sonstige</option></select></div>
+          <div><label className="eyebrow block mb-1">Anzahlung eingegangen am</label><input required={!depositExemptionReason} disabled={Boolean(depositExemptionReason)} type="date" value={depositPaidAt} onChange={(e) => setDepositPaidAt(e.target.value)} className="input-luxe !py-2 disabled:opacity-40" /></div>
         </div>
         <div className="flex items-center justify-between border-t border-champagne/20 pt-3"><span className="text-sm text-vanilla/65">Noch bar beim Termin</span><strong className="font-display text-2xl text-champagne">{Math.max(0, (Number(totalAmount.replace(",", ".")) || 0) - (Number(depositAmount.replace(",", ".")) || 0)).toLocaleString("de-DE")} €</strong></div>
       </div>

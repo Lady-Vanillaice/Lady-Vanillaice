@@ -261,6 +261,7 @@ export const updateBookingStatus = createServerFn({ method: "POST" })
       anzahlung_paid_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
       deposit_partner_name: z.string().trim().max(120).optional().nullable(),
       deposit_partner_email: z.string().trim().email().max(200).optional().nullable(),
+      deposit_exemption_reason: z.enum(["regular_customer", "trust", "exception", "colleague_guarantees", "spontaneous"]).optional().nullable(),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
@@ -283,6 +284,7 @@ export const updateBookingStatus = createServerFn({ method: "POST" })
       anzahlung_method?: string | null;
       anzahlung_paid?: boolean;
       anzahlung_paid_at?: string | null;
+      deposit_exemption_reason?: "regular_customer" | "trust" | "exception" | "colleague_guarantees" | "spontaneous" | null;
     } = {
       status: data.status,
       admin_note: data.admin_note ?? null,
@@ -295,6 +297,13 @@ export const updateBookingStatus = createServerFn({ method: "POST" })
         updatePayload.anzahlung_method = data.anzahlung_method?.trim() || null;
         updatePayload.anzahlung_paid = true;
         updatePayload.anzahlung_paid_at = `${data.anzahlung_paid_at}T12:00:00.000Z`;
+      }
+      if (data.deposit_exemption_reason) {
+        updatePayload.deposit_exemption_reason = data.deposit_exemption_reason;
+        updatePayload.anzahlung = 0;
+        updatePayload.anzahlung_method = null;
+        updatePayload.anzahlung_paid = false;
+        updatePayload.anzahlung_paid_at = null;
       }
     }
 
@@ -1170,9 +1179,10 @@ const manualBookingInput = z.object({
   booking_type: z.enum(["single", "duo", "content"]),
   duo_partner: z.string().trim().max(120).optional().nullable(),
   total_amount: z.number().positive().max(1_000_000),
-  deposit_amount: z.number().positive().max(1_000_000),
-  deposit_method: z.string().trim().min(1).max(100),
-  deposit_paid_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  deposit_amount: z.number().min(0).max(1_000_000),
+  deposit_method: z.string().trim().min(1).max(100).nullable(),
+  deposit_paid_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  deposit_exemption_reason: z.enum(["regular_customer", "trust", "exception", "colleague_guarantees", "spontaneous"]).nullable(),
 });
 
 export const createManualBooking = createServerFn({ method: "POST" })
@@ -1190,8 +1200,11 @@ export const createManualBooking = createServerFn({ method: "POST" })
     if (durationMinutes < 15) {
       throw new Error("Termin muss mindestens 15 Minuten dauern.");
     }
-    if (!data.deposit_paid_at) {
+    if (!data.deposit_exemption_reason && !data.deposit_paid_at) {
       throw new Error("Das Eingangsdatum der Anzahlung fehlt.");
+    }
+    if (!data.deposit_exemption_reason && data.deposit_amount <= 0) {
+      throw new Error("Die erhaltene Anzahlung muss größer als 0 € sein.");
     }
     if (data.deposit_amount > data.total_amount) {
       throw new Error("Die Anzahlung darf nicht höher als der Gesamtpreis sein.");
@@ -1346,12 +1359,13 @@ export const createManualBooking = createServerFn({ method: "POST" })
         message,
         status: "confirmed",
         admin_note: combinedInternalNote,
-        anzahlung: data.deposit_amount,
-        anzahlung_method: data.deposit_method,
-        anzahlung_paid: true,
-        anzahlung_paid_at: `${data.deposit_paid_at}T12:00:00.000Z`,
-        bar: data.total_amount - data.deposit_amount,
-        fully_paid: data.total_amount === data.deposit_amount,
+        anzahlung: data.deposit_exemption_reason ? 0 : data.deposit_amount,
+        anzahlung_method: data.deposit_exemption_reason ? null : data.deposit_method,
+        anzahlung_paid: data.deposit_exemption_reason ? false : true,
+        anzahlung_paid_at: data.deposit_exemption_reason ? null : `${data.deposit_paid_at}T12:00:00.000Z`,
+        deposit_exemption_reason: data.deposit_exemption_reason,
+        bar: data.total_amount - (data.deposit_exemption_reason ? 0 : data.deposit_amount),
+        fully_paid: !data.deposit_exemption_reason && data.total_amount === data.deposit_amount,
       });
     if (bookingErr) {
       // Roll back the slot to avoid orphan blocked windows.
