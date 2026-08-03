@@ -136,6 +136,8 @@ const [overrideDate, setOverrideDate] = useState("");
   const [anzahlungInput, setAnzahlungInput] = useState<string>("");
   const [anzahlungMethod, setAnzahlungMethod] = useState<string>("");
   const [barInput, setBarInput] = useState<string>("");
+  const [shortSessionPrice, setShortSessionPrice] = useState<string>("");
+  const [depositExemptionReason, setDepositExemptionReason] = useState<string>("");
   const [anzahlungPaidDate, setAnzahlungPaidDate] = useState<string>("");
   const [paymentSaved, setPaymentSaved] = useState(false);
   const [depositPartnerRuby, setDepositPartnerRuby] = useState<boolean>(false);
@@ -176,6 +178,7 @@ const [overrideDate, setOverrideDate] = useState("");
   anzahlung: number | string | null;
   anzahlung_method: string | null;
   anzahlung_paid_at: string | null;
+  deposit_exemption_reason: string | null;
   bar: number | string | null;
   availability_slots?: {
     is_duo?: boolean | null;
@@ -206,6 +209,7 @@ setDuoPartner(b.availability_slots?.duo_partner ?? "");
       setOverrideDuration(b.duration_minutes ? String(b.duration_minutes) : "");
       setAnzahlungInput(b.anzahlung != null ? String(b.anzahlung) : "0");
       setAnzahlungMethod(b.anzahlung_method ?? "");
+      setDepositExemptionReason(b.deposit_exemption_reason ?? "");
       setAnzahlungPaidDate(
   b.anzahlung_paid_at
     ? String(b.anzahlung_paid_at).slice(0, 10)
@@ -272,7 +276,7 @@ setDuoPartner(b.availability_slots?.duo_partner ?? "");
     mutationFn: () => {
       const a = Number((anzahlungInput || "0").replace(",", ".")) || 0;
       const b = Number((barInput || "0").replace(",", ".")) || 0;
-      return savePayment({ data: { id, anzahlung: a, bar: b, anzahlung_method: anzahlungMethod.trim() || null } });
+      return savePayment({ data: { id, anzahlung: depositExemptionReason ? 0 : a, bar: b, anzahlung_method: depositExemptionReason ? null : anzahlungMethod.trim() || null, deposit_exemption_reason: depositExemptionReason || null } });
     },
     onSuccess: () => {
       setPaymentSaved(true);
@@ -1340,7 +1344,61 @@ const depositDateMut = useMutation({
                 Vorschlag übernehmen
               </button>
             </div>
+            <div className="mb-4 border border-champagne/25 bg-champagne/[0.04] p-3">
+              <div className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 mb-2">
+                Kurzsession – Preis auswählen
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {[60, 75, 100].map((price) => (
+                  <button
+                    key={price}
+                    type="button"
+                    onClick={() => {
+                      setShortSessionPrice(String(price));
+                      setAnzahlungInput("0");
+                      setBarInput(String(price));
+                      setAnzahlungMethod("");
+                    }}
+                    className={`text-[0.65rem] uppercase tracking-[0.15em] px-4 py-2 border transition ${
+                      shortSessionPrice === String(price)
+                        ? "border-champagne bg-champagne/15 text-champagne"
+                        : "border-champagne/30 text-vanilla/60 hover:border-champagne/60 hover:text-vanilla"
+                    }`}
+                  >
+                    {price} €
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-[0.6rem] text-vanilla/40">
+                Setzt automatisch 0 € Anzahlung und den gewählten Betrag als Barzahlung vor Ort.
+              </p>
+            </div>
             <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 block mb-1">
+                  Anzahlungsregel
+                </label>
+                <select
+                  value={depositExemptionReason}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setDepositExemptionReason(value);
+                    if (value) {
+                      setAnzahlungInput("0");
+                      setAnzahlungMethod("");
+                      setAnzahlungPaidDate("");
+                    }
+                  }}
+                  className="input-luxe w-full"
+                >
+                  <option value="">Normale Anzahlung</option>
+                  <option value="regular_customer">Keine Anzahlung – Stammkunde</option>
+                  <option value="trust">Keine Anzahlung – Vertrauensbasis</option>
+                  <option value="exception">Keine Anzahlung – Ausnahme</option>
+                  <option value="colleague_guarantees">Keine Anzahlung – Kollegin bürgt</option>
+                  <option value="spontaneous">Keine Anzahlung – Spontaner Termin</option>
+                </select>
+              </div>
               <div>
                 <label className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 block mb-1">
                   Anzahlung (€)
@@ -1349,9 +1407,10 @@ const depositDateMut = useMutation({
                   type="text"
                   inputMode="decimal"
                   value={anzahlungInput}
-                  onChange={(e) => setAnzahlungInput(e.target.value)}
+                  disabled={Boolean(depositExemptionReason)}
+                  onChange={(e) => { setAnzahlungInput(e.target.value); setShortSessionPrice(""); }}
                   placeholder="0"
-                  className="input-luxe w-full"
+                  className="input-luxe w-full disabled:opacity-40"
                 />
               </div>
               <div>
@@ -1362,7 +1421,7 @@ const depositDateMut = useMutation({
                   type="text"
                   inputMode="decimal"
                   value={barInput}
-                  onChange={(e) => setBarInput(e.target.value)}
+                  onChange={(e) => { setBarInput(e.target.value); setShortSessionPrice(""); }}
                   placeholder="0"
                   className="input-luxe w-full"
                 />
@@ -1377,6 +1436,7 @@ const depositDateMut = useMutation({
                   <button
                     key={opt}
                     type="button"
+                    disabled={Boolean(depositExemptionReason)}
                     onClick={() => setAnzahlungMethod(opt)}
                     className={`text-[0.65rem] uppercase tracking-[0.15em] px-3 py-1.5 border transition ${
                       anzahlungMethod === opt
@@ -1391,9 +1451,10 @@ const depositDateMut = useMutation({
               <input
                 type="text"
                 value={anzahlungMethod}
+                disabled={Boolean(depositExemptionReason)}
                 onChange={(e) => setAnzahlungMethod(e.target.value)}
                 placeholder="z. B. Bank, PayPal, Revolut …"
-                className="input-luxe w-full"
+                className="input-luxe w-full disabled:opacity-40"
               />
               <p className="mt-1.5 text-[0.6rem] text-vanilla/40 leading-relaxed">
                 Optional — nur für deine interne Übersicht (wird nicht an den Gast gesendet).
@@ -1419,8 +1480,9 @@ const depositDateMut = useMutation({
   <input
     type="date"
     value={anzahlungPaidDate}
+    disabled={Boolean(depositExemptionReason)}
     onChange={(e) => setAnzahlungPaidDate(e.target.value)}
-    className="input-luxe w-full"
+    className="input-luxe w-full disabled:opacity-40"
   />
 </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
