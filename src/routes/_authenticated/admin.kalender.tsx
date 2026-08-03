@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { createSlot, deleteSlot, getCalendarFeedUrl, updateSlotBuffer, updateSlotTimes, setSlotHidden } from "@/lib/booking.functions";
+import { createSlot, deleteSlot, getCalendarFeedUrl, mergeSlots, splitSlot, updateSlotBuffer, updateSlotTimes, setSlotHidden } from "@/lib/booking.functions";
 import { useState } from "react";
 import { PageHeader } from "@/components/site/PageHeader";
 import {
@@ -10,7 +10,7 @@ import {
   StatusBadge,
   type Slot,
 } from "@/components/admin/admin-shared";
-import { Trash2, MapPin, ArrowLeft, Eye, EyeOff, CalendarPlus, Copy, Pencil, Save, X, Download, Crown } from "lucide-react";
+import { Trash2, MapPin, ArrowLeft, Eye, EyeOff, CalendarPlus, Copy, Pencil, Save, X, Download, Crown, Scissors, Combine } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -24,7 +24,10 @@ function AdminKalenderPage() {
   const createSlotFn = useServerFn(createSlot);
   const deleteSlotFn = useServerFn(deleteSlot);
   const updateSlotTimesFn = useServerFn(updateSlotTimes);
+  const splitSlotFn = useServerFn(splitSlot);
+  const mergeSlotsFn = useServerFn(mergeSlots);
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
+  const [splittingSlotId, setSplittingSlotId] = useState<string | null>(null);
 
   const slotsQ = useQuery({
     queryKey: ["admin-slots"],
@@ -88,6 +91,20 @@ function AdminKalenderPage() {
       setEditingSlotId(null);
       qc.invalidateQueries({ queryKey: ["admin-slots"] });
     },
+  });
+
+  const splitMut = useMutation({
+    mutationFn: (v: { id: string; split_at: string }) => splitSlotFn({ data: v }),
+    onSuccess: () => {
+      setSplittingSlotId(null);
+      qc.invalidateQueries({ queryKey: ["admin-slots"] });
+    },
+  });
+
+  const mergeMut = useMutation({
+    mutationFn: (v: { first_id: string; second_id: string }) => mergeSlotsFn({ data: v }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-slots"] }),
+    onError: (error) => alert(error instanceof Error ? error.message : "Zeitfenster konnten nicht zusammengeführt werden."),
   });
 
   const updateBufferFn = useServerFn(updateSlotBuffer);
@@ -154,7 +171,13 @@ function AdminKalenderPage() {
                   </p>
                 </header>
                 <div className="divide-y divide-champagne/10">
-                  {group.slots.map((s) => {
+                  {group.slots.map((s, slotIndex) => {
+                    const nextSlot = group.slots[slotIndex + 1] ?? null;
+                    const canMergeWithNext = Boolean(
+                      s.status === "open"
+                      && nextSlot?.status === "open"
+                      && new Date(s.ends_at).getTime() === new Date(nextSlot.starts_at).getTime(),
+                    );
                     const durationMinutes = Math.round((new Date(s.ends_at).getTime() - new Date(s.starts_at).getTime()) / 60_000);
                     const durationLabel = durationMinutes >= 60
                       ? `${Math.floor(durationMinutes / 60)} Std.${durationMinutes % 60 ? ` ${durationMinutes % 60} Min.` : ""}`
@@ -216,9 +239,46 @@ function AdminKalenderPage() {
                               onSave={(value) => updateTimesMut.mutateAsync({ id: s.id, ...value })}
                             />
                           )}
+                          {splittingSlotId === s.id && (
+                            <SlotSplitEditor
+                              slot={s}
+                              pending={splitMut.isPending}
+                              onCancel={() => setSplittingSlotId(null)}
+                              onSave={(splitAt) => splitMut.mutateAsync({ id: s.id, split_at: splitAt })}
+                            />
+                          )}
                         </div>
 
                         <div className="flex items-center gap-1 sm:shrink-0">
+                          {s.status === "open" && (
+                            <button
+                              onClick={() => {
+                                setEditingSlotId(null);
+                                setSplittingSlotId(splittingSlotId === s.id ? null : s.id);
+                              }}
+                              disabled={splitMut.isPending || mergeMut.isPending}
+                              className="text-vanilla/50 hover:text-champagne transition p-2"
+                              aria-label="Zeitfenster aufteilen"
+                              title="An einer Uhrzeit in zwei freie Zeitfenster teilen"
+                            >
+                              <Scissors size={16} />
+                            </button>
+                          )}
+                          {canMergeWithNext && nextSlot && (
+                            <button
+                              onClick={() => {
+                                if (confirm(`Diese beiden Zeitfenster verbinden: ${format(new Date(s.starts_at), "HH:mm")}–${format(new Date(nextSlot.ends_at), "HH:mm")} Uhr?`)) {
+                                  mergeMut.mutate({ first_id: s.id, second_id: nextSlot.id });
+                                }
+                              }}
+                              disabled={splitMut.isPending || mergeMut.isPending}
+                              className="text-vanilla/50 hover:text-champagne transition p-2"
+                              aria-label="Mit folgendem Zeitfenster zusammenführen"
+                              title="Mit dem direkt folgenden Zeitfenster verbinden"
+                            >
+                              <Combine size={16} />
+                            </button>
+                          )}
                           <button
                             onClick={() => setEditingSlotId(editingSlotId === s.id ? null : s.id)}
                             disabled={updateTimesMut.isPending}
@@ -442,6 +502,69 @@ function FreeSlotImageExport({ slots, loading }: { slots: Slot[]; loading: boole
         )}
       </div>
     </section>
+  );
+}
+
+function SlotSplitEditor({
+  slot,
+  pending,
+  onSave,
+  onCancel,
+}: {
+  slot: Slot;
+  pending: boolean;
+  onSave: (splitAt: string) => Promise<unknown>;
+  onCancel: () => void;
+}) {
+  const startMs = new Date(slot.starts_at).getTime();
+  const endMs = new Date(slot.ends_at).getTime();
+  const midpoint = new Date(Math.round(((startMs + endMs) / 2) / (15 * 60_000)) * 15 * 60_000);
+  const inputFormat = "yyyy-MM-dd'T'HH:mm";
+  const [splitAt, setSplitAt] = useState(format(midpoint, inputFormat));
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    setError(null);
+    const value = new Date(splitAt);
+    if (!splitAt || Number.isNaN(value.getTime())) {
+      setError("Bitte eine gültige Trennzeit auswählen.");
+      return;
+    }
+    try {
+      await onSave(value.toISOString());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Zeitfenster konnte nicht geteilt werden.");
+    }
+  }
+
+  return (
+    <div className="mt-4 border border-champagne/25 bg-anthracite/30 p-4">
+      <div className="eyebrow text-champagne mb-3">Zeitfenster aufteilen</div>
+      <label className="block text-[0.6rem] uppercase tracking-[0.16em] text-vanilla/45 mb-1">
+        Trennen um
+      </label>
+      <input
+        type="datetime-local"
+        value={splitAt}
+        min={format(new Date(startMs + 30 * 60_000), inputFormat)}
+        max={format(new Date(endMs - 30 * 60_000), inputFormat)}
+        step={900}
+        onChange={(event) => setSplitAt(event.target.value)}
+        className="input-luxe !py-2 max-w-xs"
+      />
+      <p className="mt-2 text-[0.65rem] text-vanilla/45">
+        Beide Teile müssen mindestens 30 Minuten lang sein. Buchungen und Reservierungen bleiben geschützt.
+      </p>
+      {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
+      <div className="mt-3 flex gap-2">
+        <button type="button" onClick={save} disabled={pending} className="btn-gold !py-2 !px-3 !text-[0.65rem]">
+          <Scissors size={12} /> {pending ? "Teilt…" : "Jetzt aufteilen"}
+        </button>
+        <button type="button" onClick={onCancel} disabled={pending} className="btn-outline-gold !py-2 !px-3 !text-[0.65rem]">
+          <X size={12} /> Abbrechen
+        </button>
+      </div>
+    </div>
   );
 }
 
