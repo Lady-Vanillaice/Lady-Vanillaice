@@ -36,6 +36,10 @@ type Entry = {
   bar: number | null;
 };
 
+function hasNoDeposit(entry: Pick<Entry, "deposit_exemption_reason" | "anzahlung" | "bar">) {
+  return Boolean(entry.deposit_exemption_reason) || (Number(entry.anzahlung ?? 0) === 0 && Number(entry.bar ?? 0) > 0);
+}
+
 function TerminplanPage() {
   const qc = useQueryClient();
   const createManualBookingFn = useServerFn(createManualBooking);
@@ -351,10 +355,10 @@ function DayPlanDownloadButton({ day, items }: { day: Date; items: Entry[] }) {
       ctx.fillText(`Studio: ${entry.location || "—"}`, left, y + 161);
 
       ctx.textAlign = "right";
-      ctx.fillStyle = entry.anzahlung_paid || entry.deposit_exemption_reason ? "#9fc8a8" : "#e0b26d";
+      ctx.fillStyle = entry.anzahlung_paid || hasNoDeposit(entry) ? "#9fc8a8" : "#e0b26d";
       ctx.font = 'bold 20px Arial, sans-serif';
       ctx.fillText(
-        entry.deposit_exemption_reason
+        hasNoDeposit(entry)
           ? "Keine Anzahlung vereinbart"
           : `Anzahlung: ${(entry.anzahlung ?? 0).toLocaleString("de-DE")} € · ${entry.anzahlung_paid ? "BEZAHLT" : "OFFEN"}`,
         right,
@@ -420,12 +424,12 @@ function EntryCard({ e }: { e: Entry }) {
           <span className="font-medium text-lg text-vanilla">{e.guest_name}</span>
           <span
             className={`text-[0.5rem] uppercase tracking-[0.16em] px-1.5 py-0.5 ${
-              e.anzahlung_paid || e.deposit_exemption_reason
+              e.anzahlung_paid || hasNoDeposit(e)
                 ? "bg-green-700/30 text-green-200"
                 : "bg-amber-700/30 text-amber-200"
             }`}
           >
-            {e.deposit_exemption_reason ? "Keine Anzahlung" : e.anzahlung_paid ? "Anzahlung ok" : "Anzahlung offen"}
+            {hasNoDeposit(e) ? "Keine Anzahlung" : e.anzahlung_paid ? "Anzahlung ok" : "Anzahlung offen"}
           </span>
         </div>
 
