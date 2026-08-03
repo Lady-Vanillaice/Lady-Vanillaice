@@ -199,11 +199,14 @@ function KassenbuchPage() {
     const appointments = data
       .filter(entry => entry.termin_datum.startsWith(month))
       .filter(entry => entry.source === "booking" && entry.status !== "cancelled")
-      .map(entry => ({
-        date: entry.termin_datum,
-        studio: entry.studio,
-        address: entry.studio_address?.trim() || "",
-      }));
+      .map(entry => {
+        const parts = studioParts(entry);
+        return {
+          date: entry.termin_datum,
+          studio: parts.studio,
+          address: parts.address,
+        };
+      });
     const missingAddress = appointments.find(entry => !entry.address);
     if (missingAddress) {
       alert(`Für ${missingAddress.studio} am ${dateLabel(missingAddress.date)} fehlt die Studio-Adresse. Bitte den Termin zuerst im Kassenbuch bearbeiten.`);
