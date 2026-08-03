@@ -21,7 +21,7 @@ function statusBucket(b: Booking): StatusTab | null {
   if (s === "cancelled" || s === "declined") return "geschlossen";
   if ((s === "confirmed" || s === "waiting_deposit") && appointmentIsPast) return "geschlossen";
   if (s === "waiting_deposit") return "wartend";
-  if (s === "confirmed") return b.anzahlung_paid ? null : "wartend";
+  if (s === "confirmed") return b.anzahlung_paid || b.deposit_exemption_reason ? null : "wartend";
   // pending / rescheduling / open: älter als 24h → geschlossen, sonst offen
   const ageMs = Date.now() - new Date(b.created_at).getTime();
   if (ageMs > 24 * 60 * 60 * 1000) return "geschlossen";
@@ -124,7 +124,7 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
     queryFn: async (): Promise<Booking[]> => {
       const { data, error } = await supabase
         .from("bookings")
-        .select("id, slot_id, guest_name, guest_email, guest_phone, duration, duration_minutes, requested_start, message, status, admin_note, anzahlung_paid, completed_at, cash_received_at, fully_paid, created_at")
+        .select("id, slot_id, guest_name, guest_email, guest_phone, duration, duration_minutes, requested_start, message, status, admin_note, anzahlung_paid, deposit_exemption_reason, completed_at, cash_received_at, fully_paid, created_at")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as Booking[];
@@ -141,6 +141,7 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
       confirmation_note?: string;
       anzahlung_method?: string | null;
       anzahlung_paid_at?: string | null;
+      deposit_exemption_reason?: "regular_customer" | "trust" | "exception" | "colleague_guarantees" | "spontaneous" | null;
     }) => updateBookingFn({ data: v }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-bookings"] });
@@ -273,10 +274,12 @@ function FixBookingDialog({
   booking: Booking;
   pending: boolean;
   onClose: () => void;
-  onSave: (values: { anzahlung: number; bar: number; anzahlung_method: string; anzahlung_paid_at: string }) => void;
+  onSave: (values: { anzahlung: number; bar: number; anzahlung_method: string | null; anzahlung_paid_at: string | null; deposit_exemption_reason: "regular_customer" | "trust" | "exception" | "colleague_guarantees" | "spontaneous" | null }) => void;
 }) {
   const [total, setTotal] = useState("");
   const [deposit, setDeposit] = useState("");
+  const [shortSessionPrice, setShortSessionPrice] = useState("");
+  const [depositExemptionReason, setDepositExemptionReason] = useState<"regular_customer" | "trust" | "exception" | "colleague_guarantees" | "spontaneous" | "">("");
   const [method, setMethod] = useState("Überweisung");
   const [paidAt, setPaidAt] = useState(() => new Date().toISOString().slice(0, 10));
   const [error, setError] = useState("");
@@ -288,9 +291,9 @@ function FixBookingDialog({
     e.preventDefault();
     setError("");
     if (totalValue <= 0) return setError("Bitte den Gesamtpreis eintragen.");
-    if (depositValue <= 0 || depositValue > totalValue) return setError("Die erhaltene Anzahlung muss größer als 0 € und höchstens so hoch wie der Gesamtpreis sein.");
-    if (!method.trim() || !paidAt) return setError("Bitte Zahlungsart und Eingangsdatum angeben.");
-    onSave({ anzahlung: depositValue, bar: rest, anzahlung_method: method.trim(), anzahlung_paid_at: paidAt });
+    if (!depositExemptionReason && (depositValue <= 0 || depositValue > totalValue)) return setError("Die erhaltene Anzahlung muss größer als 0 € und höchstens so hoch wie der Gesamtpreis sein.");
+    if (!depositExemptionReason && (!method.trim() || !paidAt)) return setError("Bitte Zahlungsart und Eingangsdatum angeben.");
+    onSave({ anzahlung: depositExemptionReason ? 0 : depositValue, bar: depositExemptionReason ? totalValue : rest, anzahlung_method: depositExemptionReason ? null : method.trim(), anzahlung_paid_at: depositExemptionReason ? null : paidAt, deposit_exemption_reason: depositExemptionReason || null });
   };
 
   return (
@@ -302,10 +305,12 @@ function FixBookingDialog({
         </div>
         <p className="text-sm text-vanilla/60">Trage nur Preis und die bereits erhaltene Anzahlung ein. Der Bar-Rest wird automatisch berechnet und der Termin anschließend in Terminplan und Kassenbuch übernommen.</p>
         <div className="grid sm:grid-cols-2 gap-3">
+          <label className="space-y-1"><span className="eyebrow block">Kurzsession</span><select value={shortSessionPrice} onChange={(e) => { const value = e.target.value; setShortSessionPrice(value); if (value) setTotal(value); }} className="input-luxe"><option value="">Preis auswählen</option><option value="60">60 €</option><option value="75">75 €</option><option value="100">100 €</option></select></label>
+          <label className="space-y-1"><span className="eyebrow block">Anzahlungsregel</span><select value={depositExemptionReason} onChange={(e) => { const value = e.target.value as typeof depositExemptionReason; setDepositExemptionReason(value); if (value) setDeposit("0"); }} className="input-luxe"><option value="">Normale Anzahlung</option><option value="regular_customer">Keine Anzahlung – Stammkunde</option><option value="trust">Keine Anzahlung – Vertrauensbasis</option><option value="exception">Keine Anzahlung – Ausnahme</option><option value="colleague_guarantees">Keine Anzahlung – Kollegin bürgt</option><option value="spontaneous">Keine Anzahlung – Spontaner Termin</option></select></label>
           <label className="space-y-1"><span className="eyebrow block">Gesamtpreis (€)</span><input autoFocus required inputMode="decimal" value={total} onChange={(e) => setTotal(e.target.value)} placeholder="z. B. 450" className="input-luxe" /></label>
-          <label className="space-y-1"><span className="eyebrow block">Anzahlung erhalten (€)</span><input required inputMode="decimal" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="z. B. 150" className="input-luxe" /></label>
-          <label className="space-y-1"><span className="eyebrow block">Zahlungsart</span><select value={method} onChange={(e) => setMethod(e.target.value)} className="input-luxe"><option>Überweisung</option><option>PayPal</option><option>Bar</option><option>Sonstige</option></select></label>
-          <label className="space-y-1"><span className="eyebrow block">Eingegangen am</span><input required type="date" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} className="input-luxe" /></label>
+          <label className="space-y-1"><span className="eyebrow block">Anzahlung erhalten (€)</span><input required={!depositExemptionReason} disabled={Boolean(depositExemptionReason)} inputMode="decimal" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="z. B. 150" className="input-luxe disabled:opacity-40" /></label>
+          <label className="space-y-1"><span className="eyebrow block">Zahlungsart</span><select disabled={Boolean(depositExemptionReason)} value={method} onChange={(e) => setMethod(e.target.value)} className="input-luxe disabled:opacity-40"><option>Überweisung</option><option>PayPal</option><option>Bar</option><option>Sonstige</option></select></label>
+          <label className="space-y-1"><span className="eyebrow block">Eingegangen am</span><input required={!depositExemptionReason} disabled={Boolean(depositExemptionReason)} type="date" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} className="input-luxe disabled:opacity-40" /></label>
         </div>
         <div className="flex items-center justify-between border border-champagne/25 bg-champagne/[0.05] p-4"><span className="text-sm text-vanilla/65">Noch bar beim Termin</span><strong className="font-display text-3xl text-champagne">{rest.toLocaleString("de-DE")} €</strong></div>
         {error && <p className="text-sm text-destructive">{error}</p>}
