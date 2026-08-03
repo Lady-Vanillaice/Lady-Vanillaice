@@ -1018,15 +1018,21 @@ export const updateBookingPayment = createServerFn({ method: "POST" })
       anzahlung: z.number().min(0).max(1_000_000),
       bar: z.number().min(0).max(1_000_000),
       anzahlung_method: z.string().max(100).nullable().optional(),
+      deposit_exemption_reason: z.enum(["regular_customer", "trust", "exception", "colleague_guarantees", "spontaneous"]).nullable().optional(),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
     await ensureAdmin(context.supabase, context.userId);
-    const payload: { anzahlung: number; bar: number; anzahlung_method?: string | null } = {
-      anzahlung: data.anzahlung,
+    const payload: { anzahlung: number; bar: number; anzahlung_method?: string | null; anzahlung_paid?: boolean; anzahlung_paid_at?: string | null; deposit_exemption_reason?: string | null } = {
+      anzahlung: data.deposit_exemption_reason ? 0 : data.anzahlung,
       bar: data.bar,
+      deposit_exemption_reason: data.deposit_exemption_reason ?? null,
     };
-    if (data.anzahlung_method !== undefined) {
+    if (data.deposit_exemption_reason) {
+      payload.anzahlung_method = null;
+      payload.anzahlung_paid = false;
+      payload.anzahlung_paid_at = null;
+    } else if (data.anzahlung_method !== undefined) {
       const trimmed = data.anzahlung_method?.trim() ?? "";
       payload.anzahlung_method = trimmed.length ? trimmed : null;
     }
@@ -1385,7 +1391,7 @@ export const getBookingDetail = createServerFn({ method: "GET" })
     const { data: booking, error } = await context.supabase
       .from("bookings")
       .select(
-        "id, slot_id, guest_name, guest_email, guest_phone, duration, duration_minutes, requested_start, message, status, admin_note, confirmation_note, anzahlung, anzahlung_paid, anzahlung_paid_at, anzahlung_method, bar, created_at, updated_at, availability_slots(starts_at, ends_at, location, is_duo, is_content_shoot, duo_partner)"
+        "id, slot_id, guest_name, guest_email, guest_phone, duration, duration_minutes, requested_start, message, status, admin_note, confirmation_note, anzahlung, anzahlung_paid, anzahlung_paid_at, anzahlung_method, deposit_exemption_reason, bar, created_at, updated_at, availability_slots(starts_at, ends_at, location, is_duo, is_content_shoot, duo_partner)"
       )
       .eq("id", data.id)
       .maybeSingle();
