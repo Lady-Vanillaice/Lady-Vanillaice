@@ -196,6 +196,171 @@ export const updateSlotTimes = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+const slotReshapeInput = z.object({
+  id: z.string().uuid(),
+  split_at: z.string().datetime(),
+});
+
+const activeSlotBookingStatuses = ["pending", "waiting_deposit", "confirmed"] as const;
+
+async function assertSlotHasNoActiveBookings(supabase: any, slotIds: string[]) {
+  const { count, error } = await supabase
+    .from("bookings")
+    .select("id", { count: "exact", head: true })
+    .in("slot_id", slotIds)
+    .in("status", [...activeSlotBookingStatuses]);
+  if (error) throw new Error(error.message);
+  if ((count ?? 0) > 0) {
+    throw new Error("Gebuchte oder reservierte Zeitfenster können nicht geteilt oder zusammengeführt werden.");
+  }
+}
+
+export const splitSlot = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => slotReshapeInput.parse(d))
+  .handler(async ({ data, context }) => {
+    await ensureAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: slot, error: slotErr } = await supabaseAdmin
+      .from("availability_slots")
+      .select("id, starts_at, ends_at, location, status, buffer_minutes, is_duo, is_content_shoot, duo_partner, is_hidden")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (slotErr) throw new Error(slotErr.message);
+    if (!slot) throw new Error("Zeitfenster nicht gefunden.");
+    if (slot.status !== "open") throw new Error("Nur freie Zeitfenster können geteilt werden.");
+
+    await assertSlotHasNoActiveBookings(supabaseAdmin, [slot.id]);
+
+    const start = new Date(slot.starts_at).getTime();
+    const end = new Date(slot.ends_at).getTime();
+    const split = new Date(data.split_at).getTime();
+    const minimumPartMs = 30 * 60_000;
+    if (split - start < minimumPartMs || end - split < minimumPartMs) {
+      throw new Error("Beide neuen Zeitfenster müssen mindestens 30 Minuten lang sein.");
+    }
+
+    const { data: meta } = await supabaseAdmin
+      .from("availability_slot_admin_meta")
+      .select("internal_note")
+      .eq("slot_id", slot.id)
+      .maybeSingle();
+
+    const { error: updateErr } = await supabaseAdmin
+      .from("availability_slots")
+      .update({ ends_at: data.split_at })
+      .eq("id", slot.id);
+    if (updateErr) throw new Error(updateErr.message);
+
+    const { data: rightSlot, error: insertErr } = await supabaseAdmin
+      .from("availability_slots")
+      .insert({
+        starts_at: data.split_at,
+        ends_at: slot.ends_at,
+        location: slot.location,
+        status: "open",
+        buffer_minutes: slot.buffer_minutes ?? 30,
+        is_duo: slot.is_duo ?? false,
+        is_content_shoot: slot.is_content_shoot ?? false,
+        duo_partner: slot.is_duo ? slot.duo_partner ?? null : null,
+        is_hidden: slot.is_hidden ?? false,
+      })
+      .select("id")
+      .single();
+
+    if (insertErr || !rightSlot) {
+      await supabaseAdmin.from("availability_slots").update({ ends_at: slot.ends_at }).eq("id", slot.id);
+      throw new Error(insertErr?.message ?? "Das zweite Zeitfenster konnte nicht angelegt werden.");
+    }
+
+    if (meta?.internal_note) {
+      const { error: metaErr } = await supabaseAdmin
+        .from("availability_slot_admin_meta")
+        .insert({ slot_id: rightSlot.id, internal_note: meta.internal_note, created_by: context.userId });
+      if (metaErr) {
+        await supabaseAdmin.from("availability_slots").delete().eq("id", rightSlot.id);
+        await supabaseAdmin.from("availability_slots").update({ ends_at: slot.ends_at }).eq("id", slot.id);
+        throw new Error(metaErr.message);
+      }
+    }
+
+    return { ok: true, left_id: slot.id, right_id: rightSlot.id };
+  });
+
+const mergeSlotsInput = z.object({
+  first_id: z.string().uuid(),
+  second_id: z.string().uuid(),
+}).refine((value) => value.first_id !== value.second_id, {
+  message: "Bitte zwei unterschiedliche Zeitfenster auswählen.",
+});
+
+export const mergeSlots = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => mergeSlotsInput.parse(d))
+  .handler(async ({ data, context }) => {
+    await ensureAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const ids = [data.first_id, data.second_id];
+    const { data: rows, error: slotErr } = await supabaseAdmin
+      .from("availability_slots")
+      .select("id, starts_at, ends_at, location, status, buffer_minutes, is_duo, is_content_shoot, duo_partner, is_hidden")
+      .in("id", ids);
+    if (slotErr) throw new Error(slotErr.message);
+    if ((rows ?? []).length !== 2) throw new Error("Ein Zeitfenster wurde nicht gefunden.");
+
+    const [first, second] = [...(rows ?? [])].sort(
+      (a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime(),
+    );
+    if (first.status !== "open" || second.status !== "open") {
+      throw new Error("Nur freie Zeitfenster können zusammengeführt werden.");
+    }
+    if (new Date(first.ends_at).getTime() !== new Date(second.starts_at).getTime()) {
+      throw new Error("Die Zeitfenster müssen direkt aneinandergrenzen.");
+    }
+
+    const sameSettings =
+      first.location === second.location
+      && (first.buffer_minutes ?? 30) === (second.buffer_minutes ?? 30)
+      && Boolean(first.is_duo) === Boolean(second.is_duo)
+      && Boolean(first.is_content_shoot) === Boolean(second.is_content_shoot)
+      && (first.duo_partner ?? null) === (second.duo_partner ?? null)
+      && Boolean(first.is_hidden) === Boolean(second.is_hidden);
+    if (!sameSettings) {
+      throw new Error("Studio, Puffer, Sichtbarkeit, Duo- und Content-Einstellungen müssen übereinstimmen.");
+    }
+
+    await assertSlotHasNoActiveBookings(supabaseAdmin, ids);
+
+    const { data: metas, error: metaErr } = await supabaseAdmin
+      .from("availability_slot_admin_meta")
+      .select("slot_id, internal_note")
+      .in("slot_id", ids);
+    if (metaErr) throw new Error(metaErr.message);
+    const noteBySlot = new Map((metas ?? []).map((meta) => [meta.slot_id, meta.internal_note ?? null]));
+    if ((noteBySlot.get(first.id) ?? null) !== (noteBySlot.get(second.id) ?? null)) {
+      throw new Error("Zeitfenster mit unterschiedlichen internen Notizen können nicht zusammengeführt werden.");
+    }
+
+    const { error: updateErr } = await supabaseAdmin
+      .from("availability_slots")
+      .update({ ends_at: second.ends_at })
+      .eq("id", first.id);
+    if (updateErr) throw new Error(updateErr.message);
+
+    const { error: deleteErr } = await supabaseAdmin
+      .from("availability_slots")
+      .delete()
+      .eq("id", second.id);
+    if (deleteErr) {
+      await supabaseAdmin.from("availability_slots").update({ ends_at: first.ends_at }).eq("id", first.id);
+      throw new Error(deleteErr.message);
+    }
+
+    return { ok: true, slot_id: first.id };
+  });
+
 export const setSlotHidden = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
