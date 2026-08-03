@@ -107,6 +107,37 @@ function AdminKalenderPage() {
     onError: (error) => alert(error instanceof Error ? error.message : "Zeitfenster konnten nicht zusammengeführt werden."),
   });
 
+  const mergeDayMut = useMutation({
+    mutationFn: async (slots: Slot[]) => {
+      const ordered = [...slots].sort(
+        (a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime(),
+      );
+      let anchor = ordered[0] ?? null;
+      let mergedCount = 0;
+
+      for (const next of ordered.slice(1)) {
+        if (!anchor) {
+          anchor = next;
+          continue;
+        }
+        if (!canMergeSlots(anchor, next)) {
+          anchor = next;
+          continue;
+        }
+        await mergeSlotsFn({ data: { first_id: anchor.id, second_id: next.id } });
+        anchor = { ...anchor, ends_at: next.ends_at };
+        mergedCount += 1;
+      }
+
+      if (mergedCount === 0) {
+        throw new Error("An diesem Tag gibt es keine direkt angrenzenden Zeitfenster mit gleichen Einstellungen.");
+      }
+      return mergedCount;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-slots"] }),
+    onError: (error) => alert(error instanceof Error ? error.message : "Zeitfenster konnten nicht zusammengeführt werden."),
+  });
+
   const updateBufferFn = useServerFn(updateSlotBuffer);
   const bufferMut = useMutation({
     mutationFn: (v: { id: string; buffer_minutes: number }) => updateBufferFn({ data: v }),
@@ -166,9 +197,29 @@ function AdminKalenderPage() {
                       {format(group.date, "dd.MM.yyyy", { locale: de })}
                     </h2>
                   </div>
-                  <p className="text-xs text-vanilla/55">
-                    {group.slots.length} {group.slots.length === 1 ? "Zeitfenster" : "Zeitfenster"} an diesem Tag
-                  </p>
+                  <div className="flex flex-col items-end gap-2">
+                    <p className="text-xs text-vanilla/55">
+                      {group.slots.length} {group.slots.length === 1 ? "Zeitfenster" : "Zeitfenster"} an diesem Tag
+                    </p>
+                    {group.slots.some((slot, index) => {
+                      const next = group.slots[index + 1];
+                      return Boolean(next && canMergeSlots(slot, next));
+                    }) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm("Alle direkt angrenzenden freien Zeitfenster dieses Tages zusammenführen? Gebuchte und reservierte Zeiten bleiben unverändert.")) {
+                            mergeDayMut.mutate(group.slots);
+                          }
+                        }}
+                        disabled={mergeDayMut.isPending || mergeMut.isPending || splitMut.isPending}
+                        className="btn-outline-gold !py-1.5 !px-3 !text-[0.58rem]"
+                      >
+                        <Combine size={12} />
+                        Alle angrenzenden verbinden
+                      </button>
+                    )}
+                  </div>
                 </header>
                 <div className="divide-y divide-champagne/10">
                   {group.slots.map((s, slotIndex) => {
@@ -317,6 +368,21 @@ function AdminKalenderPage() {
         </div>
       </section>
     </>
+  );
+}
+
+function canMergeSlots(first: Slot, second: Slot) {
+  return (
+    first.status === "open"
+    && second.status === "open"
+    && new Date(first.ends_at).getTime() === new Date(second.starts_at).getTime()
+    && first.location === second.location
+    && (first.buffer_minutes ?? 30) === (second.buffer_minutes ?? 30)
+    && Boolean(first.is_duo) === Boolean(second.is_duo)
+    && Boolean(first.is_content_shoot) === Boolean(second.is_content_shoot)
+    && (first.duo_partner ?? null) === (second.duo_partner ?? null)
+    && Boolean(first.is_hidden) === Boolean(second.is_hidden)
+    && (first.internal_note ?? null) === (second.internal_note ?? null)
   );
 }
 
