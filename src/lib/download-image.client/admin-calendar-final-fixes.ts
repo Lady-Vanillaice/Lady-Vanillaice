@@ -29,35 +29,44 @@ function fixNewSlotFormLabels() {
   }
 }
 
+function findDayHeaders() {
+  return Array.from(document.querySelectorAll("h2"))
+    .map((heading) => {
+      const dayKey = parseGermanDate(heading.textContent ?? "");
+      const header = heading.closest("header");
+      return dayKey && header instanceof HTMLElement ? { dayKey, header } : null;
+    })
+    .filter((entry): entry is { dayKey: string; header: HTMLElement } => Boolean(entry));
+}
+
 function enhanceDaySections() {
-  const sections = Array.from(document.querySelectorAll("section.border.border-champagne\\/15.bg-card"));
+  for (const { dayKey, header } of findDayHeaders()) {
+    const summary = Array.from(header.querySelectorAll("p")).find((node) =>
+      node.textContent?.includes("Zeitfenster an diesem Tag"),
+    );
+    if (!(summary instanceof HTMLElement)) continue;
 
-  for (const section of sections) {
-    const dateHeading = section.querySelector("h2");
-    const dayKey = dateHeading ? parseGermanDate(dateHeading.textContent ?? "") : null;
-    const header = section.querySelector("header");
-    if (!dayKey || !(header instanceof HTMLElement)) continue;
-
-    const actionArea = header.lastElementChild;
+    const actionArea = summary.parentElement;
     if (!(actionArea instanceof HTMLElement)) continue;
 
-    const badges = Array.from(section.querySelectorAll("span")).map((node) => node.textContent?.trim().toLowerCase());
+    summary.style.whiteSpace = "normal";
+    summary.style.textAlign = "right";
+
+    const dayContainer = header.parentElement;
+    const badges = dayContainer
+      ? Array.from(dayContainer.querySelectorAll("span")).map((node) => node.textContent?.trim().toLowerCase())
+      : [];
     const hasOpenSlot = badges.includes("offen");
-    const summary = actionArea.querySelector("p");
-    if (summary instanceof HTMLElement) {
-      summary.style.whiteSpace = "normal";
-      summary.style.textAlign = "right";
-      if (hasOpenSlot && !summary.textContent?.includes("freie Zeitfenster vorhanden")) {
-        summary.textContent = `${summary.textContent?.trim() ?? ""} · freie Zeitfenster vorhanden`;
-      }
+    if (hasOpenSlot && !summary.textContent?.includes("freie Zeitfenster vorhanden")) {
+      summary.textContent = `${summary.textContent?.trim() ?? ""} · freie Zeitfenster vorhanden`;
     }
 
-    if (section.querySelector("[data-merge-calendar-day]")) continue;
+    if (actionArea.querySelector(`[data-merge-calendar-day="${dayKey}"]`)) continue;
 
     const button = document.createElement("button");
     button.type = "button";
     button.dataset.mergeCalendarDay = dayKey;
-    button.className = "btn-outline-gold !py-1.5 !px-3 !text-[0.58rem]";
+    button.className = "btn-outline-gold !py-1.5 !px-3 !text-[0.58rem] mt-2";
     button.textContent = "Zeitslots zusammenführen";
     button.title = "Technische Unterteilungen zusammenführen, ohne gebuchte Termine zu verändern";
 
@@ -91,6 +100,8 @@ function enhance() {
 if (typeof window !== "undefined" && !installed) {
   installed = true;
   queueMicrotask(enhance);
+  window.setTimeout(enhance, 250);
+  window.setTimeout(enhance, 1000);
   const observer = new MutationObserver(enhance);
   observer.observe(document.documentElement, { childList: true, subtree: true });
   window.addEventListener("popstate", enhance);
