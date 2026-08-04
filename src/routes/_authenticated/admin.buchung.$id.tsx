@@ -60,9 +60,6 @@ export const Route = createFileRoute("/_authenticated/admin/buchung/$id")({
   ),
 });
 
-const RUBY_JUNE_NAME = "Ruby June";
-const RUBY_JUNE_EMAIL = "mistress.ruby.june@gmail.com";
-
 const MESSAGE_TEMPLATES = [
   { label: "Anfrage erhalten", text: "Danke für deine Anfrage. Ich prüfe den gewünschten Termin und melde mich schnellstmöglich mit einer verbindlichen Rückmeldung." },
   { label: "Anzahlung", text: "Dein Termin ist vorgemerkt. Bitte überweise die vereinbarte Anzahlung, damit ich ihn verbindlich für dich reservieren kann." },
@@ -140,7 +137,10 @@ const [overrideDate, setOverrideDate] = useState("");
   const [depositExemptionReason, setDepositExemptionReason] = useState<string>("");
   const [anzahlungPaidDate, setAnzahlungPaidDate] = useState<string>("");
   const [paymentSaved, setPaymentSaved] = useState(false);
-  const [depositPartnerRuby, setDepositPartnerRuby] = useState<boolean>(false);
+  const [depositPartnerEnabled, setDepositPartnerEnabled] = useState<boolean>(false);
+  const [depositPartnerName, setDepositPartnerName] = useState<string>("");
+  const [depositPartnerAmount, setDepositPartnerAmount] = useState<string>("");
+  const [depositPartnerPayment, setDepositPartnerPayment] = useState<string>("");
   const [includeDepositInfo, setIncludeDepositInfo] = useState<boolean>(false);
 
   // Content-Dreh Antwort
@@ -334,6 +334,8 @@ const depositDateMut = useMutation({
       barOverride?: number | null;
       depositPartnerName?: string | null;
       depositPartnerEmail?: string | null;
+      depositPartnerAmount?: number | null;
+      depositPartnerPayment?: string | null;
     }) => sendPersonalMessageFn({ data: { id, ...v } }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-booking-detail", id] });
@@ -380,8 +382,12 @@ const depositDateMut = useMutation({
             includeDepositInfo,
             depositOverride,
             barOverride,
-            depositPartnerName: depositPartnerRuby ? RUBY_JUNE_NAME : null,
-            depositPartnerEmail: depositPartnerRuby ? RUBY_JUNE_EMAIL : null,
+            depositPartnerName: depositPartnerEnabled ? depositPartnerName.trim() || null : null,
+            depositPartnerEmail: null,
+            depositPartnerAmount: depositPartnerEnabled && depositPartnerAmount.trim()
+              ? Number(depositPartnerAmount.replace(",", "."))
+              : null,
+            depositPartnerPayment: depositPartnerEnabled ? depositPartnerPayment.trim() || null : null,
           },
         });
         setPreviewHtml(res.html);
@@ -394,7 +400,7 @@ const depositDateMut = useMutation({
       }
     }, 400);
     return () => clearTimeout(t);
-  }, [confirmationNote, previewOpen, id, previewPersonalMessageFn, anzahlungInput, barInput, depositPartnerRuby, includeDepositInfo]);
+  }, [confirmationNote, previewOpen, id, previewPersonalMessageFn, anzahlungInput, barInput, depositPartnerEnabled, depositPartnerName, depositPartnerAmount, depositPartnerPayment, includeDepositInfo]);
 
   const contentdrehReplyMut = useMutation({
     mutationFn: (v: { proposedDate: string; price: string; depositAmount?: string; message?: string }) =>
@@ -421,6 +427,8 @@ const depositDateMut = useMutation({
       confirmation_note?: string;
       deposit_partner_name?: string | null;
       deposit_partner_email?: string | null;
+      deposit_partner_amount?: number | null;
+      deposit_partner_payment?: string | null;
     }) => updateStatus({ data: {
       id,
       status: v.status,
@@ -430,6 +438,8 @@ const depositDateMut = useMutation({
       confirmation_note: v.confirmation_note,
       deposit_partner_name: v.deposit_partner_name,
       deposit_partner_email: v.deposit_partner_email,
+      deposit_partner_amount: v.deposit_partner_amount,
+      deposit_partner_payment: v.deposit_partner_payment,
     } }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-booking-detail", id] });
@@ -449,8 +459,12 @@ const depositDateMut = useMutation({
       anzahlung,
       bar,
       confirmation_note: note ? note : undefined,
-      deposit_partner_name: depositPartnerRuby ? RUBY_JUNE_NAME : null,
-      deposit_partner_email: depositPartnerRuby ? RUBY_JUNE_EMAIL : null,
+      deposit_partner_name: depositPartnerEnabled ? depositPartnerName.trim() || null : null,
+      deposit_partner_email: null,
+      deposit_partner_amount: depositPartnerEnabled && depositPartnerAmount.trim()
+        ? Number(depositPartnerAmount.replace(",", "."))
+        : null,
+      deposit_partner_payment: depositPartnerEnabled ? depositPartnerPayment.trim() || null : null,
     });
   }
 
@@ -463,8 +477,12 @@ const depositDateMut = useMutation({
       anzahlung,
       bar,
       confirmation_note: note ? note : undefined,
-      deposit_partner_name: depositPartnerRuby ? RUBY_JUNE_NAME : null,
-      deposit_partner_email: depositPartnerRuby ? RUBY_JUNE_EMAIL : null,
+      deposit_partner_name: depositPartnerEnabled ? depositPartnerName.trim() || null : null,
+      deposit_partner_email: null,
+      deposit_partner_amount: depositPartnerEnabled && depositPartnerAmount.trim()
+        ? Number(depositPartnerAmount.replace(",", "."))
+        : null,
+      deposit_partner_payment: depositPartnerEnabled ? depositPartnerPayment.trim() || null : null,
     });
   }
 
@@ -904,23 +922,68 @@ const depositDateMut = useMutation({
               </div>
             </label>
             {isDuoBooking ? (
-              <label className="mt-3 flex items-start gap-3 border border-champagne/25 bg-anthracite/40 p-3 cursor-pointer hover:bg-anthracite/60 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={depositPartnerRuby}
-                  onChange={(e) => setDepositPartnerRuby(e.target.checked)}
-                  className="mt-1 accent-champagne"
-                />
-                <div className="flex-1">
-                  <div className="text-[0.75rem] text-vanilla leading-snug">
-                    Duo-Anzahlung teilen mit <strong>Ruby June</strong>
+              <div className="mt-3 border border-champagne/25 bg-anthracite/40 p-3">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={depositPartnerEnabled}
+                    onChange={(e) => setDepositPartnerEnabled(e.target.checked)}
+                    className="mt-1 accent-champagne"
+                  />
+                  <div className="flex-1">
+                    <div className="text-[0.75rem] text-vanilla leading-snug">
+                      Duo-Anzahlung aufteilen
+                    </div>
+                    <div className="text-[0.65rem] text-vanilla/55 mt-1 leading-snug">
+                      Empfängerin, Anteil und Zahlungsweg werden nur mitgesendet, wenn du diese Option aktivierst.
+                    </div>
                   </div>
-                  <div className="text-[0.65rem] text-vanilla/55 mt-1 leading-snug">
-                    Fügt der E-Mail den Hinweis hinzu, dass der Anteil an Ruby Junes PayPal-Adresse{" "}
-                    <span className="text-champagne">{RUBY_JUNE_EMAIL}</span> gesendet werden soll.
+                </label>
+                {depositPartnerEnabled ? (
+                  <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[0.6rem] uppercase tracking-[0.18em] text-vanilla/45 block mb-1">
+                        Anteil an wen?
+                      </label>
+                      <input
+                        type="text"
+                        value={depositPartnerName}
+                        onChange={(e) => setDepositPartnerName(e.target.value)}
+                        placeholder="z. B. Ruby June"
+                        maxLength={120}
+                        className="input-luxe"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[0.6rem] uppercase tracking-[0.18em] text-vanilla/45 block mb-1">
+                        Anteil (€)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={depositPartnerAmount}
+                        onChange={(e) => setDepositPartnerAmount(e.target.value)}
+                        placeholder="z. B. 75"
+                        className="input-luxe"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="text-[0.6rem] uppercase tracking-[0.18em] text-vanilla/45 block mb-1">
+                        Zahlungsart und Zahlungsadresse
+                      </label>
+                      <input
+                        type="text"
+                        value={depositPartnerPayment}
+                        onChange={(e) => setDepositPartnerPayment(e.target.value)}
+                        placeholder="z. B. Banküberweisung an … oder PayPal an …"
+                        maxLength={300}
+                        className="input-luxe"
+                      />
+                    </div>
                   </div>
-                </div>
-              </label>
+                ) : null}
+              </div>
             ) : null}
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
               <span className="text-[0.6rem] text-vanilla/40">
@@ -944,8 +1007,12 @@ const depositDateMut = useMutation({
                       includeDepositInfo,
                       depositOverride: Number.isFinite(parsedDeposit) && parsedDeposit > 0 ? parsedDeposit : null,
                       barOverride: Number.isFinite(parsedBar) && parsedBar >= 0 ? parsedBar : null,
-                      depositPartnerName: depositPartnerRuby ? RUBY_JUNE_NAME : null,
-                      depositPartnerEmail: depositPartnerRuby ? RUBY_JUNE_EMAIL : null,
+                      depositPartnerName: depositPartnerEnabled ? depositPartnerName.trim() || null : null,
+                      depositPartnerEmail: null,
+                      depositPartnerAmount: depositPartnerEnabled && depositPartnerAmount.trim()
+                        ? Number(depositPartnerAmount.replace(",", "."))
+                        : null,
+                      depositPartnerPayment: depositPartnerEnabled ? depositPartnerPayment.trim() || null : null,
                     });
                   }
                 }}
@@ -1859,3 +1926,4 @@ function DeleteInline({
     </div>
   );
 }
+
