@@ -50,7 +50,7 @@ function Fotoshooting() {
           social_media: socialMedia || undefined,
           shoot_type: shootType,
           budget_type: budgetType,
-          message: [phone ? `WhatsApp: ${phone}` : null, message || null].filter(Boolean).join("\n\n") || undefined,
+          message: `Telefon: ${phone}${message ? `\n\n${message}` : ""}`,
         },
       });
       setStatus("sent");
@@ -118,8 +118,8 @@ function Fotoshooting() {
               </div>
 
               <div>
-                <label className="eyebrow block mb-2">{tr("WhatsApp (optional)", "WhatsApp (optional)")}</label>
-                <input name="phone" type="tel" className="input-luxe" placeholder="+49 …" />
+                <label className="eyebrow block mb-2">{tr("Telefonnummer", "Phone number")}</label>
+                <input name="phone" type="tel" required className="input-luxe" placeholder="+49 …" />
               </div>
 
               <div>

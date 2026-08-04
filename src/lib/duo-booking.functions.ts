@@ -4,7 +4,6 @@ import { z } from "zod";
 const duoInput = z.object({
   guest_name: z.string().trim().min(1).max(120),
   guest_email: z.string().trim().email().max(255),
-  guest_phone: z.string().trim().min(6).max(40).optional().nullable(),
   requested_start: z.string().min(1).max(80),
   duration: z.string().trim().max(80).nullable().optional(),
   message: z.string().trim().min(5).max(2000),
@@ -32,7 +31,6 @@ export const submitDuoBooking = createServerFn({ method: "POST" })
         slot_id: null,
         guest_name: data.guest_name,
         guest_email: data.guest_email,
-        guest_phone: data.guest_phone ?? null,
         duration: data.duration ?? "Duo Session",
         message: combinedMessage,
       })
