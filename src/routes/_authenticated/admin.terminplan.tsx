@@ -7,6 +7,7 @@ import { ArrowLeft, CalendarPlus, Download, Crown } from "lucide-react";
 import { format, isSameDay, startOfDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { ManualBookingForm, type ManualBookingValues } from "@/components/admin/admin-shared";
+import { saveCanvasAsPng } from "@/lib/download-image.client";
 import { createManualBooking } from "@/lib/booking.functions";
 import { listCustomers } from "@/lib/customers.functions";
 
@@ -227,7 +228,7 @@ function wrapCanvasText(
 }
 
 function DayPlanDownloadButton({ day, items }: { day: Date; items: Entry[] }) {
-  function downloadDayPlan() {
+  async function downloadDayPlan() {
     const width = 1200;
     const side = 62;
     const contentWidth = width - side * 2;
@@ -385,10 +386,14 @@ function DayPlanDownloadButton({ day, items }: { day: Date; items: Entry[] }) {
     ctx.font = '18px Arial, sans-serif';
     ctx.fillText("INTERNE TAGESÜBERSICHT · LADY-VANILLAICE.COM", width / 2, height - 70);
 
-    const link = document.createElement("a");
-    link.download = `lady-vanilla-ice-tagesplan-${format(day, "yyyy-MM-dd")}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
+    try {
+      await saveCanvasAsPng(
+        canvas,
+        `lady-vanilla-ice-tagesplan-${format(day, "yyyy-MM-dd")}.png`,
+      );
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Das Bild konnte nicht gespeichert werden.");
+    }
   }
 
   return (
