@@ -5,24 +5,19 @@ function toDayKey(germanDate: string) {
   return match ? `${match[3]}-${match[2]}-${match[1]}` : null;
 }
 
-function findSummaryElements() {
-  return Array.from(document.querySelectorAll<HTMLElement>("p, div, span")).filter((node) => {
-    const text = node.textContent?.replace(/\s+/g, " ").trim() ?? "";
-    if (!/\d+\s+Zeitfenster\s+an\s+diesem\s+Tag/i.test(text)) return false;
-    return !Array.from(node.children).some((child) =>
-      /\d+\s+Zeitfenster\s+an\s+diesem\s+Tag/i.test(child.textContent ?? ""),
-    );
+function findDaySections() {
+  return Array.from(document.querySelectorAll<HTMLElement>("section")).filter((section) => {
+    const text = section.textContent?.replace(/\s+/g, " ").trim() ?? "";
+    return /\d{2}\.\d{2}\.\d{4}/.test(text)
+      && /\d+\s+Zeitfenster\s+an\s+diesem\s+Tag/i.test(text);
   });
 }
 
-function findDayKey(summary: HTMLElement) {
-  let current: HTMLElement | null = summary;
-  for (let depth = 0; current && depth < 8; depth += 1) {
-    const dateText = current.textContent?.match(/\d{2}\.\d{2}\.\d{4}/)?.[0];
-    if (dateText) return { dayKey: toDayKey(dateText), dateText };
-    current = current.parentElement;
-  }
-  return { dayKey: null, dateText: "" };
+function getDayInfo(section: HTMLElement) {
+  const text = section.textContent?.replace(/\s+/g, " ").trim() ?? "";
+  const dateText = text.match(/\d{2}\.\d{2}\.\d{4}/)?.[0] ?? "";
+  const count = Number(text.match(/(\d+)\s+Zeitfenster\s+an\s+diesem\s+Tag/i)?.[1] ?? 0);
+  return { dayKey: toDayKey(dateText), dateText, count };
 }
 
 function makeButton(dayKey: string, dateText: string) {
@@ -60,7 +55,7 @@ function makeButton(dayKey: string, dateText: string) {
 
   button.addEventListener("click", async () => {
     const confirmed = window.confirm(
-      `Zeitslots am ${dateText} zusammenführen? Bereits gebuchte und reservierte Termine behalten Datum, Uhrzeit und Dauer.`,
+      `Alle passenden Zeitfenster am ${dateText} zu einem durchgehenden Zeitraum verbinden? Lücken zwischen den bisherigen Zeiten werden dadurch ebenfalls buchbar.`,
     );
     if (!confirmed) return;
 
@@ -85,18 +80,20 @@ function makeButton(dayKey: string, dateText: string) {
 function ensureVisibleMergeButtons() {
   if (!window.location.pathname.includes("/admin/kalender")) return;
 
-  for (const summary of findSummaryElements()) {
-    const { dayKey, dateText } = findDayKey(summary);
-    if (!dayKey || !dateText) continue;
+  for (const section of findDaySections()) {
+    const { dayKey, dateText, count } = getDayInfo(section);
+    if (!dayKey || !dateText || count < 2) continue;
+
+    const header = section.querySelector<HTMLElement>("header") ?? section.firstElementChild as HTMLElement | null;
+    if (!header) continue;
 
     const selector = `[data-visible-merge-day-button="${dayKey}"]`;
     let button = document.querySelector<HTMLButtonElement>(selector);
-
     if (!button) {
       button = makeButton(dayKey, dateText);
-      summary.insertAdjacentElement("afterend", button);
-    } else if (!summary.parentElement?.contains(button)) {
-      summary.insertAdjacentElement("afterend", button);
+      header.appendChild(button);
+    } else if (!header.contains(button)) {
+      header.appendChild(button);
     }
 
     button.style.setProperty("display", "flex", "important");
@@ -112,7 +109,7 @@ if (typeof window !== "undefined" && !mergeButtonTextAnchorInstalled) {
   window.setTimeout(run, 50);
   window.setTimeout(run, 250);
   window.setTimeout(run, 1000);
-  window.setInterval(run, 250);
+  window.setInterval(run, 500);
   window.addEventListener("pageshow", run);
   window.addEventListener("popstate", run);
 }
