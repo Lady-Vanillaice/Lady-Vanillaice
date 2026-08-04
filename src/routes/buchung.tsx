@@ -77,7 +77,7 @@ function Buchung() {
       return isNaN(d.getTime()) ? s : d.toLocaleString("de-DE", { dateStyle: "full", timeStyle: "short" });
     };
     const message = [
-      phone ? `WhatsApp: ${phone}` : null,
+      `Telefon: ${phone}`,
       date
         ? `Wunschtermin: ${fmt(date)}${endDate ? ` – ${fmt(endDate)}` : ""}`
         : null,
@@ -99,7 +99,7 @@ function Buchung() {
         data: {
           guest_name: name,
           guest_email: email,
-          guest_phone: phone || null,
+          guest_phone: phone,
           message,
           requested_start: requestedStartIso,
           duration_minutes: durationMinutes,
@@ -109,7 +109,7 @@ function Buchung() {
         },
       });
 
-      if (phone) try {
+      try {
         await notifyWhatsApp({
           data: {
             guest_name: name,
@@ -190,8 +190,8 @@ function Buchung() {
               </div>
 
               <div>
-                <label className="eyebrow block mb-2">{tr("WhatsApp (optional)", "WhatsApp (optional)")}</label>
-                <input name="phone" type="tel" className="input-luxe" placeholder="+49 …" />
+                <label className="eyebrow block mb-2">{tr("Telefonnummer", "Phone number")}</label>
+                <input name="phone" type="tel" required className="input-luxe" placeholder="+49 …" />
               </div>
 
               <div className="grid md:grid-cols-2 gap-6">
