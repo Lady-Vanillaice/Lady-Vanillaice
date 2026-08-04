@@ -525,6 +525,47 @@ const depositDateMut = useMutation({
     { id: "history" as const, label: "Verlauf" },
   ];
 
+  function createFixedAppointmentMessage() {
+    const dateValue = overrideDate || (booking.requested_start ? String(booking.requested_start).slice(0, 10) : "");
+    const timeValue = overrideTime || (booking.requested_start
+      ? format(new Date(booking.requested_start), "HH:mm")
+      : slot?.starts_at
+        ? format(new Date(slot.starts_at), "HH:mm")
+        : "");
+    const durationValue = Number(overrideDuration || booking.duration_minutes || 0);
+    const depositValue = Number((anzahlungInput || "0").replace(",", ".")) || 0;
+    const cashValue = Number((barInput || "0").replace(",", ".")) || 0;
+    const displayDate = dateValue
+      ? format(new Date(`${dateValue}T12:00:00`), "EEEE, dd.MM.yyyy", { locale: de })
+      : "noch nicht eingetragen";
+    const durationText = durationValue > 0
+      ? `${durationValue} Minuten${durationValue % 60 === 0 ? ` (${durationValue / 60} Std.)` : ""}`
+      : "noch nicht eingetragen";
+    const lines = [
+      `Hallo ${booking.guest_name},`,
+      "",
+      "dein Termin ist hiermit verbindlich fixiert.",
+      "",
+      `Termin: ${displayDate}${timeValue ? ` um ${timeValue} Uhr` : ""}`,
+      `Dauer: ${durationText}`,
+      slot?.location ? `Ort: ${slot.location}` : null,
+      `Session: ${isDuoBooking ? `Duo Session${duoPartner.trim() ? ` mit ${duoPartner.trim()}` : ""}` : "Single Session"}`,
+      "",
+      depositExemptionReason
+        ? "Anzahlung: nicht erforderlich"
+        : `Anzahlung: ${depositValue.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €${anzahlungMethod.trim() ? ` per ${anzahlungMethod.trim()}` : ""}`,
+      !depositExemptionReason && anzahlungPaidDate
+        ? `Anzahlung erhalten am: ${format(new Date(`${anzahlungPaidDate}T12:00:00`), "dd.MM.yyyy", { locale: de })}`
+        : null,
+      `Restbetrag bar vor Ort: ${cashValue.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`,
+      "",
+      "Ich freue mich auf unseren Termin.",
+      "",
+      "Liebe Grüße\nLady Vanilla Ice",
+    ];
+    setConfirmationNote(lines.filter((line): line is string => line !== null).join("\n"));
+  }
+
   return (
 
     <>
@@ -885,6 +926,13 @@ const depositDateMut = useMutation({
             <div className="mb-3">
               <div className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 mb-2">Textvorlage wählen</div>
               <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={createFixedAppointmentMessage}
+                  className="text-[0.6rem] uppercase tracking-[0.14em] px-2.5 py-1.5 border border-champagne/50 bg-champagne/10 text-champagne hover:bg-champagne/20"
+                >
+                  Termin fixiert
+                </button>
                 {MESSAGE_TEMPLATES.map((template) => (
                   <button
                     key={template.label}
