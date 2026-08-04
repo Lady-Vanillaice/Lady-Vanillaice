@@ -10,7 +10,7 @@ import {
   StatusBadge,
   type Slot,
 } from "@/components/admin/admin-shared";
-import { Trash2, MapPin, ArrowLeft, Eye, EyeOff, CalendarPlus, Copy, Pencil, Save, X, Download, Crown, Scissors, Combine } from "lucide-react";
+import { Trash2, MapPin, ArrowLeft, Eye, EyeOff, CalendarPlus, Copy, Pencil, Save, X, Download, Crown, Scissors, Combine, Plus } from "lucide-react";
 import { exportCalendarImage } from "@/lib/download-image.client";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -95,7 +95,19 @@ function AdminKalenderPage() {
   });
 
   const splitMut = useMutation({
-    mutationFn: (v: { id: string; split_at: string }) => splitSlotFn({ data: v }),
+    mutationFn: async (v: { id: string; split_ats: string[] }) => {
+      const orderedSplitTimes = [...v.split_ats].sort(
+        (a, b) => new Date(a).getTime() - new Date(b).getTime(),
+      );
+      let currentSlotId = v.id;
+
+      for (const splitAt of orderedSplitTimes) {
+        const result = await splitSlotFn({ data: { id: currentSlotId, split_at: splitAt } });
+        currentSlotId = result.right_id;
+      }
+
+      return { ok: true, createdWindows: orderedSplitTimes.length + 1 };
+    },
     onSuccess: () => {
       setSplittingSlotId(null);
       qc.invalidateQueries({ queryKey: ["admin-slots"] });
@@ -296,7 +308,7 @@ function AdminKalenderPage() {
                               slot={s}
                               pending={splitMut.isPending}
                               onCancel={() => setSplittingSlotId(null)}
-                              onSave={(splitAt) => splitMut.mutateAsync({ id: s.id, split_at: splitAt })}
+                              onSave={(splitAts) => splitMut.mutateAsync({ id: s.id, split_ats: splitAts })}
                             />
                           )}
                         </div>
@@ -311,7 +323,7 @@ function AdminKalenderPage() {
                               disabled={splitMut.isPending || mergeMut.isPending}
                               className="text-vanilla/50 hover:text-champagne transition p-2"
                               aria-label="Zeitfenster aufteilen"
-                              title="An einer Uhrzeit in zwei freie Zeitfenster teilen"
+                              title="In mehrere freie Zeitfenster aufteilen"
                             >
                               <Scissors size={16} />
                             </button>
@@ -506,25 +518,53 @@ function SlotSplitEditor({
 }: {
   slot: Slot;
   pending: boolean;
-  onSave: (splitAt: string) => Promise<unknown>;
+  onSave: (splitAts: string[]) => Promise<unknown>;
   onCancel: () => void;
 }) {
   const startMs = new Date(slot.starts_at).getTime();
   const endMs = new Date(slot.ends_at).getTime();
   const midpoint = new Date(Math.round(((startMs + endMs) / 2) / (15 * 60_000)) * 15 * 60_000);
   const inputFormat = "yyyy-MM-dd'T'HH:mm";
-  const [splitAt, setSplitAt] = useState(format(midpoint, inputFormat));
+  const [splitTimes, setSplitTimes] = useState<string[]>([format(midpoint, inputFormat)]);
   const [error, setError] = useState<string | null>(null);
+
+  function addSplitTime() {
+    setSplitTimes((current) => {
+      const sorted = current
+        .map((value) => new Date(value).getTime())
+        .filter((value) => Number.isFinite(value))
+        .sort((a, b) => a - b);
+      const lastBoundary = sorted.at(-1) ?? startMs;
+      const candidate = Math.min(endMs - 30 * 60_000, lastBoundary + 30 * 60_000);
+      if (candidate <= lastBoundary || candidate >= endMs) return current;
+      return [...current, format(new Date(candidate), inputFormat)];
+    });
+  }
 
   async function save() {
     setError(null);
-    const value = new Date(splitAt);
-    if (!splitAt || Number.isNaN(value.getTime())) {
-      setError("Bitte eine gültige Trennzeit auswählen.");
+    const parsed = splitTimes
+      .map((value) => ({ raw: value, ms: new Date(value).getTime() }))
+      .sort((a, b) => a.ms - b.ms);
+
+    if (parsed.some((value) => !value.raw || Number.isNaN(value.ms))) {
+      setError("Bitte nur gültige Trennzeiten auswählen.");
       return;
     }
+
+    const uniqueTimes = [...new Set(parsed.map((value) => value.ms))];
+    const boundaries = [startMs, ...uniqueTimes, endMs];
+    const invalidPart = boundaries.some((boundary, index) => (
+      index > 0 && boundary - boundaries[index - 1] < 30 * 60_000
+    ));
+
+    if (invalidPart) {
+      setError("Zwischen allen Trennzeiten müssen mindestens 30 Minuten liegen.");
+      return;
+    }
+
     try {
-      await onSave(value.toISOString());
+      await onSave(uniqueTimes.map((value) => new Date(value).toISOString()));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Zeitfenster konnte nicht geteilt werden.");
     }
@@ -533,25 +573,54 @@ function SlotSplitEditor({
   return (
     <div className="mt-4 border border-champagne/25 bg-anthracite/30 p-4">
       <div className="eyebrow text-champagne mb-3">Zeitfenster aufteilen</div>
-      <label className="block text-[0.6rem] uppercase tracking-[0.16em] text-vanilla/45 mb-1">
-        Trennen um
-      </label>
-      <input
-        type="datetime-local"
-        value={splitAt}
-        min={format(new Date(startMs + 30 * 60_000), inputFormat)}
-        max={format(new Date(endMs - 30 * 60_000), inputFormat)}
-        step={900}
-        onChange={(event) => setSplitAt(event.target.value)}
-        className="input-luxe !py-2 max-w-xs"
-      />
+      <p className="mb-3 text-[0.68rem] text-vanilla/55">
+        Lege eine oder mehrere Trennzeiten fest. Daraus entstehen automatisch mehrere einzelne Zeitfenster.
+      </p>
+      <div className="space-y-2">
+        {splitTimes.map((splitAt, index) => (
+          <div key={`${index}-${splitAt}`} className="flex items-center gap-2">
+            <input
+              type="datetime-local"
+              value={splitAt}
+              min={format(new Date(startMs + 30 * 60_000), inputFormat)}
+              max={format(new Date(endMs - 30 * 60_000), inputFormat)}
+              step={900}
+              onChange={(event) => setSplitTimes((current) => current.map((value, itemIndex) => (
+                itemIndex === index ? event.target.value : value
+              )))}
+              className="input-luxe !py-2 max-w-xs"
+              aria-label={`Trennzeit ${index + 1}`}
+            />
+            {splitTimes.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setSplitTimes((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                disabled={pending}
+                className="text-vanilla/45 hover:text-destructive p-2"
+                aria-label={`Trennzeit ${index + 1} entfernen`}
+                title="Trennzeit entfernen"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={addSplitTime}
+        disabled={pending || splitTimes.length >= Math.floor((endMs - startMs) / (30 * 60_000)) - 1}
+        className="mt-3 btn-outline-gold !py-2 !px-3 !text-[0.62rem]"
+      >
+        <Plus size={12} /> Weitere Trennzeit
+      </button>
       <p className="mt-2 text-[0.65rem] text-vanilla/45">
-        Beide Teile müssen mindestens 30 Minuten lang sein. Buchungen und Reservierungen bleiben geschützt.
+        Jedes neue Zeitfenster muss mindestens 30 Minuten lang sein. Buchungen und Reservierungen bleiben geschützt.
       </p>
       {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
-      <div className="mt-3 flex gap-2">
+      <div className="mt-3 flex flex-wrap gap-2">
         <button type="button" onClick={save} disabled={pending} className="btn-gold !py-2 !px-3 !text-[0.65rem]">
-          <Scissors size={12} /> {pending ? "Teilt…" : "Jetzt aufteilen"}
+          <Scissors size={12} /> {pending ? "Teilt…" : `In ${splitTimes.length + 1} Zeitfenster teilen`}
         </button>
         <button type="button" onClick={onCancel} disabled={pending} className="btn-outline-gold !py-2 !px-3 !text-[0.65rem]">
           <X size={12} /> Abbrechen
