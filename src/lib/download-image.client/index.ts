@@ -8,7 +8,6 @@ let scheduleTextLayoutInstalled = false;
 function resolveScheduleStudioDetails(value: string): ScheduleStudioDetails | null {
   const text = value.replace(/…$/, "").trim();
 
-  // Die Adressen entsprechen exakt den Standorten, die im Adminbereich auswählbar sind.
   if (text.toLocaleLowerCase("de-DE").startsWith("studio60")) {
     return {
       studio: "Studio60",
@@ -23,8 +22,6 @@ function resolveScheduleStudioDetails(value: string): ScheduleStudioDetails | nu
     };
   }
 
-  // Auch individuell eingetragene Standorte werden getrennt, sofern sie als
-  // „Studioname, vollständige Adresse“ gespeichert wurden.
   const separatorIndex = text.indexOf(",");
   if (separatorIndex > 0) {
     return {
@@ -45,9 +42,34 @@ function installScheduleTextLayout() {
   }
 
   scheduleTextLayoutInstalled = true;
-  const originalFillText = CanvasRenderingContext2D.prototype.fillText;
+  const prototype = CanvasRenderingContext2D.prototype;
+  const originalFillText = prototype.fillText;
+  const originalMoveTo = prototype.moveTo;
+  const originalLineTo = prototype.lineTo;
 
-  CanvasRenderingContext2D.prototype.fillText = function fillTextWithScheduleLayout(
+  const crownY = function crownY(
+    context: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+  ) {
+    const isScheduleCanvas = context.canvas.width === 1080 || context.canvas.width === 1200;
+    const nearCrown =
+      context.lineWidth === 5
+      && Math.abs(x - context.canvas.width / 2) <= 80
+      && y >= 45
+      && y <= 145;
+    return isScheduleCanvas && nearCrown ? y + 24 : y;
+  };
+
+  prototype.moveTo = function moveToWithCrownSpacing(x: number, y: number) {
+    originalMoveTo.call(this, x, crownY(this, x, y));
+  };
+
+  prototype.lineTo = function lineToWithCrownSpacing(x: number, y: number) {
+    originalLineTo.call(this, x, crownY(this, x, y));
+  };
+
+  prototype.fillText = function fillTextWithScheduleLayout(
     text: string,
     x: number,
     y: number,
@@ -77,6 +99,26 @@ function installScheduleTextLayout() {
         originalFillText.call(this, text, x, y + 16, maxWidth);
         return;
       }
+    }
+
+    const isDayPlanCustomerText =
+      this.canvas.width === 1200
+      && this.textAlign === "left"
+      && /^24px Arial/.test(this.font)
+      && y > 400;
+
+    if (isDayPlanCustomerText) {
+      this.save();
+      this.font = '21px Arial, sans-serif';
+      originalFillText.call(
+        this,
+        text,
+        x,
+        y,
+        Math.min(maxWidth ?? Number.POSITIVE_INFINITY, this.canvas.width - x - 90),
+      );
+      this.restore();
+      return;
     }
 
     originalFillText.call(this, text, x, y, maxWidth);
