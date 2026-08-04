@@ -19,25 +19,7 @@ interface Props {
   message?: string
 }
 
-const HOURLY_RATE = 300
-
-function parseDurationMinutes(duration?: string | null): number | null {
-  if (!duration) return null
-  const match = duration.match(/(\d+(?:\.\d+)?)/)
-  if (!match) return null
-  return Math.round(parseFloat(match[1]))
-}
-
-function formatCurrency(amount: number): string {
-  return `${amount.toLocaleString('de-DE')} €`
-}
-
-const Email = ({ guestName, wishDate, duration, message }: Props) => {
-  const minutes = parseDurationMinutes(duration)
-  const total = minutes ? Math.round((minutes / 60) * HOURLY_RATE) : null
-  const deposit = total ? Math.round(total * 0.5) : null
-
-  return (
+const Email = ({ guestName, wishDate, duration, message }: Props) => (
     <Html lang="de" dir="ltr">
       <Head />
       <Preview>Deine Terminanfrage ist bei mir eingegangen.</Preview>
@@ -48,8 +30,12 @@ const Email = ({ guestName, wishDate, duration, message }: Props) => {
             {guestName ? `Hallo ${guestName},` : 'Hallo,'}
           </Text>
           <Text style={p}>
-            Sobald die Anzahlung bei mir eingegangen ist, melde ich mich bei Dir,
-            um die Details zu besprechen.
+            Danke für Deine Anfrage. Sie ist unverbindlich bei mir eingegangen.
+            Ich prüfe Deine Angaben und melde mich persönlich bei Dir.
+          </Text>
+          <Text style={notice}>
+            Bitte leiste jetzt noch keine Zahlung. Zahlungsinformationen erhältst Du erst,
+            wenn ich Deinen Termin persönlich reserviere oder final bestätige.
           </Text>
 
           <Hr style={hr} />
@@ -69,19 +55,6 @@ const Email = ({ guestName, wishDate, duration, message }: Props) => {
               </>
             ) : null}
           </Section>
-
-          <Hr style={hr} />
-
-          <Heading as="h2" style={h2}>Anzahlung</Heading>
-          <Text style={p}>
-            Sende mir die Anzahlung in Höhe von <strong>50% der Session</strong>{' '}
-            {deposit ? `(${formatCurrency(deposit)})` : null} via PayPal an{' '}
-            <a href="mailto:Lady-vanillaice@gmx.net" style={link}>Lady-vanillaice@gmx.net</a>.
-          </Text>
-
-          <Text style={p}>
-            Wenn Deine Anzahlung bei mir eingegangen ist, gehört der Termin Dir und Du erhältst eine Bestätigung von mir.
-          </Text>
 
           <Hr style={hr} />
 
@@ -110,11 +83,10 @@ const Email = ({ guestName, wishDate, duration, message }: Props) => {
       </Body>
     </Html>
   )
-}
 
 export const template = {
   component: Email,
-  subject: 'Deine Anfrage ist bei mir eingegangen — Lady Vanilla Ice',
+  subject: 'Deine unverbindliche Anfrage ist eingegangen — Lady Vanilla Ice',
   displayName: 'Buchungsbestätigung (Gast)',
   previewData: {
     guestName: 'M.',
@@ -130,9 +102,11 @@ const h1 = { fontSize: 28, letterSpacing: 2, color: '#b8945f', textAlign: 'cente
 const h2 = { fontSize: 14, letterSpacing: 2, textTransform: 'uppercase' as const, color: '#b8945f', margin: '24px 0 12px' }
 const lead = { fontSize: 17, lineHeight: '26px', margin: '0 0 14px' }
 const p = { fontSize: 15, lineHeight: '24px', margin: '0 0 14px', color: '#2a2018' }
+const notice = { ...p, backgroundColor: '#faf7f2', border: '1px solid #ead9bf', padding: '14px 16px', color: '#7a5c33' }
 const card = { backgroundColor: '#faf7f2', border: '1px solid #ead9bf', padding: '18px 20px', borderRadius: 2 }
 const row = { fontSize: 14, lineHeight: '22px', margin: '4px 0', color: '#2a2018' }
 const label = { color: '#7a5c33', fontWeight: 600 as const }
 const hr = { borderColor: '#ead9bf', margin: '28px 0' }
 const link = { color: '#b8945f' }
 const signature = { fontSize: 14, fontStyle: 'italic' as const, marginTop: 24, color: '#7a5c33' }
+
