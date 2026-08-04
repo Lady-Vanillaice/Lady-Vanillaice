@@ -18,6 +18,19 @@ import { StickyContact } from "../components/site/StickyContact";
 import { PwaRegistration } from "../components/PwaRegistration";
 import { LanguageProvider, useT } from "../i18n";
 
+// Safari versions without Array.prototype.at crashed the calendar split editor.
+if (typeof Array.prototype.at !== "function") {
+  Object.defineProperty(Array.prototype, "at", {
+    configurable: true,
+    writable: true,
+    value<T>(this: T[], index: number): T | undefined {
+      const normalizedIndex = Math.trunc(index) || 0;
+      const resolvedIndex = normalizedIndex < 0 ? this.length + normalizedIndex : normalizedIndex;
+      return resolvedIndex >= 0 && resolvedIndex < this.length ? this[resolvedIndex] : undefined;
+    },
+  });
+}
+
 function NotFoundComponent() {
   const t = useT();
   return (
