@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import "./calendar-image-export-layout-fix";
 
 function monthLabel(monthKey: string) {
   return new Intl.DateTimeFormat("de-DE", { month: "long" }).format(
