@@ -5,18 +5,37 @@ function toDayKey(germanDate: string) {
   return match ? `${match[3]}-${match[2]}-${match[1]}` : null;
 }
 
-function findDaySections() {
-  return Array.from(document.querySelectorAll<HTMLElement>("section")).filter((section) => {
-    const text = section.textContent?.replace(/\s+/g, " ").trim() ?? "";
-    return /\d{2}\.\d{2}\.\d{4}/.test(text)
-      && /\d+\s+Zeitfenster\s+an\s+diesem\s+Tag/i.test(text);
+function findDaySummaries() {
+  return Array.from(document.querySelectorAll<HTMLElement>("p, div, span")).filter((node) => {
+    const ownText = Array.from(node.childNodes)
+      .filter((child) => child.nodeType === Node.TEXT_NODE)
+      .map((child) => child.textContent ?? "")
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const fullText = node.textContent?.replace(/\s+/g, " ").trim() ?? "";
+    const text = ownText || fullText;
+    return /^\d+\s+Zeitfenster\s+an\s+diesem\s+Tag$/i.test(text);
   });
 }
 
-function getDayInfo(section: HTMLElement) {
-  const text = section.textContent?.replace(/\s+/g, " ").trim() ?? "";
-  const dateText = text.match(/\d{2}\.\d{2}\.\d{4}/)?.[0] ?? "";
-  const count = Number(text.match(/(\d+)\s+Zeitfenster\s+an\s+diesem\s+Tag/i)?.[1] ?? 0);
+function findDaySection(summary: HTMLElement) {
+  let current: HTMLElement | null = summary;
+  for (let depth = 0; current && depth < 8; depth += 1) {
+    if (current.tagName === "SECTION") {
+      const text = current.textContent?.replace(/\s+/g, " ").trim() ?? "";
+      if (/\d{2}\.\d{2}\.\d{4}/.test(text)) return current;
+    }
+    current = current.parentElement;
+  }
+  return null;
+}
+
+function getDayInfo(summary: HTMLElement, section: HTMLElement) {
+  const summaryText = summary.textContent?.replace(/\s+/g, " ").trim() ?? "";
+  const sectionText = section.textContent?.replace(/\s+/g, " ").trim() ?? "";
+  const dateText = sectionText.match(/\d{2}\.\d{2}\.\d{4}/)?.[0] ?? "";
+  const count = Number(summaryText.match(/^(\d+)\s+Zeitfenster\s+an\s+diesem\s+Tag$/i)?.[1] ?? 0);
   return { dayKey: toDayKey(dateText), dateText, count };
 }
 
@@ -80,20 +99,19 @@ function makeButton(dayKey: string, dateText: string) {
 function ensureVisibleMergeButtons() {
   if (!window.location.pathname.includes("/admin/kalender")) return;
 
-  for (const section of findDaySections()) {
-    const { dayKey, dateText, count } = getDayInfo(section);
+  for (const summary of findDaySummaries()) {
+    const section = findDaySection(summary);
+    if (!section) continue;
+    const { dayKey, dateText, count } = getDayInfo(summary, section);
     if (!dayKey || !dateText || count < 2) continue;
-
-    const header = section.querySelector<HTMLElement>("header") ?? section.firstElementChild as HTMLElement | null;
-    if (!header) continue;
 
     const selector = `[data-visible-merge-day-button="${dayKey}"]`;
     let button = document.querySelector<HTMLButtonElement>(selector);
     if (!button) {
       button = makeButton(dayKey, dateText);
-      header.appendChild(button);
-    } else if (!header.contains(button)) {
-      header.appendChild(button);
+      summary.insertAdjacentElement("afterend", button);
+    } else if (!summary.parentElement?.contains(button)) {
+      summary.insertAdjacentElement("afterend", button);
     }
 
     button.style.setProperty("display", "flex", "important");
