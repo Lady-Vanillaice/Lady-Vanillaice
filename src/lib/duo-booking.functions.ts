@@ -17,6 +17,7 @@ export const submitDuoBooking = createServerFn({ method: "POST" })
 
     const combinedMessage = [
       "[DUO SESSION ANFRAGE]",
+      "[DUO PREISANTWORT AUSSTEHEND]",
       `Wunschtermin: ${data.requested_start}`,
       data.duration ? `Dauer: ${data.duration}` : null,
       "",
@@ -43,6 +44,8 @@ export const submitDuoBooking = createServerFn({ method: "POST" })
 
     try {
       const { enqueueTransactionalEmail } = await import("@/lib/email/enqueue.server");
+      const { createDuoResponseLinks } = await import("@/lib/duo-response.server");
+      const responseLinks = await createDuoResponseLinks(row.id);
       const guestData = {
         guestName: data.guest_name,
         wishDate: data.requested_start,
@@ -51,9 +54,13 @@ export const submitDuoBooking = createServerFn({ method: "POST" })
       };
       await Promise.all([
         enqueueTransactionalEmail({
-          templateName: "booking-confirmation",
+          templateName: "duo-price-confirmation",
           recipientEmail: data.guest_email,
-          templateData: guestData,
+          templateData: {
+            ...guestData,
+            acceptUrl: responseLinks.acceptUrl,
+            declineUrl: responseLinks.declineUrl,
+          },
           idempotencyKey: `duo-confirm-${row.id}`,
         }),
         enqueueTransactionalEmail({
@@ -69,3 +76,4 @@ export const submitDuoBooking = createServerFn({ method: "POST" })
 
     return { id: row.id };
   });
+
