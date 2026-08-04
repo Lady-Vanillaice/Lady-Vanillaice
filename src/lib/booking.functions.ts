@@ -426,6 +426,8 @@ export const updateBookingStatus = createServerFn({ method: "POST" })
       anzahlung_paid_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
       deposit_partner_name: z.string().trim().max(120).optional().nullable(),
       deposit_partner_email: z.string().trim().email().max(200).optional().nullable(),
+      deposit_partner_amount: z.number().min(0).max(1_000_000).optional().nullable(),
+      deposit_partner_payment: z.string().trim().max(300).optional().nullable(),
       deposit_exemption_reason: z.enum(["regular_customer", "trust", "exception", "colleague_guarantees", "spontaneous"]).optional().nullable(),
     }).parse(d),
   )
@@ -551,6 +553,10 @@ export const updateBookingStatus = createServerFn({ method: "POST" })
             depositPaid: !isReservation && depositPaid,
             depositPartnerName: data.deposit_partner_name ?? undefined,
             depositPartnerEmail: data.deposit_partner_email ?? undefined,
+            depositPartnerAmount: typeof data.deposit_partner_amount === "number"
+              ? fmt(data.deposit_partner_amount)
+              : undefined,
+            depositPartnerPayment: data.deposit_partner_payment ?? undefined,
           },
           idempotencyKey: isReservation
             ? `booking-reserved-${booking.id}`
@@ -810,6 +816,8 @@ const personalMessageInput = z.object({
   barOverride: z.number().min(0).max(1_000_000).optional().nullable(),
   depositPartnerName: z.string().trim().max(120).optional().nullable(),
   depositPartnerEmail: z.string().trim().email().max(200).optional().nullable(),
+  depositPartnerAmount: z.number().min(0).max(1_000_000).optional().nullable(),
+  depositPartnerPayment: z.string().trim().max(300).optional().nullable(),
 });
 
 export const sendPersonalMessage = createServerFn({ method: "POST" })
@@ -854,6 +862,10 @@ export const sendPersonalMessage = createServerFn({ method: "POST" })
         ...amounts,
         depositPartnerName: data.depositPartnerName ?? undefined,
         depositPartnerEmail: data.depositPartnerEmail ?? undefined,
+        depositPartnerAmount: typeof data.depositPartnerAmount === "number"
+          ? fmtEuro(data.depositPartnerAmount)
+          : undefined,
+        depositPartnerPayment: data.depositPartnerPayment ?? undefined,
       },
       idempotencyKey: `personal-message-${booking.id}-${Date.now()}`,
     });
@@ -896,6 +908,10 @@ export const previewPersonalMessage = createServerFn({ method: "POST" })
         ...amounts,
         depositPartnerName: data.depositPartnerName ?? undefined,
         depositPartnerEmail: data.depositPartnerEmail ?? undefined,
+        depositPartnerAmount: typeof data.depositPartnerAmount === "number"
+          ? fmtEuro(data.depositPartnerAmount)
+          : undefined,
+        depositPartnerPayment: data.depositPartnerPayment ?? undefined,
       }),
     );
     const subject =
@@ -1716,3 +1732,4 @@ export const retryEmail = createServerFn({ method: "POST" })
     });
     return { ok: true };
   });
+
