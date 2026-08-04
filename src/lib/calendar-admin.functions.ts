@@ -37,12 +37,6 @@ type CalendarSlot = {
   is_hidden: boolean | null;
 };
 
-type BusyRange = {
-  slot_id: string;
-  starts_at: string;
-  ends_at: string;
-};
-
 function sameSettings(first: CalendarSlot, second: CalendarSlot) {
   return (
     first.location === second.location
@@ -52,25 +46,6 @@ function sameSettings(first: CalendarSlot, second: CalendarSlot) {
     && (first.duo_partner ?? null) === (second.duo_partner ?? null)
     && Boolean(first.is_hidden) === Boolean(second.is_hidden)
   );
-}
-
-function gapIsCoveredByBooking(gapStart: number, gapEnd: number, busyRanges: BusyRange[]) {
-  if (gapEnd <= gapStart) return true;
-  const ranges = busyRanges
-    .map((range) => ({
-      start: new Date(range.starts_at).getTime(),
-      end: new Date(range.ends_at).getTime(),
-    }))
-    .filter((range) => range.end > gapStart && range.start < gapEnd)
-    .sort((a, b) => a.start - b.start);
-
-  let coveredUntil = gapStart;
-  for (const range of ranges) {
-    if (range.start > coveredUntil + 60_000) return false;
-    coveredUntil = Math.max(coveredUntil, range.end);
-    if (coveredUntil >= gapEnd - 60_000) return true;
-  }
-  return coveredUntil >= gapEnd - 60_000;
 }
 
 export const mergeCalendarDayPreservingBookings = createServerFn({ method: "POST" })
@@ -93,30 +68,6 @@ export const mergeCalendarDayPreservingBookings = createServerFn({ method: "POST
       return { ok: true, merged_groups: 0, message: "Der Tag ist bereits zusammengeführt." };
     }
 
-    const slotIds = slots.map((slot) => slot.id);
-    const { data: bookings, error: bookingError } = await supabaseAdmin
-      .from("bookings")
-      .select("id, slot_id, requested_start, duration_minutes, status, updated_at")
-      .in("slot_id", slotIds)
-      .in("status", [...activeStatuses])
-      .not("requested_start", "is", null)
-      .not("duration_minutes", "is", null);
-    if (bookingError) throw new Error(bookingError.message);
-
-    const now = Date.now();
-    const busyRanges: BusyRange[] = (bookings ?? [])
-      .filter((booking) => {
-        if (booking.status !== "waiting_deposit" || !booking.updated_at) return true;
-        return new Date(booking.updated_at).getTime() + 24 * 60 * 60_000 > now;
-      })
-      .map((booking) => ({
-        slot_id: booking.slot_id!,
-        starts_at: booking.requested_start!,
-        ends_at: new Date(
-          new Date(booking.requested_start!).getTime() + Number(booking.duration_minutes) * 60_000,
-        ).toISOString(),
-      }));
-
     const groups: CalendarSlot[][] = [];
     for (const slot of slots) {
       const current = groups[groups.length - 1];
@@ -125,11 +76,7 @@ export const mergeCalendarDayPreservingBookings = createServerFn({ method: "POST
         continue;
       }
       const previous = current[current.length - 1];
-      const gapStart = new Date(previous.ends_at).getTime();
-      const gapEnd = new Date(slot.starts_at).getTime();
-      const mayJoin = sameSettings(previous, slot)
-        && (gapEnd <= gapStart + 60_000 || gapIsCoveredByBooking(gapStart, gapEnd, busyRanges));
-      if (mayJoin) current.push(slot);
+      if (sameSettings(previous, slot)) current.push(slot);
       else groups.push([slot]);
     }
 
@@ -178,7 +125,7 @@ export const mergeCalendarDayPreservingBookings = createServerFn({ method: "POST
       ok: true,
       merged_groups: mergedGroups,
       message: mergedGroups > 0
-        ? "Der Tag wurde zusammengeführt. Bestehende Buchungen blieben unverändert."
-        : "Es gab keine technischen Unterteilungen, die sicher zusammengeführt werden konnten.",
+        ? "Die Zeitfenster wurden zu einem durchgehenden Zeitraum verbunden. Lücken zwischen den bisherigen Zeiten sind jetzt ebenfalls buchbar."
+        : "Es gab keine Zeitfenster mit übereinstimmenden Einstellungen, die zusammengeführt werden konnten.",
     };
   });
