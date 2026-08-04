@@ -22,14 +22,17 @@ interface Props {
   duration?: string
   depositPartnerName?: string
   depositPartnerEmail?: string
+  depositPartnerAmount?: string
+  depositPartnerPayment?: string
   includeDepositInfo?: boolean
 }
 
 const EMAIL_ADDRESS = 'Lady-vanillaice@gmx.net'
+const PAYPAL_ADDRESS = 'info@herzblutmadl.com'
 const WHATSAPP_NUMBER = '+4915170568230'
 const WHATSAPP_LINK = 'https://wa.me/4915170568230'
 
-const Email = ({ guestName, message, depositAmount, totalAmount, restAmount, duration, depositPartnerName, depositPartnerEmail, includeDepositInfo = false }: Props) => (
+const Email = ({ guestName, message, depositAmount, totalAmount, restAmount, duration, depositPartnerName, depositPartnerEmail, depositPartnerAmount, depositPartnerPayment, includeDepositInfo = false }: Props) => (
   <Html lang="de" dir="ltr">
     <Head />
     <Preview>Eine persönliche Nachricht von Lady Vanilla Ice.</Preview>
@@ -76,6 +79,9 @@ const Email = ({ guestName, message, depositAmount, totalAmount, restAmount, dur
           Anzahlung von <strong>50 %</strong> des vereinbarten Betrags – erst dann ist dein Termin
           verbindlich für dich reserviert.
         </Text>
+        <Text style={p}>
+          Meine PayPal-Adresse für meinen Anteil lautet: <strong>{PAYPAL_ADDRESS}</strong>.
+        </Text>
 
         {depositAmount || totalAmount || duration || restAmount ? (
           <Section style={card}>
@@ -112,17 +118,20 @@ const Email = ({ guestName, message, depositAmount, totalAmount, restAmount, dur
 
 
 
-        {depositPartnerEmail ? (
+        {depositPartnerName || depositPartnerAmount || depositPartnerPayment || depositPartnerEmail ? (
           <Section style={duoCard}>
             <Text style={duoTitle}>💎 Duo-Termin — Anzahlung geteilt</Text>
             <Text style={barText}>
-              Da es sich um einen Duo-Termin handelt, geht die Anzahlung anteilig auch an
-              {depositPartnerName ? ` ${depositPartnerName}` : ' meine Kollegin'}.
-              Bitte sende ihren Anteil via PayPal an:{' '}
-              <a href={`mailto:${depositPartnerEmail}`} style={{ color: '#7a5c33', fontWeight: 600 }}>
-                {depositPartnerEmail}
-              </a>
+              Ein Teil der Anzahlung geht an {depositPartnerName || 'meine Kollegin'}.
             </Text>
+            {depositPartnerAmount ? (
+              <Text style={barText}><strong>Anteil:</strong> {depositPartnerAmount}</Text>
+            ) : null}
+            {depositPartnerPayment || depositPartnerEmail ? (
+              <Text style={barText}>
+                <strong>Zahlung:</strong> {depositPartnerPayment || depositPartnerEmail}
+              </Text>
+            ) : null}
           </Section>
         ) : null}
           </>
@@ -187,3 +196,4 @@ const btnOutline = {
   borderRadius: 2,
   display: 'inline-block',
 }
+
