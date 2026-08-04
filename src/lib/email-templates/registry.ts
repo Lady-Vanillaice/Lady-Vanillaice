@@ -9,6 +9,7 @@ import { template as photoshootingNotificationTemplate } from './photoshooting-n
 import { template as paymentReminderTemplate } from './payment-reminder'
 import { template as personalMessageTemplate } from './personal-message'
 import { template as contentdrehReplyTemplate } from './contentdreh-reply'
+import { template as duoPriceConfirmationTemplate } from './duo-price-confirmation'
 
 export interface TemplateEntry {
   component: ComponentType<any>
@@ -30,4 +31,6 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'payment-reminder': paymentReminderTemplate,
   'personal-message': personalMessageTemplate,
   'contentdreh-reply': contentdrehReplyTemplate,
+  'duo-price-confirmation': duoPriceConfirmationTemplate,
 }
+
