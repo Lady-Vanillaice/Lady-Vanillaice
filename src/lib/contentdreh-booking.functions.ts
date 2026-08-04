@@ -7,6 +7,7 @@ const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8 MB
 const input = z.object({
   guest_name: z.string().trim().min(1).max(120),
   guest_email: z.string().trim().email().max(255),
+  guest_phone: z.string().trim().min(6).max(40).optional().nullable(),
   requested_start: z.string().min(1).max(80),
   mask: z.string().trim().max(40).nullable().optional(),
   message: z.string().trim().min(5).max(2000),
@@ -66,6 +67,7 @@ export const submitContentdrehBooking = createServerFn({ method: "POST" })
         slot_id: null,
         guest_name: data.guest_name,
         guest_email: data.guest_email,
+        guest_phone: data.guest_phone ?? null,
         duration: "Content Dreh",
         message: combinedMessage,
       })

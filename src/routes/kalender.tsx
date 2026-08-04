@@ -664,8 +664,8 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
           <input name="email" type="email" required maxLength={255} className="input-luxe" placeholder={tr("diskret@beispiel.de", "discreet@example.com")} />
         </div>
         <div>
-          <label className="eyebrow block mb-1.5">{tr("Handynummer", "Mobile number")}</label>
-          <input name="phone" type="tel" required minLength={6} maxLength={40} className="input-luxe" placeholder="+49 151 23456789" />
+          <label className="eyebrow block mb-1.5">{tr("WhatsApp (optional)", "WhatsApp (optional)")}</label>
+          <input name="phone" type="tel" maxLength={40} className="input-luxe" placeholder="+49 151 23456789" />
         </div>
         <div className="border border-champagne/20 bg-champagne/[0.03] p-4 space-y-4">
           <div>

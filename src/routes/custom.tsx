@@ -49,11 +49,12 @@ function CustomPage() {
         data: {
           guest_name: name,
           guest_email: email,
+          guest_phone: phone || null,
           photo_count: photos || null,
           video_duration: video || null,
           outfit: outfit || null,
           colleague: colleague || null,
-          message: `Telefon: ${phone}\n\n${wishes}`,
+          message: wishes,
           age_confirmed: true,
         },
       });
@@ -130,8 +131,8 @@ function CustomPage() {
             </div>
 
             <div>
-              <label className="eyebrow block mb-2">{tr("Telefonnummer", "Phone number")}</label>
-              <input name="phone" type="tel" required className="input-luxe" placeholder="+49 …" />
+              <label className="eyebrow block mb-2">{tr("WhatsApp (optional)", "WhatsApp (optional)")}</label>
+              <input name="phone" type="tel" className="input-luxe" placeholder="+49 …" />
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
