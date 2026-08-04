@@ -11,6 +11,7 @@ import {
   type Slot,
 } from "@/components/admin/admin-shared";
 import { Trash2, MapPin, ArrowLeft, Eye, EyeOff, CalendarPlus, Copy, Pencil, Save, X, Download, Crown, Scissors, Combine } from "lucide-react";
+import { saveCanvasAsPng } from "@/lib/download-image.client";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -394,7 +395,7 @@ function FreeSlotImageExport({ slots, loading }: { slots: Slot[]; loading: boole
       new Date(slot.ends_at).getTime() > Date.now(),
   );
 
-  function downloadImage() {
+  async function downloadImage() {
     if (freeSlots.length === 0) return;
 
     const width = 1080;
@@ -507,10 +508,14 @@ function FreeSlotImageExport({ slots, loading }: { slots: Slot[]; loading: boole
     ctx.font = '18px Arial, sans-serif';
     ctx.fillText("BUCHUNGSANFRAGE · LADY-VANILLAICE.COM", width / 2, height - 72);
 
-    const link = document.createElement("a");
-    link.download = `lady-vanilla-ice-freie-termine-${format(new Date(), "yyyy-MM-dd")}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
+    try {
+      await saveCanvasAsPng(
+        canvas,
+        `lady-vanilla-ice-freie-termine-${format(new Date(), "yyyy-MM-dd")}.png`,
+      );
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Das Bild konnte nicht gespeichert werden.");
+    }
   }
 
   return (
