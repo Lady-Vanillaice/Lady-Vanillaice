@@ -12,6 +12,8 @@ import {
 } from '@react-email/components'
 import type { TemplateEntry } from './registry'
 
+const PAYPAL_ADDRESS = 'info@herzblutmadl.com'
+
 interface Props {
   guestName?: string
   wishDate?: string
@@ -24,9 +26,11 @@ interface Props {
   depositPaid?: boolean
   depositPartnerName?: string
   depositPartnerEmail?: string
+  depositPartnerAmount?: string
+  depositPartnerPayment?: string
 }
 
-const Email = ({ guestName, wishDate, duration, totalAmount, depositAmount, restAmount, confirmationNote, depositPending, depositPaid, depositPartnerName, depositPartnerEmail }: Props) => (
+const Email = ({ guestName, wishDate, duration, totalAmount, depositAmount, restAmount, confirmationNote, depositPending, depositPaid, depositPartnerName, depositPartnerEmail, depositPartnerAmount, depositPartnerPayment }: Props) => (
   <Html lang="de" dir="ltr">
     <Head />
     <Preview>
@@ -48,7 +52,7 @@ const Email = ({ guestName, wishDate, duration, totalAmount, depositAmount, rest
               <Text style={p}>
                 <strong>Wichtig:</strong> Die Buchung ist erst final bestätigt, sobald deine Anzahlung
                 {depositAmount ? ` in Höhe von ${depositAmount}` : ''} bei mir eingegangen ist.
-                Bitte überweise die Anzahlung zeitnah via PayPal.
+                Bitte überweise meinen Anteil zeitnah via PayPal an <strong>{PAYPAL_ADDRESS}</strong>.
               </Text>
               <Text style={{ ...p, margin: '10px 0 0', color: '#8a2f2f', fontWeight: 600 as const }}>
                 ⏳ Dein Termin ist maximal 24 Stunden für dich reserviert. Geht die Anzahlung in dieser Zeit nicht bei mir ein, wird der Zeitslot automatisch wieder freigegeben.
@@ -85,17 +89,20 @@ const Email = ({ guestName, wishDate, duration, totalAmount, depositAmount, rest
           </Section>
         ) : null}
 
-        {depositPending && !depositPaid && depositPartnerEmail ? (
+        {depositPending && !depositPaid && (depositPartnerName || depositPartnerAmount || depositPartnerPayment || depositPartnerEmail) ? (
           <Section style={duoCard}>
             <Text style={duoTitle}>💎 Duo-Termin — Anzahlung geteilt</Text>
             <Text style={p}>
-              Da es sich um einen Duo-Termin handelt, geht die Anzahlung anteilig auch an
-              {depositPartnerName ? ` ${depositPartnerName}` : ' meine Kollegin'}.
-              Bitte sende ihren Anteil via PayPal an:{' '}
-              <a href={`mailto:${depositPartnerEmail}`} style={{ color: '#7a5c33', fontWeight: 600 }}>
-                {depositPartnerEmail}
-              </a>
+              Ein Teil der Anzahlung geht an {depositPartnerName || 'meine Kollegin'}.
             </Text>
+            {depositPartnerAmount ? (
+              <Text style={p}><strong>Anteil:</strong> {depositPartnerAmount}</Text>
+            ) : null}
+            {depositPartnerPayment || depositPartnerEmail ? (
+              <Text style={p}>
+                <strong>Zahlung:</strong> {depositPartnerPayment || depositPartnerEmail}
+              </Text>
+            ) : null}
           </Section>
         ) : null}
 
@@ -191,4 +198,5 @@ const barText = { fontSize: 15, lineHeight: '24px', margin: '0 0 6px', color: '#
 const barTextSmall = { fontSize: 12, lineHeight: '18px', margin: 0, color: '#7a5c33', fontStyle: 'italic' as const }
 const duoCard = { backgroundColor: '#f5ecd8', border: '2px dashed #b8945f', padding: '18px 20px', borderRadius: 2, margin: '16px 0' }
 const duoTitle = { fontSize: 16, fontWeight: 700 as const, color: '#7a5c33', margin: '0 0 8px' }
+
 
