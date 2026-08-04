@@ -9,7 +9,7 @@ function parseGermanDate(value: string) {
 }
 
 function monthName(monthKey: string) {
-  return new Intl.DateTimeFormat("de-DE", { month: "long", year: "numeric" })
+  return new Intl.DateTimeFormat("de-DE", { month: "long" })
     .format(new Date(`${monthKey}-15T12:00:00`));
 }
 
@@ -24,7 +24,13 @@ async function enhanceImageExport() {
   );
   if (oldButton instanceof HTMLElement) oldButton.style.display = "none";
 
-  const { data } = await supabase
+  const description = heading?.parentElement?.querySelector("p");
+  if (description instanceof HTMLElement) description.style.display = "none";
+
+  const oldPreview = section.querySelector(":scope > div.mt-5.overflow-hidden");
+  if (oldPreview instanceof HTMLElement) oldPreview.style.display = "none";
+
+  const { data, error } = await supabase
     .from("availability_slots")
     .select("starts_at")
     .eq("status", "open")
@@ -32,64 +38,105 @@ async function enhanceImageExport() {
     .gt("ends_at", new Date().toISOString())
     .order("starts_at", { ascending: true });
 
-  const monthKeys = [...new Set((data ?? []).map((row) => row.starts_at.slice(0, 7)))];
-  if (monthKeys.length === 0) return;
+  if (error) throw error;
+
+  const monthKeys = [...new Set((data ?? []).map((row) => row.starts_at.slice(0, 7)))].sort();
+  const yearKeys = [...new Set(monthKeys.map((key) => key.slice(0, 4)))].sort();
 
   const controls = document.createElement("div");
   controls.dataset.calendarImageControls = "true";
-  controls.className = "mt-5 border-t border-champagne/20 pt-5 space-y-3";
+  controls.className = "mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end";
 
-  const label = document.createElement("label");
-  label.className = "block text-[0.6rem] uppercase tracking-[0.18em] text-vanilla/55";
-  label.textContent = "Monat auswählen";
-
-  const row = document.createElement("div");
-  row.className = "flex flex-col sm:flex-row gap-3";
-
-  const select = document.createElement("select");
-  select.className = "input-luxe sm:max-w-xs";
-  for (const key of monthKeys) {
-    const option = document.createElement("option");
-    option.value = key;
-    option.textContent = monthName(key);
-    select.appendChild(option);
-  }
-
-  const monthButton = document.createElement("button");
-  monthButton.type = "button";
-  monthButton.className = "btn-gold !py-2.5 !px-4 !text-[0.65rem]";
-  monthButton.textContent = "Ausgewählten Monat speichern";
-
-  const allButton = document.createElement("button");
-  allButton.type = "button";
-  allButton.className = "btn-outline-gold !py-2.5 !px-4 !text-[0.65rem]";
-  allButton.textContent = "Alle offenen Termine speichern";
-
-  const runExport = async (type: "month" | "all") => {
-    const activeButton = type === "month" ? monthButton : allButton;
-    const originalText = activeButton.textContent;
-    monthButton.disabled = true;
-    allButton.disabled = true;
-    activeButton.textContent = "Bild wird erstellt…";
-    try {
-      const { exportCalendarImage } = await import("./calendar-image-export");
-      await exportCalendarImage(type === "month"
-        ? { type: "month", monthKey: select.value }
-        : { type: "all" });
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Das Kalenderbild konnte nicht erstellt werden.");
-    } finally {
-      monthButton.disabled = false;
-      allButton.disabled = false;
-      activeButton.textContent = originalText;
-    }
+  const createField = (labelText: string, select: HTMLSelectElement) => {
+    const wrapper = document.createElement("label");
+    wrapper.className = "block";
+    const label = document.createElement("span");
+    label.className = "mb-1.5 block text-[0.6rem] uppercase tracking-[0.18em] text-vanilla/55";
+    label.textContent = labelText;
+    select.className = "input-luxe w-full";
+    wrapper.append(label, select);
+    return wrapper;
   };
 
-  monthButton.addEventListener("click", () => void runExport("month"));
-  allButton.addEventListener("click", () => void runExport("all"));
-  row.append(select, monthButton, allButton);
-  controls.append(label, row);
+  const typeSelect = document.createElement("select");
+  [
+    ["month", "Einzelner Monat"],
+    ["year", "Ganzes Jahr"],
+    ["all", "Alle offenen Termine"],
+  ].forEach(([value, text]) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = text;
+    typeSelect.appendChild(option);
+  });
+
+  const yearSelect = document.createElement("select");
+  for (const year of yearKeys) {
+    const option = document.createElement("option");
+    option.value = year;
+    option.textContent = year;
+    yearSelect.appendChild(option);
+  }
+
+  const monthSelect = document.createElement("select");
+  const rebuildMonths = () => {
+    const selectedYear = yearSelect.value;
+    monthSelect.replaceChildren();
+    for (const key of monthKeys.filter((monthKey) => monthKey.startsWith(`${selectedYear}-`))) {
+      const option = document.createElement("option");
+      option.value = key;
+      option.textContent = monthName(key);
+      monthSelect.appendChild(option);
+    }
+  };
+  rebuildMonths();
+
+  const typeField = createField("Auswahl", typeSelect);
+  const yearField = createField("Jahr", yearSelect);
+  const monthField = createField("Monat", monthSelect);
+
+  const downloadButton = document.createElement("button");
+  downloadButton.type = "button";
+  downloadButton.className = "btn-gold !py-3 !px-5 !text-[0.65rem] whitespace-nowrap";
+  downloadButton.textContent = "Bild herunterladen";
+
+  const updateFields = () => {
+    const type = typeSelect.value;
+    yearField.style.display = type === "all" ? "none" : "block";
+    monthField.style.display = type === "month" ? "block" : "none";
+    downloadButton.disabled = monthKeys.length === 0 || (type === "month" && !monthSelect.value);
+  };
+
+  typeSelect.addEventListener("change", updateFields);
+  yearSelect.addEventListener("change", () => {
+    rebuildMonths();
+    updateFields();
+  });
+
+  downloadButton.addEventListener("click", async () => {
+    const originalText = downloadButton.textContent;
+    downloadButton.disabled = true;
+    downloadButton.textContent = "Bild wird erstellt…";
+    try {
+      const { exportCalendarImage } = await import("./calendar-image-export");
+      if (typeSelect.value === "month") {
+        await exportCalendarImage({ type: "month", monthKey: monthSelect.value });
+      } else if (typeSelect.value === "year") {
+        await exportCalendarImage({ type: "year", year: yearSelect.value });
+      } else {
+        await exportCalendarImage({ type: "all" });
+      }
+    } catch (exportError) {
+      window.alert(exportError instanceof Error ? exportError.message : "Das Kalenderbild konnte nicht erstellt werden.");
+    } finally {
+      downloadButton.textContent = originalText;
+      updateFields();
+    }
+  });
+
+  controls.append(typeField, yearField, monthField, downloadButton);
   section.appendChild(controls);
+  updateFields();
 }
 
 function installAdminCalendarUi() {
@@ -128,8 +175,8 @@ function installAdminCalendarUi() {
           const result = await mergeCalendarDayPreservingBookings({ data: { day_key: dayKey } });
           window.alert(result.message);
           window.location.reload();
-        } catch (error) {
-          window.alert(error instanceof Error ? error.message : "Der Tag konnte nicht zusammengeführt werden.");
+        } catch (mergeError) {
+          window.alert(mergeError instanceof Error ? mergeError.message : "Der Tag konnte nicht zusammengeführt werden.");
           button.disabled = false;
           button.textContent = "Tag wieder zusammenführen";
         }
