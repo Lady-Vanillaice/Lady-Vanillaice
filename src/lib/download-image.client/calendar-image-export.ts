@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getSlotAvailability } from "@/lib/public-booking.functions";
 import { saveCanvasAsPng } from "./core";
 
 type SlotRow = {
@@ -9,21 +10,31 @@ type SlotRow = {
   is_duo: boolean;
   is_content_shoot: boolean;
   duo_partner: string | null;
-  buffer_minutes: number | null;
 };
 
-type BookingRow = {
-  slot_id: string | null;
-  requested_start: string | null;
-  duration_minutes: number | null;
-  status: "confirmed" | "waiting_deposit";
-  updated_at: string | null;
+type AvailabilityRange = {
+  start: string;
+  end: string;
+  kind?: "booked" | "reserved" | "unavailable";
+  buffer_minutes?: number;
 };
 
-type BusyRange = { start: number; end: number; kind: "booked" | "reserved" };
+type AvailabilityData = {
+  starts_at: string;
+  ends_at: string;
+  buffer_minutes: number;
+  busy: AvailabilityRange[];
+};
 
-type ExportMode =
+type BusyRange = {
+  start: number;
+  end: number;
+  kind: "booked" | "reserved" | "unavailable";
+};
+
+export type CalendarExportMode =
   | { type: "month"; monthKey: string }
+  | { type: "year"; year: string }
   | { type: "all" };
 
 const TZ = "Europe/Berlin";
@@ -34,9 +45,11 @@ const COLORS = {
   softGold: "#8f7448",
   vanilla: "#f4ead8",
   muted: "#a99d8d",
-  booked: "#7f2438",
-  reserved: "rgba(244,234,216,0.38)",
-  unavailable: "rgba(80,76,70,0.58)",
+  available: "rgba(216,182,118,0.50)",
+  booked: "rgba(127,36,56,0.60)",
+  reserved: "rgba(244,234,216,0.35)",
+  unavailable: "rgba(62,59,55,0.80)",
+  tick: "rgba(244,234,216,0.10)",
 };
 
 function dateParts(value: string | Date) {
@@ -46,7 +59,7 @@ function dateParts(value: string | Date) {
     month: "2-digit",
     day: "2-digit",
   }).format(new Date(value));
-  return { dayKey: parts, monthKey: parts.slice(0, 7) };
+  return { dayKey: parts, monthKey: parts.slice(0, 7), year: parts.slice(0, 4) };
 }
 
 function dateLabel(value: string | Date) {
@@ -98,12 +111,6 @@ function studioDetails(location: string) {
     : { studio: normalized, address: "" };
 }
 
-function activeReservation(booking: BookingRow) {
-  if (booking.status !== "waiting_deposit") return true;
-  if (!booking.updated_at) return true;
-  return new Date(booking.updated_at).getTime() + 24 * 60 * 60_000 > Date.now();
-}
-
 function mergeBusy(ranges: BusyRange[]) {
   const sorted = [...ranges].sort((a, b) => a.start - b.start || a.end - b.end);
   const merged: BusyRange[] = [];
@@ -119,9 +126,11 @@ function mergeBusy(ranges: BusyRange[]) {
 }
 
 function drawCrown(ctx: CanvasRenderingContext2D, centerX: number) {
-  const crownY = 108;
+  const crownY = 100;
   ctx.strokeStyle = COLORS.gold;
-  ctx.lineWidth = 5;
+  // Core's legacy crown adjustment only targets lineWidth 5. Using 4 keeps
+  // this new export header exactly where it is drawn.
+  ctx.lineWidth = 4;
   ctx.lineJoin = "round";
   ctx.beginPath();
   ctx.moveTo(centerX - 48, crownY + 20);
@@ -134,85 +143,111 @@ function drawCrown(ctx: CanvasRenderingContext2D, centerX: number) {
   ctx.closePath();
   ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(centerX - 46, crownY + 38);
-  ctx.lineTo(centerX + 46, crownY + 38);
+  ctx.moveTo(centerX - 46, crownY + 36);
+  ctx.lineTo(centerX + 46, crownY + 36);
   ctx.stroke();
+}
+
+function drawLegendItem(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  color: string,
+  label: string,
+) {
+  ctx.beginPath();
+  ctx.fillStyle = color;
+  ctx.arc(x, y - 5, 7, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = COLORS.muted;
+  ctx.font = '15px Arial, sans-serif';
+  ctx.textAlign = "left";
+  ctx.fillText(label, x + 17, y);
 }
 
 function drawTimeline(
   ctx: CanvasRenderingContext2D,
-  slots: SlotRow[],
-  bookings: BookingRow[],
+  availability: AvailabilityData,
   y: number,
   width: number,
 ) {
   const left = 180;
   const right = width - 82;
   const barWidth = right - left;
-  const start = Math.min(
-    ...slots.map((slot) => new Date(slot.starts_at).getTime()),
-    ...bookings.flatMap((booking) => booking.requested_start ? [new Date(booking.requested_start).getTime()] : []),
-  );
-  const end = Math.max(
-    ...slots.map((slot) => new Date(slot.ends_at).getTime()),
-    ...bookings.flatMap((booking) => booking.requested_start && booking.duration_minutes
-      ? [new Date(booking.requested_start).getTime() + booking.duration_minutes * 60_000]
-      : []),
-  );
+  const start = new Date(availability.starts_at).getTime();
+  const end = new Date(availability.ends_at).getTime();
   const span = Math.max(1, end - start);
   const pctX = (time: number) => left + ((time - start) / span) * barWidth;
 
-  ctx.fillStyle = COLORS.unavailable;
+  // Identisch zum öffentlichen Kalender: Die gesamte freigegebene Tagesbreite
+  // ist verfügbar; bestätigte und reservierte Bereiche werden darübergelegt.
+  ctx.fillStyle = COLORS.available;
   ctx.fillRect(left, y, barWidth, 38);
 
-  for (const slot of slots) {
-    const x = pctX(new Date(slot.starts_at).getTime());
-    const slotEnd = pctX(new Date(slot.ends_at).getTime());
-    ctx.fillStyle = COLORS.gold;
-    ctx.fillRect(x, y, Math.max(2, slotEnd - x), 38);
-  }
-
-  const bufferBySlot = new Map(slots.map((slot) => [slot.id, slot.buffer_minutes ?? 30]));
-  const busy = mergeBusy(bookings.flatMap((booking) => {
-    if (!booking.requested_start || !booking.duration_minutes || !activeReservation(booking)) return [];
-    const bookingStart = new Date(booking.requested_start).getTime();
-    const buffer = (booking.slot_id ? bufferBySlot.get(booking.slot_id) ?? 30 : 30) * 60_000;
+  const busy = mergeBusy((availability.busy ?? []).flatMap((range) => {
+    const rawStart = new Date(range.start).getTime();
+    const rawEnd = new Date(range.end).getTime();
+    const buffer = (range.buffer_minutes ?? availability.buffer_minutes ?? 30) * 60_000;
+    const kind = range.kind ?? "booked";
     return [{
-      start: Math.max(start, bookingStart - buffer),
-      end: Math.min(end, bookingStart + booking.duration_minutes * 60_000 + buffer),
-      kind: booking.status === "confirmed" ? "booked" as const : "reserved" as const,
+      start: Math.max(start, rawStart - buffer),
+      end: Math.min(end, rawEnd + buffer),
+      kind,
     }];
-  }));
+  }).filter((range) => range.end > range.start));
 
   for (const range of busy) {
     const x = pctX(range.start);
     const rangeEnd = pctX(range.end);
-    ctx.fillStyle = range.kind === "booked" ? COLORS.booked : COLORS.reserved;
+    ctx.fillStyle = range.kind === "booked"
+      ? COLORS.booked
+      : range.kind === "reserved"
+      ? COLORS.reserved
+      : COLORS.unavailable;
     ctx.fillRect(x, y, Math.max(3, rangeEnd - x), 38);
   }
 
+  const ticks: number[] = [];
   const firstHour = new Date(start);
   firstHour.setMinutes(0, 0, 0);
   if (firstHour.getTime() < start) firstHour.setHours(firstHour.getHours() + 1);
-  for (let tick = firstHour.getTime(); tick <= end; tick += 60 * 60_000) {
+  for (let tick = firstHour.getTime(); tick <= end; tick += 60 * 60_000) ticks.push(tick);
+
+  for (const tick of ticks) {
     const x = pctX(tick);
-    ctx.fillStyle = "rgba(244,234,216,0.12)";
+    ctx.fillStyle = COLORS.tick;
     ctx.fillRect(x, y, 1, 38);
   }
 
-  ctx.fillStyle = COLORS.vanilla;
-  ctx.font = 'bold 16px Arial, sans-serif';
-  ctx.textAlign = "left";
-  ctx.fillText(timeLabel(start), left, y + 62);
-  ctx.textAlign = "right";
-  ctx.fillText(timeLabel(end), right, y + 62);
+  const totalHours = span / 3_600_000;
+  const labelStep = totalHours > 12 ? 3 : totalHours > 6 ? 2 : 1;
+  const labelTicks = ticks.filter((tick) => new Date(tick).getHours() % labelStep === 0);
+
+  ctx.fillStyle = COLORS.muted;
+  ctx.font = '13px Arial, sans-serif';
+  for (const tick of labelTicks) {
+    const x = pctX(tick);
+    const nearLeft = x - left < 20;
+    const nearRight = right - x < 20;
+    ctx.textAlign = nearLeft ? "left" : nearRight ? "right" : "center";
+    ctx.fillText(timeLabel(tick), x, y + 62);
+  }
+
+  if (!labelTicks.includes(start)) {
+    ctx.textAlign = "left";
+    ctx.fillText(timeLabel(start), left, y + 62);
+  }
+  if (!labelTicks.includes(end)) {
+    ctx.textAlign = "right";
+    ctx.fillText(timeLabel(end), right, y + 62);
+  }
 }
 
-async function loadData(mode: ExportMode) {
+async function loadData(mode: CalendarExportMode) {
   const nowIso = new Date().toISOString();
   const { data: slotRows, error } = await supabase
     .from("availability_slots")
-    .select("id, starts_at, ends_at, location, is_duo, is_content_shoot, duo_partner, buffer_minutes")
+    .select("id, starts_at, ends_at, location, is_duo, is_content_shoot, duo_partner")
     .eq("status", "open")
     .eq("is_hidden", false)
     .gt("ends_at", nowIso)
@@ -220,43 +255,45 @@ async function loadData(mode: ExportMode) {
   if (error) throw error;
 
   const allSlots = (slotRows ?? []) as SlotRow[];
-  const slots = mode.type === "month"
-    ? allSlots.filter((slot) => dateParts(slot.starts_at).monthKey === mode.monthKey)
-    : allSlots;
+  const slots = allSlots.filter((slot) => {
+    const parts = dateParts(slot.starts_at);
+    if (mode.type === "month") return parts.monthKey === mode.monthKey;
+    if (mode.type === "year") return parts.year === mode.year;
+    return true;
+  });
   if (slots.length === 0) throw new Error("Für diese Auswahl gibt es keine offenen Termine.");
 
-  const dayKeys = new Set(slots.map((slot) => dateParts(slot.starts_at).dayKey));
-  const relatedSlots = allSlots.filter((slot) => dayKeys.has(dateParts(slot.starts_at).dayKey));
-  const slotIds = relatedSlots.map((slot) => slot.id);
-  const { data: bookingRows, error: bookingError } = await supabase
-    .from("bookings")
-    .select("slot_id, requested_start, duration_minutes, status, updated_at")
-    .in("slot_id", slotIds)
-    .in("status", ["confirmed", "waiting_deposit"])
-    .not("requested_start", "is", null)
-    .not("duration_minutes", "is", null);
-  if (bookingError) throw bookingError;
+  const representativeByDay = new Map<string, SlotRow>();
+  for (const slot of slots) {
+    const key = dateParts(slot.starts_at).dayKey;
+    if (!representativeByDay.has(key)) representativeByDay.set(key, slot);
+  }
 
-  return { slots, timelineSlots: relatedSlots, bookings: (bookingRows ?? []) as BookingRow[] };
+  const availabilityEntries = await Promise.all(
+    [...representativeByDay.entries()].map(async ([dayKey, slot]) => {
+      const availability = await getSlotAvailability({ data: { slot_id: slot.id } });
+      return [dayKey, availability as AvailabilityData | null] as const;
+    }),
+  );
+  const availabilityByDay = new Map(
+    availabilityEntries.filter((entry): entry is readonly [string, AvailabilityData] => Boolean(entry[1])),
+  );
+
+  return { slots, availabilityByDay };
 }
 
-export async function exportCalendarImage(mode: ExportMode) {
-  const { slots, timelineSlots, bookings } = await loadData(mode);
+export async function exportCalendarImage(mode: CalendarExportMode) {
+  const { slots, availabilityByDay } = await loadData(mode);
   const width = 1080;
   const outer = 52;
-  const headerHeight = 270;
-  const legendHeight = 72;
-  const timelineRowHeight = 102;
+  const headerHeight = 285;
+  const legendHeight = 78;
+  const timelineRowHeight = 104;
   const appointmentRowHeight = 150;
-  const monthHeaderHeight = 80;
+  const monthHeaderHeight = 86;
   const footerHeight = 100;
 
-  const slotsByDay = new Map<string, SlotRow[]>();
-  for (const slot of timelineSlots) {
-    const key = dateParts(slot.starts_at).dayKey;
-    slotsByDay.set(key, [...(slotsByDay.get(key) ?? []), slot]);
-  }
-  const dayEntries = [...slotsByDay.entries()].sort(([a], [b]) => a.localeCompare(b));
+  const dayEntries = [...availabilityByDay.entries()].sort(([a], [b]) => a.localeCompare(b));
 
   const monthGroups = new Map<string, SlotRow[]>();
   for (const slot of slots) {
@@ -289,34 +326,27 @@ export async function exportCalendarImage(mode: ExportMode) {
   ctx.textAlign = "center";
   ctx.fillStyle = COLORS.gold;
   ctx.font = '44px Georgia, "Times New Roman", serif';
-  ctx.fillText("LADY VANILLA ICE", width / 2, 205);
+  ctx.fillText("LADY VANILLA ICE", width / 2, 207);
   ctx.fillStyle = COLORS.vanilla;
   ctx.font = '22px Arial, sans-serif';
-  ctx.fillText("F R E I E   T E R M I N E", width / 2, 244);
+  ctx.fillText("F R E I E   T E R M I N E", width / 2, 251);
 
   let y = headerHeight;
   ctx.textAlign = "left";
   ctx.fillStyle = COLORS.gold;
   ctx.font = 'bold 18px Arial, sans-serif';
   ctx.fillText("BELEGUNG DER TAGE", 82, y + 24);
-  ctx.font = '15px Arial, sans-serif';
-  ctx.fillStyle = COLORS.gold;
-  ctx.fillText("● verfügbar", 82, y + 54);
-  ctx.fillStyle = COLORS.booked;
-  ctx.fillText("● belegt", 218, y + 54);
-  ctx.fillStyle = COLORS.vanilla;
-  ctx.globalAlpha = 0.52;
-  ctx.fillText("● reserviert", 320, y + 54);
-  ctx.globalAlpha = 1;
+  drawLegendItem(ctx, 90, y + 58, COLORS.available, "verfügbar");
+  drawLegendItem(ctx, 226, y + 58, COLORS.booked, "belegt");
+  drawLegendItem(ctx, 330, y + 58, COLORS.reserved, "reserviert");
   y += legendHeight;
 
-  for (const [dayKey, daySlots] of dayEntries) {
-    const dayBookings = bookings.filter((booking) => booking.requested_start && dateParts(booking.requested_start).dayKey === dayKey);
+  for (const [dayKey, availability] of dayEntries) {
     ctx.textAlign = "left";
     ctx.fillStyle = COLORS.vanilla;
     ctx.font = 'bold 18px Arial, sans-serif';
-    ctx.fillText(dayShortLabel(daySlots[0].starts_at), 82, y + 28);
-    drawTimeline(ctx, daySlots, dayBookings, y + 12, width);
+    ctx.fillText(dayShortLabel(`${dayKey}T12:00:00`), 82, y + 28);
+    drawTimeline(ctx, availability, y + 12, width);
     y += timelineRowHeight;
   }
 
@@ -325,8 +355,8 @@ export async function exportCalendarImage(mode: ExportMode) {
     ctx.fillRect(outer + 28, y, width - (outer + 28) * 2, monthHeaderHeight - 10);
     ctx.textAlign = "center";
     ctx.fillStyle = COLORS.gold;
-    ctx.font = 'bold 36px Georgia, "Times New Roman", serif';
-    ctx.fillText(monthLabel(monthSlots[0].starts_at).toLocaleUpperCase("de-DE"), width / 2, y + 48);
+    ctx.font = 'bold 38px Georgia, "Times New Roman", serif';
+    ctx.fillText(monthLabel(monthSlots[0].starts_at).toLocaleUpperCase("de-DE"), width / 2, y + 53);
     y += monthHeaderHeight;
 
     for (const slot of monthSlots) {
@@ -373,6 +403,10 @@ export async function exportCalendarImage(mode: ExportMode) {
   ctx.font = '18px Arial, sans-serif';
   ctx.fillText("BUCHUNGSANFRAGE · LADY-VANILLAICE.COM", width / 2, height - 66);
 
-  const suffix = mode.type === "month" ? mode.monthKey : "alle-offenen-termine";
+  const suffix = mode.type === "month"
+    ? mode.monthKey
+    : mode.type === "year"
+    ? mode.year
+    : "alle-offenen-termine";
   await saveCanvasAsPng(canvas, `lady-vanilla-ice-kalender-${suffix}.png`);
 }
