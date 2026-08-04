@@ -17,6 +17,7 @@ function statusBucket(b: Booking): StatusTab | null {
   const appointmentIsPast = Boolean(
     b.requested_start && new Date(b.requested_start).getTime() < Date.now(),
   );
+  if ((b.message ?? "").includes("[DUO PREISANTWORT AUSSTEHEND]")) return null;
   if (b.completed_at || b.fully_paid || b.cash_received_at) return "geschlossen";
   if (s === "cancelled" || s === "declined") return "geschlossen";
   if ((s === "confirmed" || s === "waiting_deposit") && appointmentIsPast) return "geschlossen";
@@ -411,3 +412,4 @@ function CustomCashbookForm({
     </details>
   );
 }
+
