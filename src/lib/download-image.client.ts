@@ -1,8 +1,3 @@
-type ShareFileData = {
-  files?: File[];
-  title?: string;
-};
-
 export async function saveCanvasAsPng(canvas: HTMLCanvasElement, filename: string) {
   const blob = await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((value) => {
@@ -13,8 +8,8 @@ export async function saveCanvasAsPng(canvas: HTMLCanvasElement, filename: strin
 
   const file = new File([blob], filename, { type: "image/png" });
   const sharingNavigator = navigator as Navigator & {
-    canShare?: (data: ShareFileData) => boolean;
-    share?: (data: ShareFileData) => Promise<void>;
+    canShare?: (data: ShareData) => boolean;
+    share?: (data: ShareData) => Promise<void>;
   };
 
   if (
