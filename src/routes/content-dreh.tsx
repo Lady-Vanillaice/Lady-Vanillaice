@@ -103,9 +103,10 @@ function ContentDreh() {
         data: {
           guest_name: name,
           guest_email: email,
+          guest_phone: phone || null,
           requested_start: date,
           mask: mask || null,
-          message: `Telefon: ${phone}\n\n${wishes}`,
+          message: wishes,
           age_confirmed: true,
           terms_confirmed: true,
           photo: photoPayload,
@@ -242,8 +243,8 @@ function ContentDreh() {
             </div>
 
             <div>
-              <label className="eyebrow block mb-2">{tr("Telefonnummer", "Phone number")}</label>
-              <input name="phone" type="tel" required className="input-luxe" placeholder="+49 …" />
+              <label className="eyebrow block mb-2">{tr("WhatsApp (optional)", "WhatsApp (optional)")}</label>
+              <input name="phone" type="tel" className="input-luxe" placeholder="+49 …" />
             </div>
 
             <div className="grid md:grid-cols-2 gap-6">
