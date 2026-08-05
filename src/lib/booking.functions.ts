@@ -1176,12 +1176,33 @@ export const updateDepositPaidDate = createServerFn({ method: "POST" })
     const { error } = await context.supabase
       .from("bookings")
       .update({
+        anzahlung_paid: true,
         anzahlung_paid_at: `${data.anzahlung_paid_at}T12:00:00.000Z`,
       })
       .eq("id", data.id);
 
     if (error) throw new Error(error.message);
 
+    return { ok: true };
+  });
+
+export const updateBookingStudio = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({
+      id: z.string().uuid(),
+      studio: z.string().trim().min(1).max(200),
+      studio_address: z.string().trim().max(300).nullable(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await ensureAdmin(context.supabase, context.userId);
+    const { error } = await (context.supabase as any).rpc("set_booking_studio_override", {
+      p_booking_id: data.id,
+      p_location: data.studio,
+      p_location_address: data.studio_address || null,
+    });
+    if (error) throw new Error(error.message);
     return { ok: true };
   });
 
@@ -1407,7 +1428,7 @@ export const getBookingDetail = createServerFn({ method: "GET" })
     const { data: booking, error } = await context.supabase
       .from("bookings")
       .select(
-        "id, slot_id, guest_name, guest_email, guest_phone, duration, duration_minutes, requested_start, message, status, admin_note, confirmation_note, anzahlung, anzahlung_paid, anzahlung_paid_at, anzahlung_method, deposit_exemption_reason, bar, created_at, updated_at, availability_slots(starts_at, ends_at, location, is_duo, is_content_shoot, duo_partner)"
+        "id, slot_id, guest_name, guest_email, guest_phone, duration, duration_minutes, requested_start, message, status, admin_note, confirmation_note, anzahlung, anzahlung_paid, anzahlung_paid_at, anzahlung_method, deposit_exemption_reason, bar, studio_override, studio_address_override, created_at, updated_at, availability_slots(starts_at, ends_at, location, location_address, is_duo, is_content_shoot, duo_partner)"
       )
       .eq("id", data.id)
       .maybeSingle();

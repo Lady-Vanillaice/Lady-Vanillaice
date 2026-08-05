@@ -26,6 +26,7 @@ type Entry = {
   duration: string | null;
   duration_minutes: number | null;
   location: string | null;
+  location_address: string | null;
   is_duo: boolean;
   duo_partner: string | null;
   is_content_shoot: boolean;
@@ -65,7 +66,7 @@ function TerminplanPage() {
       const { data, error } = await supabase
         .from("bookings")
         .select(
-          "id, guest_name, guest_email, guest_phone, duration, duration_minutes, requested_start, admin_note, anzahlung_paid, deposit_exemption_reason, anzahlung, bar, message, availability_slots(starts_at, ends_at, location, is_duo, duo_partner, is_content_shoot)",
+          "id, guest_name, guest_email, guest_phone, duration, duration_minutes, requested_start, admin_note, anzahlung_paid, deposit_exemption_reason, anzahlung, bar, message, studio_override, studio_address_override, availability_slots(starts_at, ends_at, location, location_address, is_duo, duo_partner, is_content_shoot)",
         )
         .eq("status", "confirmed");
       if (error) throw error;
@@ -76,6 +77,7 @@ function TerminplanPage() {
               starts_at: string;
               ends_at: string;
               location: string;
+              location_address: string | null;
               is_duo: boolean;
               duo_partner: string | null;
               is_content_shoot: boolean;
@@ -96,7 +98,8 @@ function TerminplanPage() {
           guest_phone: b.guest_phone,
           duration: b.duration,
           duration_minutes: b.duration_minutes,
-          location: slot?.location ?? null,
+          location: b.studio_override?.trim() || slot?.location || null,
+          location_address: b.studio_address_override?.trim() || slot?.location_address || null,
           is_duo: slot?.is_duo ?? false,
           duo_partner: slot?.duo_partner ?? null,
           is_content_shoot: slot?.is_content_shoot ?? false,

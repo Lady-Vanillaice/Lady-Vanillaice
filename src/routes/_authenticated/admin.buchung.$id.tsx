@@ -7,6 +7,7 @@ import {
   updateBookingStatus,
   updateBookingNote,
   updateBookingSchedule,
+  updateBookingStudio,
   updateBookingType,
   updateBookingPayment,
   deleteBooking,
@@ -76,6 +77,11 @@ const PREPARATION_ITEMS = [
   "Outfit und Material vorbereitet",
 ] as const;
 
+const STUDIO_OPTIONS = [
+  { name: "Studio60", address: "Gärtnerstraße 60, 80992 München" },
+  { name: "Studio Elegance", address: "Frankfurter Ring 139, 80807 München" },
+] as const;
+
 function BookingDetailPage() {
   const { id } = Route.useParams();
   console.log("BOOKING ID:", id);
@@ -86,6 +92,7 @@ function BookingDetailPage() {
   const updateStatus = useServerFn(updateBookingStatus);
   const saveNote = useServerFn(updateBookingNote);
   const saveSchedule = useServerFn(updateBookingSchedule);
+  const saveStudio = useServerFn(updateBookingStudio);
   const saveBookingType = useServerFn(updateBookingType);
   const savePayment = useServerFn(updateBookingPayment);
   const markDepositPaidFn = useServerFn(markDepositPaid);
@@ -128,6 +135,9 @@ const [overrideDate, setOverrideDate] = useState("");
   const [overrideTime, setOverrideTime] = useState(""); // hh:mm
   const [overrideDuration, setOverrideDuration] = useState<string>(""); // minutes as string
   const [scheduleSaved, setScheduleSaved] = useState(false);
+  const [studioName, setStudioName] = useState("");
+  const [studioAddress, setStudioAddress] = useState("");
+  const [studioSaved, setStudioSaved] = useState(false);
 
   // Zahlung
   const [anzahlungInput, setAnzahlungInput] = useState<string>("");
@@ -181,10 +191,14 @@ const [overrideDate, setOverrideDate] = useState("");
   deposit_exemption_reason: string | null;
   bar: number | string | null;
   availability_slots?: {
+    location?: string | null;
+    location_address?: string | null;
     is_duo?: boolean | null;
     is_content_shoot?: boolean | null;
     duo_partner?: string | null;
   } | null;
+  studio_override?: string | null;
+  studio_address_override?: string | null;
 };
       setNote(b.admin_note ?? "");
       setConfirmationNote(b.confirmation_note ?? "");
@@ -216,6 +230,8 @@ setDuoPartner(b.availability_slots?.duo_partner ?? "");
     : "",
 );
       setBarInput(b.bar != null ? String(b.bar) : "0");
+      setStudioName(b.studio_override?.trim() || b.availability_slots?.location || "");
+      setStudioAddress(b.studio_address_override?.trim() || b.availability_slots?.location_address || "");
     }
   }, [detailQ.data?.booking?.id]);
 
@@ -248,6 +264,17 @@ setDuoPartner(b.availability_slots?.duo_partner ?? "");
       setTimeout(() => setScheduleSaved(false), 2500);
       qc.invalidateQueries({ queryKey: ["admin-booking-detail", id] });
       qc.invalidateQueries({ queryKey: ["admin-bookings"] });
+      router.invalidate();
+    },
+  });
+  const studioMut = useMutation({
+    mutationFn: () => saveStudio({ data: { id, studio: studioName, studio_address: studioAddress.trim() || null } }),
+    onSuccess: () => {
+      setStudioSaved(true);
+      setTimeout(() => setStudioSaved(false), 2500);
+      qc.invalidateQueries({ queryKey: ["admin-booking-detail", id] });
+      qc.invalidateQueries({ queryKey: ["admin-terminplan"] });
+      qc.invalidateQueries({ queryKey: ["cashbook"] });
       router.invalidate();
     },
   });
@@ -848,6 +875,43 @@ const depositDateMut = useMutation({
                   Kein Termin verknüpft (individuelle Anfrage &gt; 3 Std.).
                 </div>
               )}
+              <div className="mt-5 border-t border-champagne/15 pt-4 space-y-3">
+                <label className="block text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/55">
+                  Studio für diese Buchung
+                </label>
+                <select
+                  value={studioName}
+                  onChange={(event) => {
+                    const option = STUDIO_OPTIONS.find((item) => item.name === event.target.value);
+                    setStudioName(event.target.value);
+                    if (option) setStudioAddress(option.address);
+                  }}
+                  className="luxe-input"
+                >
+                  <option value="">Studio auswählen</option>
+                  {studioName && !STUDIO_OPTIONS.some((item) => item.name === studioName) && (
+                    <option value={studioName}>{studioName}</option>
+                  )}
+                  {STUDIO_OPTIONS.map((studio) => (
+                    <option key={studio.name} value={studio.name}>{studio.name}</option>
+                  ))}
+                </select>
+                <input
+                  value={studioAddress}
+                  onChange={(event) => setStudioAddress(event.target.value)}
+                  placeholder="Studio-Adresse"
+                  className="luxe-input"
+                />
+                <button
+                  type="button"
+                  onClick={() => studioMut.mutate()}
+                  disabled={!studioName.trim() || studioMut.isPending}
+                  className="btn-outline-gold !py-2 !px-4 !text-[0.6rem] disabled:opacity-40"
+                >
+                  {studioMut.isPending ? "Speichere…" : studioSaved ? "✓ Studio gespeichert" : "Studio speichern"}
+                </button>
+                {studioMut.error instanceof Error && <p className="text-xs text-bordeaux">{studioMut.error.message}</p>}
+              </div>
             </div>
           </div>
 
@@ -1974,4 +2038,3 @@ function DeleteInline({
     </div>
   );
 }
-

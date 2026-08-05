@@ -55,7 +55,7 @@ function Index() {
           <img
             src={heroImage}
             alt="Lady Vanilla Ice — Domina in München & Umgebung, Portraitaufnahme in eleganter Fetisch-Ästhetik"
-            className="w-full h-full object-cover object-right"
+            className="w-full h-full object-cover object-[72%_28%] md:object-[72%_24%]"
             width={1280}
             height={1600}
             fetchPriority="high"
