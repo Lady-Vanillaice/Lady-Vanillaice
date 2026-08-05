@@ -181,7 +181,21 @@ function Leistungen() {
         )}
       />
 
-      <section className="py-20 border-b border-champagne/15">
+      <nav aria-label={tr("Bereiche auf dieser Seite", "Sections on this page")} className="border-b border-champagne/15">
+        <div className="container-luxe py-6 flex flex-wrap justify-center gap-3">
+          <a href="#welten" className="btn-gold min-w-[9rem]">
+            {tr("Meine Art", "My way")}
+          </a>
+          <a href="#praktiken" className="btn-outline-gold min-w-[9rem]">
+            {tr("Praktiken", "Practices")}
+          </a>
+          <a href="#tabus" className="btn-outline-gold min-w-[9rem]">
+            {tr("Tabus", "Taboos")}
+          </a>
+        </div>
+      </nav>
+
+      <section id="welten" className="scroll-mt-28 py-20 border-b border-champagne/15">
         <div className="container-luxe max-w-6xl">
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-px bg-champagne/15">
             {worlds.map((world) => (
@@ -209,7 +223,7 @@ function Leistungen() {
         </div>
       </section>
 
-      <section className="py-24">
+      <section id="praktiken" className="scroll-mt-28 py-24">
         <div className="container-luxe max-w-5xl">
           <div className="text-center mb-14">
             <div className="eyebrow mb-4">{tr("Möglichkeiten", "Possibilities")}</div>
@@ -248,7 +262,7 @@ function Leistungen() {
         </div>
       </section>
 
-      <section id="tabus" className="py-24 border-t border-champagne/15">
+      <section id="tabus" className="scroll-mt-28 py-24 border-t border-champagne/15">
         <div className="container-luxe max-w-3xl">
           <div className="text-center mb-12">
             <div className="eyebrow mb-4">{tr("Grenzen", "Limits")}</div>
