@@ -59,6 +59,8 @@ export function CustomContentForm({
   const [guestName, setGuestName] = useState("");
   const [contact, setContact] = useState("");
   const [wish, setWish] = useState("");
+  const [imageCount, setImageCount] = useState("");
+  const [videoMinutes, setVideoMinutes] = useState("");
   const [note, setNote] = useState("");
   const [totalAmount, setTotalAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("Überweisung");
@@ -72,12 +74,29 @@ export function CustomContentForm({
     setSuccess(false);
 
     const total = Number(totalAmount.replace(",", "."));
+    const parsedImageCount = imageCount.trim() ? Number(imageCount) : null;
+    const parsedVideoMinutes = videoMinutes.trim() ? Number(videoMinutes) : null;
+
     if (!date || !guestName.trim() || !wish.trim()) {
       setError("Bitte Datum, Kunde und den gewünschten Inhalt eintragen.");
       return;
     }
     if (!Number.isFinite(total) || total <= 0) {
       setError("Bitte den vollständig vorausbezahlten Gesamtpreis eintragen.");
+      return;
+    }
+    if (
+      parsedImageCount !== null &&
+      (!Number.isInteger(parsedImageCount) || parsedImageCount < 1)
+    ) {
+      setError("Die Anzahl der Bilder muss eine positive ganze Zahl sein.");
+      return;
+    }
+    if (
+      parsedVideoMinutes !== null &&
+      (!Number.isInteger(parsedVideoMinutes) || parsedVideoMinutes < 1)
+    ) {
+      setError("Die Videolänge muss in positiven ganzen Minuten angegeben werden.");
       return;
     }
     if (!paymentMethod.trim() || !paidAt) {
@@ -87,6 +106,11 @@ export function CustomContentForm({
 
     const startsAt = berlinWallTimeToDate(date, start);
     const endsAt = berlinWallTimeToDate(date, end, end <= start);
+    const contentDetails = [
+      parsedImageCount !== null ? `Anzahl Bilder: ${parsedImageCount}` : null,
+      parsedVideoMinutes !== null ? `Videolänge: ${parsedVideoMinutes} Minuten` : null,
+      `Wunsch:\n${wish.trim()}`,
+    ].filter(Boolean).join("\n\n");
 
     try {
       await onCreate({
@@ -97,7 +121,7 @@ export function CustomContentForm({
         guest_contact: contact.trim() || null,
         source: "Custom Content",
         internal_note: note.trim() || null,
-        preferences: wish.trim(),
+        preferences: contentDetails,
         taboos: null,
         health_notes: null,
         booking_type: "custom_content",
@@ -114,6 +138,8 @@ export function CustomContentForm({
       setGuestName("");
       setContact("");
       setWish("");
+      setImageCount("");
+      setVideoMinutes("");
       setNote("");
       setTotalAmount("");
     } catch (err) {
@@ -164,6 +190,20 @@ export function CustomContentForm({
         <label className="eyebrow block mb-1">Was möchte der Kunde?</label>
         <textarea required value={wish} onChange={(e) => setWish(e.target.value)} className="input-luxe min-h-28" placeholder="Inhalt, Outfit, Praktiken, Ablauf, besondere Wünsche …" />
       </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <label className="eyebrow block mb-1">Anzahl Bilder (optional)</label>
+          <input type="number" min={1} step={1} value={imageCount} onChange={(e) => setImageCount(e.target.value)} className="input-luxe !py-2" placeholder="z. B. 10" />
+        </div>
+        <div>
+          <label className="eyebrow block mb-1">Video in Minuten (optional)</label>
+          <input type="number" min={1} step={1} value={videoMinutes} onChange={(e) => setVideoMinutes(e.target.value)} className="input-luxe !py-2" placeholder="z. B. 15" />
+        </div>
+      </div>
+      <p className="text-xs text-vanilla/45">
+        Du kannst nur Bilder, nur Video, beides oder keines von beiden eintragen.
+      </p>
 
       <div>
         <label className="eyebrow block mb-1">Vollständig gezahlter Gesamtpreis (€)</label>
