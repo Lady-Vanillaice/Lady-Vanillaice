@@ -127,6 +127,50 @@ function Preise() {
             ))}
           </div>
 
+          <div className="mt-16">
+            <div className="eyebrow mb-6 text-center">
+              {tr("Weitere Angebote", "Additional offers")}
+            </div>
+            <div className="grid gap-px bg-champagne/15 md:grid-cols-2">
+              <div className="flex flex-col bg-background p-8 sm:p-10">
+                <div className="mb-3 text-xs uppercase tracking-[0.3em] text-vanilla/50">
+                  {tr("Doppelsession", "Double session")}
+                </div>
+                <div className="gold-text mb-4 font-display text-4xl sm:text-5xl">
+                  {tr("300 € pro Stunde pro Domina", "€ 300 per hour per domina")}
+                </div>
+                <p className="mb-6 flex-1 text-sm leading-relaxed text-vanilla/65">
+                  {tr(
+                    "Eine gemeinsame Session mit zwei Dominas. Der Preis gilt je angefangener Stunde und pro Domina.",
+                    "A shared session with two dominas. The rate applies per started hour and per domina.",
+                  )}
+                </p>
+                <Link to="/duo-sessions" className="btn-outline-gold">
+                  {tr("Doppelsession ansehen", "View double sessions")}
+                </Link>
+              </div>
+
+              <div className="flex flex-col bg-background p-8 sm:p-10">
+                <div className="mb-3 text-xs uppercase tracking-[0.3em] text-vanilla/50">
+                  {tr("Custom Content", "Custom content")}
+                </div>
+                <div className="gold-text mb-4 space-y-1 font-display text-4xl sm:text-5xl">
+                  <div>{tr("10 € pro Bild", "€ 10 per image")}</div>
+                  <div>{tr("30 € pro Minute Video", "€ 30 per video minute")}</div>
+                </div>
+                <p className="mb-6 flex-1 text-sm leading-relaxed text-vanilla/65">
+                  {tr(
+                    "Individuell nach deinen Wünschen produzierte Bilder und Videos.",
+                    "Images and videos produced individually according to your wishes.",
+                  )}
+                </p>
+                <Link to="/custom" className="btn-outline-gold">
+                  {tr("Custom Content anfragen", "Request custom content")}
+                </Link>
+              </div>
+            </div>
+          </div>
+
           <div className="mt-16 max-w-3xl mx-auto">
             <div className="eyebrow mb-3 text-center">{tr("Wichtige Hinweise", "Important notes")}</div>
             <div className="text-sm text-vanilla/65 leading-relaxed space-y-4">
