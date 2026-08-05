@@ -74,6 +74,41 @@ function Preise() {
         tr("Begleiteter Nachklang", "Guided aftermath"),
       ],
     },
+    {
+      duration: tr("Doppelsession", "Double session"),
+      price: tr("300 € pro Stunde pro Domina", "€ 300 per hour per domina"),
+      desc: tr(
+        "Eine gemeinsame Session mit zwei Dominas. Der Preis gilt je angefangener Stunde und pro Domina.",
+        "A shared session with two dominas. The rate applies per started hour and per domina.",
+      ),
+      perks: [
+        tr("Zwei Dominas", "Two dominas"),
+        tr("Gemeinsame Inszenierung", "Shared staging"),
+        tr("Individuelle Absprache", "Individual arrangement"),
+      ],
+      linkTo: "/duo-sessions" as const,
+      linkLabel: tr("Doppelsession ansehen", "View double sessions"),
+      compactPrice: true,
+    },
+    {
+      duration: tr("Custom Content", "Custom content"),
+      price: tr(
+        "10 € pro Bild · 30 € pro Minute Video",
+        "€ 10 per image · € 30 per video minute",
+      ),
+      desc: tr(
+        "Individuell nach deinen Wünschen produzierte Bilder und Videos.",
+        "Images and videos produced individually according to your wishes.",
+      ),
+      perks: [
+        tr("Individuelle Bilder", "Individual images"),
+        tr("Individuelle Videos", "Individual videos"),
+        tr("Diskrete Lieferung", "Discreet delivery"),
+      ],
+      linkTo: "/custom" as const,
+      linkLabel: tr("Custom Content anfragen", "Request custom content"),
+      compactPrice: true,
+    },
   ];
 
   return (
@@ -110,7 +145,13 @@ function Preise() {
                   <div className="eyebrow mb-2 text-bordeaux/90">{tr("Empfehlung", "Recommended")}</div>
                 )}
                 <div className="text-xs uppercase tracking-[0.3em] text-vanilla/50 mb-3">{t.duration}</div>
-                <div className="font-display text-5xl gold-text mb-4">{t.price}</div>
+                <div
+                  className={`gold-text mb-4 font-display ${
+                    t.compactPrice ? "text-3xl leading-tight" : "text-5xl"
+                  }`}
+                >
+                  {t.price}
+                </div>
                 <p className="text-sm text-vanilla/65 leading-relaxed mb-6">{t.desc}</p>
                 <ul className="space-y-2.5 mb-8 flex-1">
                   {t.perks.map((p) => (
@@ -120,55 +161,14 @@ function Preise() {
                     </li>
                   ))}
                 </ul>
-                <Link to="/buchung" className={t.featured ? "btn-gold" : "btn-outline-gold"}>
-                  {tr("Anfragen", "Request")}
+                <Link
+                  to={t.linkTo ?? "/buchung"}
+                  className={t.featured ? "btn-gold" : "btn-outline-gold"}
+                >
+                  {t.linkLabel ?? tr("Anfragen", "Request")}
                 </Link>
               </div>
             ))}
-          </div>
-
-          <div className="mt-16">
-            <div className="eyebrow mb-6 text-center">
-              {tr("Weitere Angebote", "Additional offers")}
-            </div>
-            <div className="grid gap-px bg-champagne/15 md:grid-cols-2">
-              <div className="flex flex-col bg-background p-8 sm:p-10">
-                <div className="mb-3 text-xs uppercase tracking-[0.3em] text-vanilla/50">
-                  {tr("Doppelsession", "Double session")}
-                </div>
-                <div className="gold-text mb-4 font-display text-4xl sm:text-5xl">
-                  {tr("300 € pro Stunde pro Domina", "€ 300 per hour per domina")}
-                </div>
-                <p className="mb-6 flex-1 text-sm leading-relaxed text-vanilla/65">
-                  {tr(
-                    "Eine gemeinsame Session mit zwei Dominas. Der Preis gilt je angefangener Stunde und pro Domina.",
-                    "A shared session with two dominas. The rate applies per started hour and per domina.",
-                  )}
-                </p>
-                <Link to="/duo-sessions" className="btn-outline-gold">
-                  {tr("Doppelsession ansehen", "View double sessions")}
-                </Link>
-              </div>
-
-              <div className="flex flex-col bg-background p-8 sm:p-10">
-                <div className="mb-3 text-xs uppercase tracking-[0.3em] text-vanilla/50">
-                  {tr("Custom Content", "Custom content")}
-                </div>
-                <div className="gold-text mb-4 space-y-1 font-display text-4xl sm:text-5xl">
-                  <div>{tr("10 € pro Bild", "€ 10 per image")}</div>
-                  <div>{tr("30 € pro Minute Video", "€ 30 per video minute")}</div>
-                </div>
-                <p className="mb-6 flex-1 text-sm leading-relaxed text-vanilla/65">
-                  {tr(
-                    "Individuell nach deinen Wünschen produzierte Bilder und Videos.",
-                    "Images and videos produced individually according to your wishes.",
-                  )}
-                </p>
-                <Link to="/custom" className="btn-outline-gold">
-                  {tr("Custom Content anfragen", "Request custom content")}
-                </Link>
-              </div>
-            </div>
           </div>
 
           <div className="mt-16 max-w-3xl mx-auto">
