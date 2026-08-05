@@ -77,6 +77,10 @@ function Preise() {
     {
       duration: tr("Doppelsession", "Double session"),
       price: tr("300 € pro Stunde pro Domina", "€ 300 per hour per domina"),
+      priceLines: [
+        tr("300 € pro Stunde", "€ 300 per hour"),
+        tr("Pro Domina", "Per domina"),
+      ],
       desc: tr(
         "Eine gemeinsame Session mit zwei Dominas. Der Preis gilt je angefangener Stunde und pro Domina.",
         "A shared session with two dominas. The rate applies per started hour and per domina.",
@@ -96,6 +100,10 @@ function Preise() {
         "10 € pro Bild · 30 € pro Minute Video",
         "€ 10 per image · € 30 per video minute",
       ),
+      priceLines: [
+        tr("10 € pro Bild", "€ 10 per image"),
+        tr("30 € pro Minute Video", "€ 30 per video minute"),
+      ],
       desc: tr(
         "Individuell nach deinen Wünschen produzierte Bilder und Videos.",
         "Images and videos produced individually according to your wishes.",
@@ -150,7 +158,9 @@ function Preise() {
                     t.compactPrice ? "text-3xl leading-tight" : "text-5xl"
                   }`}
                 >
-                  {t.price}
+                  {t.priceLines
+                    ? t.priceLines.map((line) => <div key={line}>{line}</div>)
+                    : t.price}
                 </div>
                 <p className="text-sm text-vanilla/65 leading-relaxed mb-6">{t.desc}</p>
                 <ul className="space-y-2.5 mb-8 flex-1">
