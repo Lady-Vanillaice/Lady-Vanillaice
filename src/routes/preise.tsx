@@ -162,18 +162,20 @@ function Preise() {
                 )}
                 <div className="text-xs uppercase tracking-[0.3em] text-vanilla/50 mb-3">{t.duration}</div>
                 {t.priceRows ? (
-                  <div className="gold-text mb-4 space-y-1">
+                  <div className="gold-text mb-4 space-y-0">
                     {t.priceRows.map((row) => (
                       <div
                         key={row.amount}
                         className={
                           t.priceUnitBelow
                             ? "flex flex-col items-start"
-                            : "flex flex-wrap items-baseline gap-x-2"
+                            : "flex flex-nowrap items-baseline gap-x-2"
                         }
                       >
-                        <span className="font-display text-5xl">{row.amount}</span>
-                        <span className="text-xs uppercase tracking-[0.16em] text-champagne/75">
+                        <span className="shrink-0 font-display text-5xl leading-none">
+                          {row.amount}
+                        </span>
+                        <span className="whitespace-nowrap text-xs uppercase tracking-[0.16em] text-champagne/75">
                           {row.unit}
                         </span>
                       </div>
