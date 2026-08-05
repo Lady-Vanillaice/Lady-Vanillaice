@@ -380,11 +380,6 @@ export async function exportCalendarImage(mode: CalendarExportMode) {
       ctx.fillStyle = COLORS.vanilla;
       ctx.font = '20px Arial, sans-serif';
       ctx.fillText(details.studio, cardX + cardWidth - 30, y + 38);
-      if (details.address) {
-        ctx.fillStyle = COLORS.muted;
-        ctx.font = '17px Arial, sans-serif';
-        ctx.fillText(details.address, cardX + cardWidth - 30, y + 66);
-      }
       const tag = [
         slot.is_duo ? `DUO${slot.duo_partner ? ` · ${slot.duo_partner}` : ""}` : "",
         slot.is_content_shoot ? "CONTENT" : "",
