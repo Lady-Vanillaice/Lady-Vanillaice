@@ -2,7 +2,18 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { createSlot, deleteSlot, getCalendarFeedUrl, updateSlotBuffer, updateSlotTimes, setSlotHidden } from "@/lib/booking.functions";
+import {
+  createSlot,
+  deleteSlot,
+  getCalendarFeedUrl,
+  updateSlotBuffer,
+  updateSlotTimes,
+  setSlotHidden,
+} from "@/lib/booking.functions";
+import {
+  mergeCalendarSlots,
+  splitCalendarSlot,
+} from "@/lib/calendar-reshape.functions";
 import { useState } from "react";
 import { PageHeader } from "@/components/site/PageHeader";
 import {
@@ -10,13 +21,34 @@ import {
   StatusBadge,
   type Slot,
 } from "@/components/admin/admin-shared";
-import { Trash2, MapPin, ArrowLeft, Eye, EyeOff, CalendarPlus, Copy, Pencil, Save, X, Download, Crown } from "lucide-react";
+import {
+  Trash2,
+  MapPin,
+  ArrowLeft,
+  Eye,
+  EyeOff,
+  CalendarPlus,
+  Copy,
+  Pencil,
+  Save,
+  X,
+  Download,
+  Crown,
+  Scissors,
+  Combine,
+  Plus,
+} from "lucide-react";
 import { exportCalendarImage } from "@/lib/download-image.client";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
 export const Route = createFileRoute("/_authenticated/admin/kalender")({
-  head: () => ({ meta: [{ title: "Kalender — Admin" }, { name: "robots", content: "noindex,nofollow" }] }),
+  head: () => ({
+    meta: [
+      { title: "Kalender — Admin" },
+      { name: "robots", content: "noindex,nofollow" },
+    ],
+  }),
   component: AdminKalenderPage,
 });
 
@@ -25,7 +57,10 @@ function AdminKalenderPage() {
   const createSlotFn = useServerFn(createSlot);
   const deleteSlotFn = useServerFn(deleteSlot);
   const updateSlotTimesFn = useServerFn(updateSlotTimes);
+  const splitCalendarSlotFn = useServerFn(splitCalendarSlot);
+  const mergeCalendarSlotsFn = useServerFn(mergeCalendarSlots);
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
+  const [splittingSlotId, setSplittingSlotId] = useState<string | null>(null);
 
   const slotsQ = useQuery({
     queryKey: ["admin-slots"],
@@ -44,7 +79,7 @@ function AdminKalenderPage() {
           | { internal_note: string | null }
           | { internal_note: string | null }[]
           | null;
-        const metaRow = Array.isArray(meta) ? meta[0] ?? null : meta;
+        const metaRow = Array.isArray(meta) ? (meta[0] ?? null) : meta;
         return {
           id: row.id,
           starts_at: row.starts_at,
@@ -91,15 +126,42 @@ function AdminKalenderPage() {
     },
   });
 
+  const splitMut = useMutation({
+    mutationFn: (value: { slot_id: string; split_ats: string[] }) =>
+      splitCalendarSlotFn({ data: value }),
+    onSuccess: (result) => {
+      setSplittingSlotId(null);
+      alert(result.message);
+      qc.invalidateQueries({ queryKey: ["admin-slots"] });
+    },
+  });
+
+  const mergeMut = useMutation({
+    mutationFn: (value: { day_key: string; slot_ids: string[] }) =>
+      mergeCalendarSlotsFn({ data: value }),
+    onSuccess: (result) => {
+      alert(result.message);
+      qc.invalidateQueries({ queryKey: ["admin-slots"] });
+    },
+    onError: (error) =>
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Die Zeitfenster konnten nicht zusammengeführt werden.",
+      ),
+  });
+
   const updateBufferFn = useServerFn(updateSlotBuffer);
   const bufferMut = useMutation({
-    mutationFn: (v: { id: string; buffer_minutes: number }) => updateBufferFn({ data: v }),
+    mutationFn: (v: { id: string; buffer_minutes: number }) =>
+      updateBufferFn({ data: v }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-slots"] }),
   });
 
   const setHiddenFn = useServerFn(setSlotHidden);
   const hiddenMut = useMutation({
-    mutationFn: (v: { id: string; is_hidden: boolean }) => setHiddenFn({ data: v }),
+    mutationFn: (v: { id: string; is_hidden: boolean }) =>
+      setHiddenFn({ data: v }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-slots"] }),
   });
 
@@ -118,50 +180,103 @@ function AdminKalenderPage() {
     <>
       <PageHeader
         eyebrow="Admin"
-        title={<>Kalender &amp; <em className="font-script gold-text not-italic">Termine</em></>}
+        title={
+          <>
+            Kalender &amp;{" "}
+            <em className="font-script gold-text not-italic">Termine</em>
+          </>
+        }
         intro="Verfügbarkeiten pflegen und externe Termine eintragen."
       />
       <section className="py-16">
         <div className="container-luxe max-w-3xl">
           <div className="mb-8 flex flex-wrap gap-3 items-center">
-            <Link to="/admin" className="btn-outline-gold !py-2 !px-4 !text-[0.65rem]">
+            <Link
+              to="/admin"
+              className="btn-outline-gold !py-2 !px-4 !text-[0.65rem]"
+            >
               <ArrowLeft size={12} /> Zum Admin-Bereich
             </Link>
             <CalendarSubscribeButton />
           </div>
 
-          <NewSlotForm onCreate={(v) => createMut.mutateAsync(v)} pending={createMut.isPending} />
+          <NewSlotForm
+            onCreate={(v) => createMut.mutateAsync(v)}
+            pending={createMut.isPending}
+          />
 
-          <FreeSlotImageExport slots={slotsQ.data ?? []} loading={slotsQ.isLoading} />
+          <FreeSlotImageExport
+            slots={slotsQ.data ?? []}
+            loading={slotsQ.isLoading}
+          />
 
           <div className="mt-8 space-y-6">
-            {slotsQ.isLoading && <p className="text-vanilla/50 text-sm">Lade…</p>}
+            {slotsQ.isLoading && (
+              <p className="text-vanilla/50 text-sm">Lade…</p>
+            )}
             {slotsQ.data?.length === 0 && (
               <p className="text-vanilla/50 text-sm border border-dashed border-champagne/20 p-6 text-center">
                 Noch keine Zeitfenster angelegt.
               </p>
             )}
             {groupedSlots.map((group) => (
-              <section key={group.dayKey} className="border border-champagne/15 bg-card">
+              <section
+                key={group.dayKey}
+                className="border border-champagne/15 bg-card"
+              >
                 <header className="flex flex-wrap items-end justify-between gap-2 border-b border-champagne/15 px-4 py-3">
                   <div>
-                    <div className="eyebrow text-champagne">{format(group.date, "EEEE", { locale: de })}</div>
+                    <div className="eyebrow text-champagne">
+                      {format(group.date, "EEEE", { locale: de })}
+                    </div>
                     <h2 className="font-display text-xl text-vanilla">
                       {format(group.date, "dd.MM.yyyy", { locale: de })}
                     </h2>
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <p className="text-xs text-vanilla/55">
-                      {group.slots.length} {group.slots.length === 1 ? "Zeitfenster" : "Zeitfenster"} an diesem Tag
+                      {group.slots.length}{" "}
+                      {group.slots.length === 1 ? "Zeitfenster" : "Zeitfenster"}{" "}
+                      an diesem Tag
                     </p>
+                    {group.slots.length >= 2 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const first = group.slots[0];
+                          const last = group.slots[group.slots.length - 1];
+                          const confirmed = confirm(
+                            `Alle ${group.slots.length} Zeitfenster von ${format(new Date(first.starts_at), "HH:mm")} bis ${format(new Date(last.ends_at), "HH:mm")} Uhr verbinden? Vorhandene Buchungszeiten bleiben unverändert. Bisherige Lücken werden anschließend buchbar.`,
+                          );
+                          if (confirmed) {
+                            mergeMut.mutate({
+                              day_key: group.dayKey,
+                              slot_ids: group.slots.map((slot) => slot.id),
+                            });
+                          }
+                        }}
+                        disabled={mergeMut.isPending || splitMut.isPending}
+                        className="btn-outline-gold !py-2 !px-3 !text-[0.58rem] disabled:opacity-40"
+                      >
+                        <Combine size={13} />
+                        {mergeMut.isPending
+                          ? "Wird verbunden…"
+                          : "Zeitfenster zusammenführen"}
+                      </button>
+                    )}
                   </div>
                 </header>
                 <div className="divide-y divide-champagne/10">
                   {group.slots.map((s) => {
-                    const durationMinutes = Math.round((new Date(s.ends_at).getTime() - new Date(s.starts_at).getTime()) / 60_000);
-                    const durationLabel = durationMinutes >= 60
-                      ? `${Math.floor(durationMinutes / 60)} Std.${durationMinutes % 60 ? ` ${durationMinutes % 60} Min.` : ""}`
-                      : `${durationMinutes} Min.`;
+                    const durationMinutes = Math.round(
+                      (new Date(s.ends_at).getTime() -
+                        new Date(s.starts_at).getTime()) /
+                        60_000,
+                    );
+                    const durationLabel =
+                      durationMinutes >= 60
+                        ? `${Math.floor(durationMinutes / 60)} Std.${durationMinutes % 60 ? ` ${durationMinutes % 60} Min.` : ""}`
+                        : `${durationMinutes} Min.`;
                     return (
                       <div
                         key={s.id}
@@ -175,13 +290,21 @@ function AdminKalenderPage() {
                               Zeitfenster
                             </span>
                             <span>
-                              {format(new Date(s.starts_at), "HH:mm", { locale: de })}
+                              {format(new Date(s.starts_at), "HH:mm", {
+                                locale: de,
+                              })}
                               {" – "}
-                              {format(new Date(s.ends_at), "HH:mm", { locale: de })}
+                              {format(new Date(s.ends_at), "HH:mm", {
+                                locale: de,
+                              })}
                             </span>
-                            <span className="text-xs text-vanilla/45">({durationLabel})</span>
+                            <span className="text-xs text-vanilla/45">
+                              ({durationLabel})
+                            </span>
                             {s.is_duo && s.duo_partner && (
-                              <span className="text-champagne">· mit {s.duo_partner}</span>
+                              <span className="text-champagne">
+                                · mit {s.duo_partner}
+                              </span>
                             )}
                             {s.is_hidden && (
                               <span className="inline-flex items-center gap-1 text-[0.6rem] uppercase tracking-[0.2em] px-2 py-0.5 bg-bordeaux/40 text-vanilla">
@@ -190,21 +313,46 @@ function AdminKalenderPage() {
                             )}
                           </div>
                           <div className="text-[0.7rem] text-vanilla/45 mt-0.5 italic">
-                            Kein einzelner Buchungsslot — Kunden wählen darin Startzeit und Dauer frei ab 30 Min.
+                            Kein einzelner Buchungsslot — Kunden wählen darin
+                            Startzeit und Dauer frei ab 30 Min.
                           </div>
                           <div className="text-xs text-vanilla/55 mt-1 flex flex-wrap items-center gap-3">
-                            <span className="inline-flex items-center gap-1 min-w-0"><MapPin size={11} /> <span className="truncate">{s.location}</span></span>
-                            {s.is_duo && <span className="text-champagne uppercase tracking-[0.2em]">Duo{s.duo_partner ? ` · ${s.duo_partner}` : ""}</span>}
-                            {s.is_content_shoot && <span className="text-champagne uppercase tracking-[0.2em]">Content</span>}
+                            <span className="inline-flex items-center gap-1 min-w-0">
+                              <MapPin size={11} />{" "}
+                              <span className="truncate">{s.location}</span>
+                            </span>
+                            {s.is_duo && (
+                              <span className="text-champagne uppercase tracking-[0.2em]">
+                                Duo{s.duo_partner ? ` · ${s.duo_partner}` : ""}
+                              </span>
+                            )}
+                            {s.is_content_shoot && (
+                              <span className="text-champagne uppercase tracking-[0.2em]">
+                                Content
+                              </span>
+                            )}
                             <StatusBadge status={s.status} />
-                            <label className="inline-flex items-center gap-1.5 text-vanilla/60" title="Mindestpause zwischen zwei Buchungen innerhalb dieses Fensters">
+                            <label
+                              className="inline-flex items-center gap-1.5 text-vanilla/60"
+                              title="Mindestpause zwischen zwei Buchungen innerhalb dieses Fensters"
+                            >
                               Puffer
                               <input
-                                type="number" min={0} max={240} step={15}
+                                type="number"
+                                min={0}
+                                max={240}
+                                step={15}
                                 defaultValue={s.buffer_minutes ?? 30}
                                 onBlur={(e) => {
-                                  const v = Math.max(0, Math.min(240, Number(e.target.value) || 0));
-                                  if (v !== (s.buffer_minutes ?? 30)) bufferMut.mutate({ id: s.id, buffer_minutes: v });
+                                  const v = Math.max(
+                                    0,
+                                    Math.min(240, Number(e.target.value) || 0),
+                                  );
+                                  if (v !== (s.buffer_minutes ?? 30))
+                                    bufferMut.mutate({
+                                      id: s.id,
+                                      buffer_minutes: v,
+                                    });
                                 }}
                                 className="w-16 bg-anthracite/40 border border-champagne/20 px-2 py-0.5 text-vanilla text-xs"
                               />
@@ -216,14 +364,52 @@ function AdminKalenderPage() {
                               slot={s}
                               pending={updateTimesMut.isPending}
                               onCancel={() => setEditingSlotId(null)}
-                              onSave={(value) => updateTimesMut.mutateAsync({ id: s.id, ...value })}
+                              onSave={(value) =>
+                                updateTimesMut.mutateAsync({
+                                  id: s.id,
+                                  ...value,
+                                })
+                              }
+                            />
+                          )}
+                          {splittingSlotId === s.id && (
+                            <SlotSplitEditor
+                              slot={s}
+                              pending={splitMut.isPending}
+                              onCancel={() => setSplittingSlotId(null)}
+                              onSave={(splitAts) =>
+                                splitMut.mutateAsync({
+                                  slot_id: s.id,
+                                  split_ats: splitAts,
+                                })
+                              }
                             />
                           )}
                         </div>
 
                         <div className="flex items-center gap-1 sm:shrink-0">
                           <button
-                            onClick={() => setEditingSlotId(editingSlotId === s.id ? null : s.id)}
+                            type="button"
+                            onClick={() => {
+                              setEditingSlotId(null);
+                              setSplittingSlotId(
+                                splittingSlotId === s.id ? null : s.id,
+                              );
+                            }}
+                            disabled={splitMut.isPending || mergeMut.isPending}
+                            className="text-vanilla/50 hover:text-champagne transition p-2 disabled:opacity-40"
+                            aria-label="Zeitfenster trennen"
+                            title="Zeitfenster an mehreren Uhrzeiten trennen"
+                          >
+                            <Scissors size={16} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSplittingSlotId(null);
+                              setEditingSlotId(
+                                editingSlotId === s.id ? null : s.id,
+                              );
+                            }}
                             disabled={updateTimesMut.isPending}
                             className="text-vanilla/50 hover:text-champagne transition p-2"
                             aria-label="Zeitfenster bearbeiten"
@@ -232,17 +418,35 @@ function AdminKalenderPage() {
                             <Pencil size={16} />
                           </button>
                           <button
-                            onClick={() => hiddenMut.mutate({ id: s.id, is_hidden: !s.is_hidden })}
+                            onClick={() =>
+                              hiddenMut.mutate({
+                                id: s.id,
+                                is_hidden: !s.is_hidden,
+                              })
+                            }
                             disabled={hiddenMut.isPending}
                             className="text-vanilla/50 hover:text-champagne transition p-2"
-                            aria-label={s.is_hidden ? "Sichtbar schalten" : "Unsichtbar schalten"}
-                            title={s.is_hidden ? "Öffentlich sichtbar schalten" : "Unsichtbar schalten"}
+                            aria-label={
+                              s.is_hidden
+                                ? "Sichtbar schalten"
+                                : "Unsichtbar schalten"
+                            }
+                            title={
+                              s.is_hidden
+                                ? "Öffentlich sichtbar schalten"
+                                : "Unsichtbar schalten"
+                            }
                           >
-                            {s.is_hidden ? <EyeOff size={16} /> : <Eye size={16} />}
+                            {s.is_hidden ? (
+                              <EyeOff size={16} />
+                            ) : (
+                              <Eye size={16} />
+                            )}
                           </button>
                           <button
                             onClick={() => {
-                              if (confirm("Dieses Zeitfenster löschen?")) deleteMut.mutate(s.id);
+                              if (confirm("Dieses Zeitfenster löschen?"))
+                                deleteMut.mutate(s.id);
                             }}
                             className="text-vanilla/40 hover:text-destructive transition p-2"
                             aria-label="Löschen"
@@ -263,31 +467,208 @@ function AdminKalenderPage() {
   );
 }
 
+function SlotSplitEditor({
+  slot,
+  pending,
+  onSave,
+  onCancel,
+}: {
+  slot: Slot;
+  pending: boolean;
+  onSave: (splitAts: string[]) => Promise<unknown>;
+  onCancel: () => void;
+}) {
+  const startMs = new Date(slot.starts_at).getTime();
+  const endMs = new Date(slot.ends_at).getTime();
+  const inputFormat = "yyyy-MM-dd'T'HH:mm";
+  const midpoint = new Date(
+    Math.round((startMs + endMs) / 2 / (15 * 60_000)) * 15 * 60_000,
+  );
+  const [splitTimes, setSplitTimes] = useState([format(midpoint, inputFormat)]);
+  const [error, setError] = useState<string | null>(null);
+
+  function addSplitTime() {
+    setSplitTimes((current) => {
+      const used = current
+        .map((value) => new Date(value).getTime())
+        .filter(Number.isFinite)
+        .sort((a, b) => a - b);
+      const candidate = Math.min(
+        endMs - 30 * 60_000,
+        (used.at(-1) ?? startMs) + 30 * 60_000,
+      );
+      if (
+        candidate <= startMs ||
+        candidate >= endMs ||
+        used.includes(candidate)
+      )
+        return current;
+      return [...current, format(new Date(candidate), inputFormat)];
+    });
+  }
+
+  async function save() {
+    setError(null);
+    const parsed = splitTimes
+      .map((value) => new Date(value).getTime())
+      .sort((a, b) => a - b);
+    if (parsed.some((value) => !Number.isFinite(value))) {
+      setError("Bitte nur gültige Trennzeiten auswählen.");
+      return;
+    }
+    const unique = [...new Set(parsed)];
+    const boundaries = [startMs, ...unique, endMs];
+    if (unique.length !== parsed.length) {
+      setError("Jede Trennzeit darf nur einmal vorkommen.");
+      return;
+    }
+    if (
+      boundaries.some(
+        (value, index) =>
+          index > 0 && value - boundaries[index - 1] < 30 * 60_000,
+      )
+    ) {
+      setError("Jedes neue Zeitfenster muss mindestens 30 Minuten lang sein.");
+      return;
+    }
+    try {
+      await onSave(unique.map((value) => new Date(value).toISOString()));
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Das Zeitfenster konnte nicht getrennt werden.",
+      );
+    }
+  }
+
+  return (
+    <div className="mt-4 border border-champagne/25 bg-anthracite/30 p-4">
+      <div className="eyebrow text-champagne mb-2">Zeitfenster trennen</div>
+      <p className="mb-3 text-[0.68rem] leading-relaxed text-vanilla/55">
+        Lege eine oder mehrere Trennzeiten fest. Buchungen bleiben bei ihrer
+        bisherigen Uhrzeit und werden dem passenden neuen Zeitfenster
+        zugeordnet.
+      </p>
+      <div className="space-y-2">
+        {splitTimes.map((splitAt, index) => (
+          <div key={`${index}-${splitAt}`} className="flex items-center gap-2">
+            <input
+              type="datetime-local"
+              value={splitAt}
+              min={format(new Date(startMs + 30 * 60_000), inputFormat)}
+              max={format(new Date(endMs - 30 * 60_000), inputFormat)}
+              step={900}
+              onChange={(event) =>
+                setSplitTimes((current) =>
+                  current.map((value, itemIndex) =>
+                    itemIndex === index ? event.target.value : value,
+                  ),
+                )
+              }
+              className="input-luxe !py-2 max-w-xs"
+              aria-label={`Trennzeit ${index + 1}`}
+            />
+            {splitTimes.length > 1 && (
+              <button
+                type="button"
+                onClick={() =>
+                  setSplitTimes((current) =>
+                    current.filter((_, itemIndex) => itemIndex !== index),
+                  )
+                }
+                disabled={pending}
+                className="p-2 text-vanilla/45 hover:text-destructive"
+                aria-label={`Trennzeit ${index + 1} entfernen`}
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={addSplitTime}
+        disabled={pending}
+        className="mt-3 btn-outline-gold !py-2 !px-3 !text-[0.62rem]"
+      >
+        <Plus size={12} /> Weitere Trennzeit
+      </button>
+      <p className="mt-2 text-[0.65rem] text-vanilla/45">
+        Mindestens 30 Minuten pro Abschnitt. Trennzeiten dürfen nicht in
+        Buchungen oder deren Puffer liegen.
+      </p>
+      {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={save}
+          disabled={pending}
+          className="btn-gold !py-2 !px-3 !text-[0.65rem]"
+        >
+          <Scissors size={12} />{" "}
+          {pending
+            ? "Wird getrennt…"
+            : `In ${splitTimes.length + 1} Zeitfenster trennen`}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={pending}
+          className="btn-outline-gold !py-2 !px-3 !text-[0.65rem]"
+        >
+          <X size={12} /> Abbrechen
+        </button>
+      </div>
+    </div>
+  );
+}
+
 type ExportChoice = "month" | "year" | "all";
 
-function FreeSlotImageExport({ slots, loading }: { slots: Slot[]; loading: boolean }) {
+function FreeSlotImageExport({
+  slots,
+  loading,
+}: {
+  slots: Slot[];
+  loading: boolean;
+}) {
   const freeSlots = slots.filter(
     (slot) =>
       slot.status === "open" &&
       !slot.is_hidden &&
       new Date(slot.ends_at).getTime() > Date.now(),
   );
-  const monthKeys = [...new Set(freeSlots.map((slot) => format(new Date(slot.starts_at), "yyyy-MM")))].sort();
-  const years = [...new Set(monthKeys.map((month) => Number(month.slice(0, 4))))].sort((a, b) => a - b);
+  const monthKeys = [
+    ...new Set(
+      freeSlots.map((slot) => format(new Date(slot.starts_at), "yyyy-MM")),
+    ),
+  ].sort();
+  const years = [
+    ...new Set(monthKeys.map((month) => Number(month.slice(0, 4)))),
+  ].sort((a, b) => a - b);
   const [choice, setChoice] = useState<ExportChoice>("month");
-  const [year, setYear] = useState<number>(years[0] ?? new Date().getFullYear());
-  const monthsForYear = monthKeys.filter((month) => Number(month.slice(0, 4)) === year);
+  const [year, setYear] = useState<number>(
+    years[0] ?? new Date().getFullYear(),
+  );
+  const monthsForYear = monthKeys.filter(
+    (month) => Number(month.slice(0, 4)) === year,
+  );
   const [monthKey, setMonthKey] = useState<string>(monthKeys[0] ?? "");
   const [exporting, setExporting] = useState(false);
 
-  const activeMonth = monthsForYear.includes(monthKey) ? monthKey : monthsForYear[0] ?? "";
+  const activeMonth = monthsForYear.includes(monthKey)
+    ? monthKey
+    : (monthsForYear[0] ?? "");
 
   async function downloadImage() {
     if (freeSlots.length === 0) return;
     setExporting(true);
     try {
       if (choice === "month") {
-        if (!activeMonth) throw new Error("Für dieses Jahr gibt es keinen offenen Monat.");
+        if (!activeMonth)
+          throw new Error("Für dieses Jahr gibt es keinen offenen Monat.");
         await exportCalendarImage({ type: "month", monthKey: activeMonth });
       } else if (choice === "year") {
         await exportCalendarImage({ type: "year", year });
@@ -295,7 +676,11 @@ function FreeSlotImageExport({ slots, loading }: { slots: Slot[]; loading: boole
         await exportCalendarImage({ type: "all" });
       }
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Das Bild konnte nicht gespeichert werden.");
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Das Bild konnte nicht gespeichert werden.",
+      );
     } finally {
       setExporting(false);
     }
@@ -308,7 +693,8 @@ function FreeSlotImageExport({ slots, loading }: { slots: Slot[]; loading: boole
         <h2 className="font-display text-2xl">Freie Termine als Bild</h2>
       </div>
       <p className="mt-2 text-xs leading-relaxed text-vanilla/55">
-        Wähle einen Monat, ein Jahr oder alle offenen Termine und lade das Bild direkt herunter.
+        Wähle einen Monat, ein Jahr oder alle offenen Termine und lade das Bild
+        direkt herunter.
       </p>
 
       <div className="mt-5 grid gap-3">
@@ -332,13 +718,19 @@ function FreeSlotImageExport({ slots, loading }: { slots: Slot[]; loading: boole
             onChange={(event) => {
               const nextYear = Number(event.target.value);
               setYear(nextYear);
-              const nextMonth = monthKeys.find((month) => Number(month.slice(0, 4)) === nextYear);
+              const nextMonth = monthKeys.find(
+                (month) => Number(month.slice(0, 4)) === nextYear,
+              );
               if (nextMonth) setMonthKey(nextMonth);
             }}
           >
-            {(years.length ? years : [new Date().getFullYear()]).map((availableYear) => (
-              <option key={availableYear} value={availableYear}>{availableYear}</option>
-            ))}
+            {(years.length ? years : [new Date().getFullYear()]).map(
+              (availableYear) => (
+                <option key={availableYear} value={availableYear}>
+                  {availableYear}
+                </option>
+              ),
+            )}
           </select>
         )}
 
@@ -350,7 +742,9 @@ function FreeSlotImageExport({ slots, loading }: { slots: Slot[]; loading: boole
           >
             {monthsForYear.map((month) => (
               <option key={month} value={month}>
-                {format(new Date(`${month}-15T12:00:00`), "MMMM yyyy", { locale: de })}
+                {format(new Date(`${month}-15T12:00:00`), "MMMM yyyy", {
+                  locale: de,
+                })}
               </option>
             ))}
           </select>
@@ -368,7 +762,9 @@ function FreeSlotImageExport({ slots, loading }: { slots: Slot[]; loading: boole
       </div>
 
       {!loading && freeSlots.length === 0 && (
-        <p className="mt-3 text-xs text-vanilla/50">Aktuell sind keine offenen, sichtbaren Termine vorhanden.</p>
+        <p className="mt-3 text-xs text-vanilla/50">
+          Aktuell sind keine offenen, sichtbaren Termine vorhanden.
+        </p>
       )}
     </section>
   );
@@ -398,9 +794,16 @@ function SlotTimeEditor({
     const endsAt = new Date(`${date}T${end}:00`);
     if (end <= start) endsAt.setDate(endsAt.getDate() + 1);
     try {
-      await onSave({ starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString() });
+      await onSave({
+        starts_at: startsAt.toISOString(),
+        ends_at: endsAt.toISOString(),
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Zeitfenster konnte nicht gespeichert werden.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Zeitfenster konnte nicht gespeichert werden.",
+      );
     }
   }
 
@@ -409,27 +812,59 @@ function SlotTimeEditor({
       <div className="eyebrow text-champagne mb-3">Zeitfenster bearbeiten</div>
       <div className="grid grid-cols-3 gap-3">
         <div>
-          <label className="block text-[0.6rem] uppercase tracking-[0.16em] text-vanilla/45 mb-1">Datum</label>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input-luxe !py-2" />
+          <label className="block text-[0.6rem] uppercase tracking-[0.16em] text-vanilla/45 mb-1">
+            Datum
+          </label>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="input-luxe !py-2"
+          />
         </div>
         <div>
-          <label className="block text-[0.6rem] uppercase tracking-[0.16em] text-vanilla/45 mb-1">Von</label>
-          <input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="input-luxe !py-2" />
+          <label className="block text-[0.6rem] uppercase tracking-[0.16em] text-vanilla/45 mb-1">
+            Von
+          </label>
+          <input
+            type="time"
+            value={start}
+            onChange={(e) => setStart(e.target.value)}
+            className="input-luxe !py-2"
+          />
         </div>
         <div>
-          <label className="block text-[0.6rem] uppercase tracking-[0.16em] text-vanilla/45 mb-1">Bis</label>
-          <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className="input-luxe !py-2" />
+          <label className="block text-[0.6rem] uppercase tracking-[0.16em] text-vanilla/45 mb-1">
+            Bis
+          </label>
+          <input
+            type="time"
+            value={end}
+            onChange={(e) => setEnd(e.target.value)}
+            className="input-luxe !py-2"
+          />
         </div>
       </div>
       <p className="mt-2 text-[0.65rem] text-vanilla/45">
-        Liegt „Bis“ vor „Von“, endet das Zeitfenster automatisch am folgenden Tag.
+        Liegt „Bis“ vor „Von“, endet das Zeitfenster automatisch am folgenden
+        Tag.
       </p>
       {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
       <div className="mt-3 flex gap-2">
-        <button type="button" onClick={save} disabled={pending} className="btn-gold !py-2 !px-3 !text-[0.65rem]">
+        <button
+          type="button"
+          onClick={save}
+          disabled={pending}
+          className="btn-gold !py-2 !px-3 !text-[0.65rem]"
+        >
           <Save size={12} /> {pending ? "Speichert…" : "Speichern"}
         </button>
-        <button type="button" onClick={onCancel} disabled={pending} className="btn-outline-gold !py-2 !px-3 !text-[0.65rem]">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={pending}
+          className="btn-outline-gold !py-2 !px-3 !text-[0.65rem]"
+        >
           <X size={12} /> Abbrechen
         </button>
       </div>
@@ -446,8 +881,11 @@ function CalendarSubscribeButton() {
   async function load() {
     const { token } = await getUrl();
     const host = window.location.hostname;
-    const isProd = host === "lady-vanillaice.com" || host === "www.lady-vanillaice.com";
-    const base = isProd ? window.location.origin : "https://lady-vanillaice.com";
+    const isProd =
+      host === "lady-vanillaice.com" || host === "www.lady-vanillaice.com";
+    const base = isProd
+      ? window.location.origin
+      : "https://lady-vanillaice.com";
     const feed = `${base}/api/public/calendar/${token}.ics`;
     const webcalFeed = feed.replace(/^https?:\/\//, "webcal://");
     setUrl(feed);
@@ -460,7 +898,9 @@ function CalendarSubscribeButton() {
       await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {}
+    } catch {
+      // Clipboard access can be blocked by the browser; the URL remains selectable.
+    }
   }
   if (!url) {
     return (
@@ -487,7 +927,10 @@ function CalendarSubscribeButton() {
             <CalendarPlus size={13} /> In Apple Kalender öffnen
           </button>
         )}
-        <button onClick={copyUrl} className="btn-outline-gold !py-2 !px-3 !text-[0.65rem]">
+        <button
+          onClick={copyUrl}
+          className="btn-outline-gold !py-2 !px-3 !text-[0.65rem]"
+        >
           <Copy size={13} /> Vollständige URL kopieren
         </button>
       </div>
@@ -495,10 +938,14 @@ function CalendarSubscribeButton() {
         <div className="text-champagne mb-1">
           Abo-URL {copied && <span className="text-vanilla/50">· kopiert</span>}
         </div>
-        <div className="font-mono break-all text-vanilla/80 select-all">{url}</div>
+        <div className="font-mono break-all text-vanilla/80 select-all">
+          {url}
+        </div>
       </div>
       <div className="text-vanilla/50">
-        Am iPhone am besten direkt „In Apple Kalender öffnen“ antippen. Beim manuellen Einfügen muss die URL mit https://lady-vanillaice.com beginnen.
+        Am iPhone am besten direkt „In Apple Kalender öffnen“ antippen. Beim
+        manuellen Einfügen muss die URL mit https://lady-vanillaice.com
+        beginnen.
       </div>
     </div>
   );
