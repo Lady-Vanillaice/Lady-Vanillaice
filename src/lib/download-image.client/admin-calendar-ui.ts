@@ -2,12 +2,6 @@ import { supabase } from "@/integrations/supabase/client";
 
 let adminCalendarUiInstalled = false;
 
-function parseGermanDate(value: string) {
-  const match = value.trim().match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
-  if (!match) return null;
-  return `${match[3]}-${match[2]}-${match[1]}`;
-}
-
 function monthName(monthKey: string) {
   return new Intl.DateTimeFormat("de-DE", { month: "long" })
     .format(new Date(`${monthKey}-15T12:00:00`));
@@ -134,46 +128,9 @@ async function enhanceImageExport() {
   updateFields();
 }
 
-function enhanceMergeButtons() {
-  const sections = Array.from(document.querySelectorAll("section.border.border-champagne\\/15.bg-card"));
-  for (const section of sections) {
-    if (section.querySelector("[data-merge-calendar-day]")) continue;
-    const dateHeading = section.querySelector("h2");
-    const dayKey = dateHeading ? parseGermanDate(dateHeading.textContent ?? "") : null;
-    const header = section.querySelector("header");
-    if (!dayKey || !header) continue;
-    const actionArea = header.lastElementChild;
-    if (!(actionArea instanceof HTMLElement)) continue;
-
-    const button = document.createElement("button");
-    button.type = "button";
-    button.dataset.mergeCalendarDay = dayKey;
-    button.className = "btn-outline-gold !py-1.5 !px-3 !text-[0.58rem]";
-    button.textContent = "Tag wieder zusammenführen";
-    button.title = "Technische Unterteilungen zusammenführen, ohne gebuchte Termine zu verändern";
-    button.addEventListener("click", async () => {
-      if (!window.confirm("Diesen Tag wieder zu den ursprünglich eingetragenen Zeitfenstern zusammenführen? Bereits gebuchte und reservierte Termine bleiben mit Datum, Uhrzeit und Dauer unverändert.")) return;
-      button.disabled = true;
-      button.textContent = "Wird zusammengeführt…";
-      try {
-        const { mergeCalendarDayPreservingBookings } = await import("@/lib/calendar-admin.functions");
-        const result = await mergeCalendarDayPreservingBookings({ data: { day_key: dayKey } });
-        window.alert(result.message);
-        window.location.reload();
-      } catch (mergeError) {
-        window.alert(mergeError instanceof Error ? mergeError.message : "Der Tag konnte nicht zusammengeführt werden.");
-        button.disabled = false;
-        button.textContent = "Tag wieder zusammenführen";
-      }
-    });
-    actionArea.appendChild(button);
-  }
-}
-
 function enhanceCurrentRoute() {
   if (!window.location.pathname.includes("/admin/kalender")) return;
   void enhanceImageExport();
-  enhanceMergeButtons();
 }
 
 function installAdminCalendarUi() {
