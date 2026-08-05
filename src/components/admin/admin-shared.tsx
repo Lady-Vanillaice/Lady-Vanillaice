@@ -389,29 +389,29 @@ export function NewSlotForm({
         </p>
       </div>
       <div className="border border-champagne/15 bg-anthracite/20 p-4 space-y-4">
-        <div className="grid grid-cols-3 gap-3">
-          <div className="col-span-3 sm:col-span-1">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="sm:col-span-2">
             <label className="eyebrow block mb-1">Datum</label>
             <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} className="input-luxe !py-2" />
           </div>
           <div>
-            <label className="eyebrow block mb-1">1. Zeitfenster · Von</label>
+            <label className="eyebrow block mb-1">1. Zeitfenster von</label>
             <input type="time" required value={start} onChange={(e) => setStart(e.target.value)} className="input-luxe !py-2" />
           </div>
           <div>
-            <label className="eyebrow block mb-1">1. Zeitfenster · Bis</label>
+            <label className="eyebrow block mb-1">1. Zeitfenster bis</label>
             <input type="time" required value={end} onChange={(e) => setEnd(e.target.value)} className="input-luxe !py-2" />
           </div>
         </div>
 
         {hasSecondWindow && (
-          <div className="grid grid-cols-2 gap-3 border-t border-champagne/15 pt-4">
+          <div className="grid grid-cols-1 gap-3 border-t border-champagne/15 pt-4 sm:grid-cols-2">
             <div>
-              <label className="eyebrow block mb-1">2. Zeitfenster · Von</label>
+              <label className="eyebrow block mb-1">2. Zeitfenster von</label>
               <input type="time" required value={secondStart} onChange={(e) => setSecondStart(e.target.value)} className="input-luxe !py-2" />
             </div>
             <div>
-              <label className="eyebrow block mb-1">2. Zeitfenster · Bis</label>
+              <label className="eyebrow block mb-1">2. Zeitfenster bis</label>
               <input type="time" required value={secondEnd} onChange={(e) => setSecondEnd(e.target.value)} className="input-luxe !py-2" />
             </div>
           </div>
