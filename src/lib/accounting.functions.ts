@@ -38,7 +38,6 @@ export const updateBookingAccounting = createServerFn({ method: "POST" })
     const { data: booking, error: bookingError } = await db.from("bookings").select("id, slot_id").eq("id", data.id).maybeSingle();
     if (bookingError) throw new Error(bookingError.message);
     if (!booking) throw new Error("Buchung nicht gefunden.");
-    if (!booking.slot_id) throw new Error("Diese Buchung hat keinen verknüpften Termin. Bitte zuerst Datum und Uhrzeit speichern.");
 
     const today = new Date().toISOString().slice(0, 10);
     const hasExemption = Boolean(data.deposit_exemption_reason);
