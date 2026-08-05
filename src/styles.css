@@ -218,3 +218,20 @@
   background: linear-gradient(180deg, #F5E6C8 0%, #EAD9B5 100%);
   color: var(--color-anthracite);
 }
+
+/* Duo-Zeitfenster sind im öffentlichen Kalender ausschließlich als Duo buchbar. */
+div.mb-5.border:has(input[name="session-type"]) {
+  display: none;
+}
+
+/* Der vorhandene Duo-Schalter im Admin-Kalender beschreibt jetzt eindeutig „nur Duo“. */
+form.bg-card.border.border-champagne\/15.p-5.space-y-3 > label:first-of-type > span {
+  font-size: 0;
+}
+
+form.bg-card.border.border-champagne\/15.p-5.space-y-3 > label:first-of-type > span::after {
+  content: "Nur Duo-Sessions anbieten — Kunden können bei diesem Termin keine Single-Session auswählen.";
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: color-mix(in oklab, var(--color-vanilla) 70%, transparent);
+}
