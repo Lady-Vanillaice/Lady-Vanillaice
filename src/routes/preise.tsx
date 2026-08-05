@@ -135,7 +135,10 @@ function Preise() {
           <>
             {tr("Preise für ", "Rates for ")}
             <em className="font-script gold-text not-italic">
-              {tr("exklusive Sessions", "exclusive sessions")}
+              {tr(
+                "exklusive Sessions & Content",
+                "exclusive sessions & content",
+              )}
             </em>
           </>
         }
