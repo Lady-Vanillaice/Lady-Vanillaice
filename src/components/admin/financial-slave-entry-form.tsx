@@ -9,6 +9,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 export function FinancialSlaveEntryForm() {
   const qc = useQueryClient();
   const create = useServerFn(createCashBookEntry);
+  const [date, setDate] = useState(today());
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
@@ -17,7 +18,7 @@ export function FinancialSlaveEntryForm() {
     mutationFn: () => create({
       data: {
         studio: "Zahlsklave",
-        datum: today(),
+        datum: date,
         kunde: name.trim(),
         anzahlung: Number(amount.replace(",", ".")),
         anzahlung_method: paymentMethod.trim(),
@@ -43,9 +44,19 @@ export function FinancialSlaveEntryForm() {
     >
       <div>
         <h2 className="eyebrow">Zahlsklave</h2>
-        <p className="mt-1 text-xs text-vanilla/50">Wird automatisch mit dem heutigen Datum als Einnahme im Kassenbuch gespeichert.</p>
+        <p className="mt-1 text-xs text-vanilla/50">Das ausgewählte Zahlungsdatum wird als Einnahmedatum im Kassenbuch gespeichert.</p>
       </div>
-      <div className="grid sm:grid-cols-3 gap-3">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <label className="block space-y-1.5">
+          <span className="block text-[10px] uppercase tracking-[.2em] text-vanilla/55">Datum</span>
+          <input
+            required
+            type="date"
+            value={date}
+            onChange={(event) => setDate(event.target.value)}
+            className="luxe-input"
+          />
+        </label>
         <label className="block space-y-1.5">
           <span className="block text-[10px] uppercase tracking-[.2em] text-vanilla/55">Name</span>
           <input required value={name} onChange={(event) => setName(event.target.value)} className="luxe-input" />
