@@ -83,7 +83,6 @@ function Preise() {
           unit: tr("je Stunde & Domina", "per hour & domina"),
         },
       ],
-      priceUnitBelow: true,
       desc: tr(
         "Eine gemeinsame Session mit zwei Dominas. Der Preis gilt je angefangener Stunde und pro Domina.",
         "A shared session with two dominas. The rate applies per started hour and per domina.",
@@ -163,7 +162,7 @@ function Preise() {
                 )}
                 <div className="text-xs uppercase tracking-[0.3em] text-vanilla/50 mb-3">{t.duration}</div>
                 {t.priceRows ? (
-                  <div className="gold-text mb-4 space-y-2">
+                  <div className="gold-text mb-4 space-y-1">
                     {t.priceRows.map((row) => (
                       <div
                         key={row.amount}
