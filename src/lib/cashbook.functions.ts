@@ -35,7 +35,7 @@ export type CashBookEntry = {
   status: "open" | "completed" | "cancelled" | "rescheduling";
   notiz: string | null;
   created_at: string;
-  payment_kind: "deposit" | "cash" | "pending" | "manual";
+  payment_kind: "booking" | "manual";
   payment_date: string | null;
 };
 
@@ -98,7 +98,7 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
       };
     });
 
-    const bookings: CashBookEntry[] = (bookingRes.data ?? []).flatMap((b: any) => {
+    const bookings: CashBookEntry[] = (bookingRes.data ?? []).map((b: any) => {
       const slot = (Array.isArray(b.availability_slots) ? b.availability_slots[0] : b.availability_slots) as {
         starts_at?: string; ends_at?: string; location?: string; location_address?: string | null; is_duo?: boolean; is_content_shoot?: boolean;
       } | null;
@@ -122,20 +122,12 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
         restbetrag_vorgemerkt: plannedCash, bar_datum: cashDate, durchgefuehrt_datum: dateOnly(b.completed_at),
         status, notiz: b.admin_note ?? null, created_at: b.created_at,
       };
-      const entries: CashBookEntry[] = [];
-      if (b.anzahlung_paid && plannedDeposit > 0 && depositDate) entries.push({
-        ...common, id: `booking:${b.id}:deposit`, payment_kind: "deposit", payment_date: depositDate,
-        anzahlung: plannedDeposit, bar: 0, gesamt: plannedDeposit,
-      });
-      if (plannedCash > 0 && cashDate) entries.push({
-        ...common, id: `booking:${b.id}:cash`, payment_kind: "cash", payment_date: cashDate,
-        anzahlung: 0, bar: plannedCash, gesamt: plannedCash,
-      });
-      if (plannedCash > 0 && !cashDate) entries.push({
-        ...common, id: `booking:${b.id}:pending`, payment_kind: "pending", payment_date: null,
-        anzahlung: 0, bar: 0, gesamt: 0,
-      });
-      return entries;
+      const receivedDeposit = b.anzahlung_paid && depositDate ? plannedDeposit : 0;
+      const receivedCash = cashDate ? plannedCash : 0;
+      return {
+        ...common, id: `booking:${b.id}`, payment_kind: "booking", payment_date: cashDate ?? depositDate,
+        anzahlung: receivedDeposit, bar: receivedCash, gesamt: receivedDeposit + receivedCash,
+      };
     });
 
     return [...manual, ...bookings].sort((a, b) => {
