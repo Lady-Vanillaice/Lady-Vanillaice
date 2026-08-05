@@ -132,10 +132,15 @@ function Buchung() {
                 <div><label className="eyebrow block mb-2">{tr("Wunschtermin — Von", "Preferred date — From")}</label><div className="grid grid-cols-2 gap-2"><input name="date_day" type="date" required className="input-luxe" aria-label={tr("Wunschtermin Datum", "Preferred date")} /><input name="date_time" type="time" required className="input-luxe" aria-label={tr("Wunschtermin Uhrzeit", "Preferred time")} /></div></div>
                 <div><label className="eyebrow block mb-2">{tr("Wunschtermin — Bis", "Preferred date — Until")}</label><div className="grid grid-cols-2 gap-2"><input name="end_date_day" type="date" required className="input-luxe" aria-label={tr("Enddatum", "End date")} /><input name="end_date_time" type="time" required className="input-luxe" aria-label={tr("Endzeit", "End time")} /></div></div>
               </div>
-              <div className="grid md:grid-cols-2 gap-6">
-                <div><label className="eyebrow block mb-2">{tr("Ausweichtermin — Von (optional)", "Alternative date — From (optional)")}</label><div className="grid grid-cols-2 gap-2"><input name="alt_date_day" type="date" className="input-luxe" aria-label={tr("Ausweichtermin Datum", "Alternative date")} /><input name="alt_date_time" type="time" className="input-luxe" aria-label={tr("Ausweichtermin Uhrzeit", "Alternative time")} /></div></div>
-                <div><label className="eyebrow block mb-2">{tr("Ausweichtermin — Bis (optional)", "Alternative date — Until (optional)")}</label><div className="grid grid-cols-2 gap-2"><input name="alt_end_day" type="date" className="input-luxe" aria-label={tr("Ausweichtermin Enddatum", "Alternative end date")} /><input name="alt_end_time" type="time" className="input-luxe" aria-label={tr("Ausweichtermin Endzeit", "Alternative end time")} /></div></div>
-              </div>
+              <details className="border border-champagne/20 bg-champagne/[0.03]">
+                <summary className="cursor-pointer px-4 py-3 text-sm text-champagne hover:text-vanilla transition">
+                  {tr("+ Ausweichtermin hinzufügen (optional)", "+ Add an alternative date (optional)")}
+                </summary>
+                <div className="grid md:grid-cols-2 gap-6 border-t border-champagne/15 p-4">
+                  <div><label className="eyebrow block mb-2">{tr("Ausweichtermin — Von", "Alternative date — From")}</label><div className="grid grid-cols-2 gap-2"><input name="alt_date_day" type="date" className="input-luxe" aria-label={tr("Ausweichtermin Datum", "Alternative date")} /><input name="alt_date_time" type="time" className="input-luxe" aria-label={tr("Ausweichtermin Uhrzeit", "Alternative time")} /></div></div>
+                  <div><label className="eyebrow block mb-2">{tr("Ausweichtermin — Bis", "Alternative date — Until")}</label><div className="grid grid-cols-2 gap-2"><input name="alt_end_day" type="date" className="input-luxe" aria-label={tr("Ausweichtermin Enddatum", "Alternative end date")} /><input name="alt_end_time" type="time" className="input-luxe" aria-label={tr("Ausweichtermin Endzeit", "Alternative end time")} /></div></div>
+                </div>
+              </details>
               <div className="border border-champagne/20 bg-champagne/[0.03] p-5 space-y-5">
                 <div><div className="eyebrow text-champagne">{tr("Deine Session", "Your session")}</div><p className="mt-1 text-xs leading-relaxed text-vanilla/55">{tr("Je genauer du Wünsche und Grenzen beschreibst, desto besser kann ich mich vorbereiten.", "The more precisely you describe your wishes and boundaries, the better I can prepare.")}</p></div>
                 <div>
