@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "../components/site/PageHeader";
-import { Mail, MessageCircle, MapPin, Clock } from "lucide-react";
+import { Mail, MessageCircle, Clock } from "lucide-react";
 import { useTr } from "@/i18n";
 
 export const Route = createFileRoute("/kontakt")({
@@ -21,9 +21,8 @@ function Kontakt() {
   const tr = useTr();
   const items = [
     { icon: Mail, label: tr("E-Mail", "Email"), value: "lady-vanillaice@gmx.net", href: "mailto:lady-vanillaice@gmx.net" },
-    { icon: MessageCircle, label: tr("WhatsApp", "WhatsApp"), value: "+4915170568230", href: "https://wa.me/4915170568230" },
+    { icon: MessageCircle, label: tr("WhatsApp", "WhatsApp"), value: "+49 151 705 68 230", href: "https://wa.me/4915170568230" },
     { icon: MessageCircle, label: tr("Telegram", "Telegram"), value: "@ladyvanillaice", href: "https://t.me/ladyvanillaice" },
-    { icon: MapPin, label: tr("Standort", "Location"), value: tr("München und Umgebung", "Munich and surroundings") },
     { icon: Clock, label: tr("Verfügbarkeit", "Availability"), value: tr("Nach Vereinbarung", "By appointment") },
   ];
 
