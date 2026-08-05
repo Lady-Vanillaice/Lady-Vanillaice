@@ -64,6 +64,7 @@ export function CustomContentForm({
   const [note, setNote] = useState("");
   const [totalAmount, setTotalAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("Überweisung");
+  const [isPaid, setIsPaid] = useState(true);
   const [paidAt, setPaidAt] = useState(() => new Date().toISOString().slice(0, 10));
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -82,7 +83,7 @@ export function CustomContentForm({
       return;
     }
     if (!Number.isFinite(total) || total <= 0) {
-      setError("Bitte den vollständig vorausbezahlten Gesamtpreis eintragen.");
+      setError("Bitte den vereinbarten Gesamtpreis eintragen.");
       return;
     }
     if (
@@ -99,8 +100,12 @@ export function CustomContentForm({
       setError("Die Videolänge muss in positiven ganzen Minuten angegeben werden.");
       return;
     }
-    if (!paymentMethod.trim() || !paidAt) {
-      setError("Bitte Zahlungsart und Zahlungsdatum angeben.");
+    if (!paymentMethod.trim()) {
+      setError("Bitte eine Zahlungsart angeben.");
+      return;
+    }
+    if (isPaid && !paidAt) {
+      setError("Bitte das Zahlungsdatum angeben.");
       return;
     }
 
@@ -129,7 +134,7 @@ export function CustomContentForm({
         total_amount: total,
         deposit_amount: total,
         deposit_method: paymentMethod.trim(),
-        deposit_paid_at: paidAt,
+        deposit_paid_at: isPaid ? paidAt : null,
         deposit_exemption_reason: null,
       });
 
@@ -142,6 +147,8 @@ export function CustomContentForm({
       setVideoMinutes("");
       setNote("");
       setTotalAmount("");
+      setIsPaid(true);
+      setPaidAt(new Date().toISOString().slice(0, 10));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Custom Content konnte nicht gespeichert werden.");
     }
@@ -206,8 +213,28 @@ export function CustomContentForm({
       </p>
 
       <div>
-        <label className="eyebrow block mb-1">Vollständig gezahlter Gesamtpreis (€)</label>
+        <label className="eyebrow block mb-1">Vereinbarter Gesamtpreis (€)</label>
         <input inputMode="decimal" required value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} className="input-luxe !py-2" />
+      </div>
+
+      <div className="border border-champagne/20 bg-anthracite/30 p-3">
+        <div className="eyebrow mb-2">Zahlungsstatus</div>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setIsPaid(true)}
+            className={`px-3 py-2 text-xs uppercase tracking-wider border ${isPaid ? "border-champagne bg-champagne/15 text-champagne" : "border-vanilla/20 text-vanilla/55"}`}
+          >
+            Bereits bezahlt
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsPaid(false)}
+            className={`px-3 py-2 text-xs uppercase tracking-wider border ${!isPaid ? "border-amber-400/70 bg-amber-500/10 text-amber-200" : "border-vanilla/20 text-vanilla/55"}`}
+          >
+            Noch nicht bezahlt
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -223,9 +250,22 @@ export function CustomContentForm({
         </div>
         <div>
           <label className="eyebrow block mb-1">Bezahlt am</label>
-          <input type="date" required value={paidAt} onChange={(e) => setPaidAt(e.target.value)} className="input-luxe !py-2" />
+          <input
+            type="date"
+            required={isPaid}
+            disabled={!isPaid}
+            value={isPaid ? paidAt : ""}
+            onChange={(e) => setPaidAt(e.target.value)}
+            className="input-luxe !py-2 disabled:opacity-40"
+          />
         </div>
       </div>
+
+      {!isPaid && (
+        <p className="text-xs text-amber-200/80">
+          Der Auftrag wird gespeichert, aber noch nicht als Zahlung im Kassenbuch verbucht. Sobald das Geld da ist, kannst du ihn in den Buchungsdetails als bezahlt markieren.
+        </p>
+      )}
 
       <div>
         <label className="eyebrow block mb-1">Interne Notiz (optional)</label>
@@ -233,7 +273,7 @@ export function CustomContentForm({
       </div>
 
       <p className="text-xs text-vanilla/50">
-        Der vollständige Betrag wird als vorausbezahlt gespeichert. Der Termin erscheint im Terminplan und im Kassenbuch als Custom Content.
+        Der Auftrag erscheint im Terminplan. Bezahlte Beträge werden direkt ins Kassenbuch übernommen; offene Zahlungen kannst du später in den Buchungsdetails als bezahlt markieren.
       </p>
       {error && <p className="text-xs text-destructive">{error}</p>}
       {success && <p className="text-xs text-green-300">Custom Content wurde eingetragen.</p>}
