@@ -49,3 +49,5 @@ if (!text.includes("Booking information stacked vertically")) {
 
 writeFileSync(path, text);
 console.log("Stacked calendar booking information vertically.");
+
+await import("./add-duo-booking-modes.mjs");
