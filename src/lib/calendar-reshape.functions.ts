@@ -292,12 +292,6 @@ export const mergeCalendarSlots = createServerFn({ method: "POST" })
     const notes = new Map(
       (metas ?? []).map((meta) => [meta.slot_id, meta.internal_note ?? null]),
     );
-    const expectedNote = notes.get(slots[0].id) ?? null;
-    if (slots.some((slot) => (notes.get(slot.id) ?? null) !== expectedNote)) {
-      throw new Error(
-        "Zeitfenster mit unterschiedlichen internen Notizen können nicht zusammengeführt werden.",
-      );
-    }
 
     const anchor = slots[0];
     const redundantIds = slots.slice(1).map((slot) => slot.id);
@@ -310,11 +304,67 @@ export const mergeCalendarSlots = createServerFn({ method: "POST" })
       slots[0].ends_at,
     );
 
+    const timeLabel = new Intl.DateTimeFormat("de-DE", {
+      timeZone: "Europe/Berlin",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const noteEntries = slots.flatMap((slot) => {
+      const note = notes.get(slot.id)?.trim();
+      if (!note) return [];
+      return [
+        `${timeLabel.format(new Date(slot.starts_at))}–${timeLabel.format(new Date(slot.ends_at))}: ${note}`,
+      ];
+    });
+    const combinedNote = [...new Set(noteEntries)].join("\n\n") || null;
+    const originalAnchorNote = notes.get(anchor.id) ?? null;
+    const anchorHadMeta = notes.has(anchor.id);
+
+    if (combinedNote) {
+      const { error: saveNoteError } = await supabaseAdmin
+        .from("availability_slot_admin_meta")
+        .upsert(
+          {
+            slot_id: anchor.id,
+            internal_note: combinedNote,
+            created_by: context.userId,
+          },
+          { onConflict: "slot_id" },
+        );
+      if (saveNoteError) throw new Error(saveNoteError.message);
+    }
+
+    const restoreAnchorNote = async () => {
+      if (anchorHadMeta) {
+        await supabaseAdmin
+          .from("availability_slot_admin_meta")
+          .update({ internal_note: originalAnchorNote })
+          .eq("slot_id", anchor.id);
+      } else {
+        await supabaseAdmin
+          .from("availability_slot_admin_meta")
+          .delete()
+          .eq("slot_id", anchor.id);
+      }
+    };
+
+    const { data: movedBookings, error: bookingReadError } = await supabaseAdmin
+      .from("bookings")
+      .select("id, slot_id")
+      .in("slot_id", redundantIds);
+    if (bookingReadError) {
+      await restoreAnchorNote();
+      throw new Error(bookingReadError.message);
+    }
+
     const { error: updateAnchorError } = await supabaseAdmin
       .from("availability_slots")
       .update({ starts_at: startsAt, ends_at: endsAt, status: "open" })
       .eq("id", anchor.id);
-    if (updateAnchorError) throw new Error(updateAnchorError.message);
+    if (updateAnchorError) {
+      await restoreAnchorNote();
+      throw new Error(updateAnchorError.message);
+    }
 
     const { error: moveBookingsError } = await supabaseAdmin
       .from("bookings")
@@ -329,24 +379,36 @@ export const mergeCalendarSlots = createServerFn({ method: "POST" })
           status: anchor.status,
         })
         .eq("id", anchor.id);
+      await restoreAnchorNote();
       throw new Error(moveBookingsError.message);
     }
-
-    const { error: deleteMetaError } = await supabaseAdmin
-      .from("availability_slot_admin_meta")
-      .delete()
-      .in("slot_id", redundantIds);
-    if (deleteMetaError) throw new Error(deleteMetaError.message);
 
     const { error: deleteSlotsError } = await supabaseAdmin
       .from("availability_slots")
       .delete()
       .in("id", redundantIds);
-    if (deleteSlotsError) throw new Error(deleteSlotsError.message);
+    if (deleteSlotsError) {
+      for (const booking of movedBookings ?? []) {
+        await supabaseAdmin
+          .from("bookings")
+          .update({ slot_id: booking.slot_id })
+          .eq("id", booking.id);
+      }
+      await supabaseAdmin
+        .from("availability_slots")
+        .update({
+          starts_at: anchor.starts_at,
+          ends_at: anchor.ends_at,
+          status: anchor.status,
+        })
+        .eq("id", anchor.id);
+      await restoreAnchorNote();
+      throw new Error(deleteSlotsError.message);
+    }
 
     return {
       ok: true,
       merged_windows: slots.length,
-      message: `${slots.length} Zeitfenster wurden verbunden. Vorhandene Buchungszeiten blieben unverändert; bisherige Lücken sind jetzt buchbar.`,
+      message: `${slots.length} Zeitfenster wurden verbunden. Vorhandene Buchungszeiten und interne Notizen blieben erhalten; bisherige Lücken sind jetzt buchbar.`,
     };
   });
