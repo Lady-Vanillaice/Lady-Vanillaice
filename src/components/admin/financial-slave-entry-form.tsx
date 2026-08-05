@@ -6,6 +6,25 @@ import { createCashBookEntry } from "@/lib/cashbook.functions";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+function parseEuroAmount(value: string) {
+  const compact = value.trim().replace(/[\s€]/g, "");
+  const lastComma = compact.lastIndexOf(",");
+  const lastDot = compact.lastIndexOf(".");
+  const decimalSeparator = lastComma > lastDot ? "," : lastDot >= 0 ? "." : null;
+
+  let normalized = compact;
+  if (decimalSeparator) {
+    const separatorIndex = compact.lastIndexOf(decimalSeparator);
+    const integerPart = compact.slice(0, separatorIndex).replace(/[.,]/g, "");
+    const decimalPart = compact.slice(separatorIndex + 1).replace(/[.,]/g, "");
+    normalized = `${integerPart}.${decimalPart}`;
+  } else {
+    normalized = compact.replace(/[.,]/g, "");
+  }
+
+  return Number(normalized);
+}
+
 export function FinancialSlaveEntryForm() {
   const qc = useQueryClient();
   const create = useServerFn(createCashBookEntry);
@@ -15,17 +34,24 @@ export function FinancialSlaveEntryForm() {
   const [paymentMethod, setPaymentMethod] = useState("");
 
   const mutation = useMutation({
-    mutationFn: () => create({
-      data: {
-        studio: "Zahlsklave",
-        datum: date,
-        kunde: name.trim(),
-        anzahlung: Number(amount.replace(",", ".")),
-        anzahlung_method: paymentMethod.trim(),
-        bar: 0,
-        notiz: "Zahlsklave",
-      },
-    }),
+    mutationFn: async () => {
+      const parsedAmount = parseEuroAmount(amount);
+      if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+        throw new Error("Bitte gib einen gültigen Betrag größer als 0 € ein.");
+      }
+
+      return create({
+        data: {
+          studio: "Zahlsklave",
+          datum: date,
+          kunde: name.trim(),
+          anzahlung: parsedAmount,
+          anzahlung_method: paymentMethod.trim(),
+          bar: 0,
+          notiz: "Zahlsklave",
+        },
+      });
+    },
     onSuccess: async () => {
       setName("");
       setAmount("");
@@ -68,6 +94,7 @@ export function FinancialSlaveEntryForm() {
             inputMode="decimal"
             value={amount}
             onChange={(event) => setAmount(event.target.value)}
+            placeholder="z. B. 100,00"
             className="luxe-input"
           />
         </label>
