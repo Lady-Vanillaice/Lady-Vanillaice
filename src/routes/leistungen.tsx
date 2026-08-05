@@ -39,8 +39,12 @@ function Leistungen() {
     {
       title: tr("Dein erstes Loslassen", "Your first surrender"),
       text: tr(
-        "Ein sicherer, respektvoller Einstieg. Ich führe dich Schritt für Schritt.",
-        "A safe, respectful introduction. I guide you step by step."
+        "Ein sicherer, respektvoller Einstieg. Ich führe dich ruhig und Schritt für Schritt.",
+        "A safe, respectful introduction. I guide you calmly, step by step."
+      ),
+      examples: tr(
+        "Leichte Fesselung, Sinnesentzug, Spanking, Fuß- und Schuhverehrung, erste Aufgaben, Tease & Denial",
+        "Light bondage, sensory deprivation, spanking, foot and shoe worship, first tasks, tease and denial"
       ),
     },
     {
@@ -49,12 +53,20 @@ function Leistungen() {
         "Worte, Erwartungen und Kontrolle. Du weißt nie ganz, was als Nächstes kommt.",
         "Words, anticipation and control. You never quite know what comes next."
       ),
+      examples: tr(
+        "Psychologische Dominanz, Befehle, Erniedrigung, Orgasmuskontrolle, Keuschhaltung, Rollenspiele, überraschende Aufgaben",
+        "Psychological dominance, commands, humiliation, orgasm control, chastity, role play, unexpected tasks"
+      ),
     },
     {
       title: tr("Sanfte Macht", "Soft power"),
       text: tr(
         "Sinnlich, nah und verführerisch. Weich bedeutet bei mir nicht harmlos.",
         "Sensual, close and seductive. Soft never means harmless with me."
+      ),
+      examples: tr(
+        "Facesitting bekleidet, Fuß- und Strumpferotik, Nylon, sanfte Fesselung, Tease & Denial, Sinnesentzug",
+        "Clothed face sitting, foot and stocking worship, nylon, soft bondage, tease and denial, sensory deprivation"
       ),
     },
     {
@@ -63,6 +75,10 @@ function Leistungen() {
         "Klare Regeln, Disziplin und Konsequenz – immer innerhalb deiner Grenzen.",
         "Clear rules, discipline and consequence — always within your limits."
       ),
+      examples: tr(
+        "Spanking, Peitsche, Rohrstock, CBT, Ballbusting, Brustwarzenbehandlung, Elektrospiele, Trampling",
+        "Spanking, whips, cane, CBT, ballbusting, nipple play, electro play, trampling"
+      ),
     },
     {
       title: tr("Deine Verwandlung", "Your transformation"),
@@ -70,12 +86,20 @@ function Leistungen() {
         "Rollen, Aufgaben und neue Seiten an dir. Ich bestimme die Richtung.",
         "Roles, tasks and new sides of yourself. I set the direction."
       ),
+      examples: tr(
+        "Feminisierung, Rollenspiele, Aufgaben, Latex, Lack, Leder, Nylon, Slave Training und Ausbildung",
+        "Feminisation, role play, tasks, latex, patent leather, leather, nylon, slave training and instruction"
+      ),
     },
     {
       title: tr("Nur für dich inszeniert", "Created only for you"),
       text: tr(
         "Keine Standardsession. Dein Kopfkino – auf meine Art umgesetzt.",
         "No standard session. Your fantasy — realised my way."
+      ),
+      examples: tr(
+        "Individuelle Rollenspiele, persönliche Szenarien, besondere Outfits und eine Kombination passender Praktiken",
+        "Individual role play, personal scenarios, special outfits and a tailored combination of practices"
       ),
     },
   ];
@@ -163,10 +187,20 @@ function Leistungen() {
             {worlds.map((world) => (
               <article key={world.title} className="bg-background p-8 md:p-10">
                 <h2 className="font-display text-2xl text-vanilla mb-3">{world.title}</h2>
-                <p className="text-sm text-vanilla/65 leading-relaxed">{world.text}</p>
+                <p className="text-sm text-vanilla/65 leading-relaxed mb-5">{world.text}</p>
+                <div className="pt-4 border-t border-champagne/10">
+                  <div className="eyebrow mb-2">{tr("Mögliche Elemente", "Possible elements")}</div>
+                  <p className="text-xs text-vanilla/55 leading-relaxed">{world.examples}</p>
+                </div>
               </article>
             ))}
           </div>
+          <p className="text-xs text-vanilla/45 leading-relaxed text-center max-w-3xl mx-auto mt-8">
+            {tr(
+              "Welche Praktiken tatsächlich Teil deiner Session werden, entscheiden wir gemeinsam. Wünsche, Erfahrung, Gesundheit und klare Grenzen bestimmen den Rahmen.",
+              "Which practices become part of your session is decided together. Wishes, experience, health and clear boundaries define the framework."
+            )}
+          </p>
           <div className="text-center mt-10">
             <Link to="/buchung" className="btn-gold">
               {tr("Termin anfragen", "Request appointment")}
