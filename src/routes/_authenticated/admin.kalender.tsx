@@ -648,7 +648,7 @@ function FreeSlotImageExport({
   const years = [
     ...new Set(monthKeys.map((month) => Number(month.slice(0, 4)))),
   ].sort((a, b) => a - b);
-  const [choice, setChoice] = useState<ExportChoice>("month");
+  const [choice, setChoice] = useState<ExportChoice>("all");
   const [year, setYear] = useState<number>(
     years[0] ?? new Date().getFullYear(),
   );
