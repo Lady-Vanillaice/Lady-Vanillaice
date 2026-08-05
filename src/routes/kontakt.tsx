@@ -7,7 +7,7 @@ export const Route = createFileRoute("/kontakt")({
   head: () => ({
     meta: [
       { title: "Kontakt — Lady Vanilla Ice" },
-      { name: "description", content: "Kontaktmöglichkeiten zu Lady Vanilla Ice in München und ausgewählten Städten — E-Mail, Telegram, Termine nach Vereinbarung." },
+      { name: "description", content: "Kontaktmöglichkeiten zu Lady Vanilla Ice in München und ausgewählten Städten — E-Mail, WhatsApp, Telegram und Termine nach Vereinbarung." },
       { property: "og:title", content: "Kontakt — Lady Vanilla Ice" },
       { property: "og:description", content: "Diskreter Kontakt — Termine nur nach Vereinbarung." },
       { property: "og:url", content: "https://lady-vanillaice.com/kontakt" },
@@ -20,7 +20,8 @@ export const Route = createFileRoute("/kontakt")({
 function Kontakt() {
   const tr = useTr();
   const items = [
-    { icon: Mail, label: tr("E-Mail", "Email"), value: "kontakt@ladyvanillaice.de", href: "mailto:kontakt@ladyvanillaice.de" },
+    { icon: Mail, label: tr("E-Mail", "Email"), value: "lady-vanillaice@gmx.net", href: "mailto:lady-vanillaice@gmx.net" },
+    { icon: MessageCircle, label: tr("WhatsApp", "WhatsApp"), value: "+4915170568230", href: "https://wa.me/4915170568230" },
     { icon: MessageCircle, label: tr("Telegram", "Telegram"), value: "@ladyvanillaice", href: "https://t.me/ladyvanillaice" },
     { icon: MapPin, label: tr("Standort", "Location"), value: tr("München und Umgebung", "Munich and surroundings") },
     { icon: Clock, label: tr("Verfügbarkeit", "Availability"), value: tr("Nach Vereinbarung", "By appointment") },
