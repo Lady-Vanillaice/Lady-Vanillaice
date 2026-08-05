@@ -297,11 +297,11 @@ function Buchung() {
                 </span>
               </label>
 
-              <label className="flex items-start gap-3 text-sm text-vanilla/70 cursor-pointer border border-champagne/20 p-4">
-                <input type="checkbox" checked={marketingConsent} onChange={(e) => setMarketingConsent(e.target.checked)} className="mt-1 accent-[var(--color-champagne)]" />
+              <label className="flex items-start gap-3 text-xs text-vanilla/50 cursor-pointer">
+                <input type="checkbox" checked={marketingConsent} onChange={(e) => setMarketingConsent(e.target.checked)} className="mt-0.5 accent-[var(--color-champagne)]" />
                 <span>{tr(
-                  "Ich möchte freiwillig per E-Mail über neue verfügbare Termine informiert werden. Nach dem Absenden erhalte ich eine Bestätigungs-E-Mail. Ich kann mich jederzeit wieder abmelden.",
-                  "I voluntarily want to receive emails about newly available appointments. I will receive a confirmation email and can unsubscribe at any time."
+                  "Ich möchte per E-Mail über neue verfügbare Termine informiert werden. Die Abmeldung ist jederzeit möglich.",
+                  "I would like to receive emails about newly available appointments. I can unsubscribe at any time."
                 )}</span>
               </label>
 
