@@ -207,8 +207,8 @@ function Index() {
             </p>
 
             <div className="flex flex-wrap gap-4">
-              <Link to="/buchung" className="btn-gold">
-                {tr("Termin anfragen", "Request appointment")}
+              <Link to="/kalender" className="btn-gold">
+                {tr("Kalender öffnen", "Open calendar")}
                 <Calendar size={14} />
               </Link>
               <Link to="/leistungen" className="btn-outline-gold">
