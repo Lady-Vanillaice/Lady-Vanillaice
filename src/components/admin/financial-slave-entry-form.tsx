@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import { createCashBookEntry } from "@/lib/cashbook.functions";
 
 const today = () => new Date().toISOString().slice(0, 10);
+const PAYMENT_METHODS = ["PayPal", "Überweisung", "Bar", "Kreditkarte", "EC-/Debitkarte", "Sofortüberweisung", "Sonstiges"] as const;
 
 function parseEuroAmount(value: string) {
   const compact = value.trim().replace(/[\s€]/g, "");
@@ -32,6 +33,7 @@ export function FinancialSlaveEntryForm() {
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
+  const [customPaymentMethod, setCustomPaymentMethod] = useState("");
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -40,13 +42,18 @@ export function FinancialSlaveEntryForm() {
         throw new Error("Bitte gib einen gültigen Betrag größer als 0 € ein.");
       }
 
+      const selectedPaymentMethod = paymentMethod === "Sonstiges" ? customPaymentMethod.trim() : paymentMethod;
+      if (!selectedPaymentMethod) {
+        throw new Error("Bitte wähle eine Zahlungsart aus.");
+      }
+
       return create({
         data: {
           studio: "Zahlsklave",
           datum: date,
           kunde: name.trim(),
           anzahlung: parsedAmount,
-          anzahlung_method: paymentMethod.trim(),
+          anzahlung_method: selectedPaymentMethod,
           bar: 0,
           notiz: "Zahlsklave",
         },
@@ -56,6 +63,7 @@ export function FinancialSlaveEntryForm() {
       setName("");
       setAmount("");
       setPaymentMethod("");
+      setCustomPaymentMethod("");
       await qc.invalidateQueries({ queryKey: ["cashbook"] });
     },
   });
@@ -100,14 +108,31 @@ export function FinancialSlaveEntryForm() {
         </label>
         <label className="block space-y-1.5">
           <span className="block text-[10px] uppercase tracking-[.2em] text-vanilla/55">Bezahlt mit</span>
-          <input
+          <select
             required
             value={paymentMethod}
-            onChange={(event) => setPaymentMethod(event.target.value)}
-            placeholder="Bar, PayPal, Überweisung …"
+            onChange={(event) => {
+              setPaymentMethod(event.target.value);
+              if (event.target.value !== "Sonstiges") setCustomPaymentMethod("");
+            }}
             className="luxe-input"
-          />
+          >
+            <option value="">Bitte auswählen</option>
+            {PAYMENT_METHODS.map((method) => <option key={method} value={method}>{method}</option>)}
+          </select>
         </label>
+        {paymentMethod === "Sonstiges" && (
+          <label className="block space-y-1.5 sm:col-span-2 lg:col-start-4">
+            <span className="block text-[10px] uppercase tracking-[.2em] text-vanilla/55">Andere Zahlungsart</span>
+            <input
+              required
+              value={customPaymentMethod}
+              onChange={(event) => setCustomPaymentMethod(event.target.value)}
+              placeholder="Zahlungsart eingeben"
+              className="luxe-input"
+            />
+          </label>
+        )}
       </div>
       <button disabled={mutation.isPending} className="btn-gold inline-flex gap-2">
         <Plus size={15} />
