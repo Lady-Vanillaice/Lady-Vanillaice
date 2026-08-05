@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { DEFAULT_STUDIOS, listStudios } from "@/lib/studio.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/buchung/$id")({
   head: () => ({
@@ -77,11 +78,6 @@ const PREPARATION_ITEMS = [
   "Outfit und Material vorbereitet",
 ] as const;
 
-const STUDIO_OPTIONS = [
-  { name: "Studio60", address: "Gärtnerstraße 60, 80992 München" },
-  { name: "Studio Elegance", address: "Frankfurter Ring 139, 80807 München" },
-] as const;
-
 function BookingDetailPage() {
   const { id } = Route.useParams();
   console.log("BOOKING ID:", id);
@@ -93,6 +89,7 @@ function BookingDetailPage() {
   const saveNote = useServerFn(updateBookingNote);
   const saveSchedule = useServerFn(updateBookingSchedule);
   const saveStudio = useServerFn(updateBookingStudio);
+  const listStudiosFn = useServerFn(listStudios);
   const saveBookingType = useServerFn(updateBookingType);
   const savePayment = useServerFn(updateBookingPayment);
   const markDepositPaidFn = useServerFn(markDepositPaid);
@@ -117,6 +114,8 @@ function BookingDetailPage() {
     queryKey: ["admin-booking-detail", id],
     queryFn: () => fetchDetail({ data: { id } }),
   });
+  const studiosQ = useQuery({ queryKey: ["admin-studios"], queryFn: () => listStudiosFn() });
+  const studioOptions = studiosQ.data ?? DEFAULT_STUDIOS;
 
   const [note, setNote] = useState("");
   const [noteSaved, setNoteSaved] = useState(false);
@@ -882,17 +881,17 @@ const depositDateMut = useMutation({
                 <select
                   value={studioName}
                   onChange={(event) => {
-                    const option = STUDIO_OPTIONS.find((item) => item.name === event.target.value);
+                    const option = studioOptions.find((item) => item.name === event.target.value);
                     setStudioName(event.target.value);
                     if (option) setStudioAddress(option.address);
                   }}
                   className="luxe-input"
                 >
                   <option value="">Studio auswählen</option>
-                  {studioName && !STUDIO_OPTIONS.some((item) => item.name === studioName) && (
+                  {studioName && !studioOptions.some((item) => item.name === studioName) && (
                     <option value={studioName}>{studioName}</option>
                   )}
-                  {STUDIO_OPTIONS.map((studio) => (
+                  {studioOptions.map((studio) => (
                     <option key={studio.name} value={studio.name}>{studio.name}</option>
                   ))}
                 </select>

@@ -10,6 +10,7 @@ import { ManualBookingForm, type ManualBookingValues } from "@/components/admin/
 import { saveCanvasAsPng } from "@/lib/download-image.client";
 import { createManualBooking } from "@/lib/booking.functions";
 import { listCustomers } from "@/lib/customers.functions";
+import { listStudios } from "@/lib/studio.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/terminplan")({
   head: () => ({ meta: [{ title: "Terminplan — Admin" }, { name: "robots", content: "noindex,nofollow" }] }),
@@ -46,6 +47,8 @@ function TerminplanPage() {
   const qc = useQueryClient();
   const createManualBookingFn = useServerFn(createManualBooking);
   const listCustomersFn = useServerFn(listCustomers);
+  const listStudiosFn = useServerFn(listStudios);
+  const studiosQ = useQuery({ queryKey: ["admin-studios"], queryFn: () => listStudiosFn() });
   const customersQ = useQuery({ queryKey: ["customers"], queryFn: () => listCustomersFn() });
   const manualMut = useMutation({
     mutationFn: (input: ManualBookingValues) => createManualBookingFn({ data: input }),
@@ -151,7 +154,7 @@ bar: b.bar != null ? Number(b.bar) : null,
               Neuen externen Termin eintragen
             </summary>
             <div className="p-5 border-t border-champagne/15">
-              <ManualBookingForm onCreate={(values) => manualMut.mutateAsync(values)} pending={manualMut.isPending} customers={customersQ.data ?? []} />
+              <ManualBookingForm onCreate={(values) => manualMut.mutateAsync(values)} pending={manualMut.isPending} customers={customersQ.data ?? []} studios={studiosQ.data} />
             </div>
           </details>
 

@@ -1,0 +1,8 @@
+create table if not exists public.admin_studios (id uuid primary key default gen_random_uuid(), name text not null, address text not null, active boolean not null default true, sort_order integer not null default 100, created_by uuid references auth.users(id) on delete set null, created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+create unique index if not exists admin_studios_name_active_idx on public.admin_studios (lower(name)) where active;
+alter table public.admin_studios enable row level security;
+create policy "Admins can read studios" on public.admin_studios for select to authenticated using (exists (select 1 from public.user_roles where user_id = auth.uid() and role = 'admin'));
+create policy "Admins can insert studios" on public.admin_studios for insert to authenticated with check (exists (select 1 from public.user_roles where user_id = auth.uid() and role = 'admin'));
+create policy "Admins can update studios" on public.admin_studios for update to authenticated using (exists (select 1 from public.user_roles where user_id = auth.uid() and role = 'admin')) with check (exists (select 1 from public.user_roles where user_id = auth.uid() and role = 'admin'));
+insert into public.admin_studios (name, address, sort_order) select 'Studio60', 'Gärtnerstraße 60, 80992 München', 10 where not exists (select 1 from public.admin_studios where lower(name) = lower('Studio60') and active);
+insert into public.admin_studios (name, address, sort_order) select 'Studio Elegance', 'Frankfurter Ring 139, 80807 München', 20 where not exists (select 1 from public.admin_studios where lower(name) = lower('Studio Elegance') and active);
