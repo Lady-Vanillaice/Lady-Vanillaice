@@ -77,6 +77,28 @@ if (!text.includes("Calendar info below calendar")) {
   }
 }
 
+if (!text.includes('name="marketing_consent"')) {
+  text = text.replace(
+    '    const altNote = String(fd.get("alt_note") ?? "").trim();',
+    '    const altNote = String(fd.get("alt_note") ?? "").trim();\n    const marketingConsent = fd.get("marketing_consent") === "on";',
+  );
+
+  text = text.replace(
+    '          age_confirmed: true,\n        },',
+    '          age_confirmed: true,\n          marketing_consent: marketingConsent,\n        },',
+  );
+
+  const ageLabel = `        <label className="flex items-start gap-2 text-xs text-vanilla/65 cursor-pointer">
+          <input type="checkbox" required className="mt-0.5 accent-[var(--color-champagne)]" />`;
+  const newsletterLabel = `        <label className="flex items-start gap-3 text-xs text-vanilla/45 cursor-pointer">
+          <input name="marketing_consent" type="checkbox" className="mt-0.5 accent-[var(--color-champagne)]" />
+          <span>{tr("Ich möchte per E-Mail über neue verfügbare Termine informiert werden. Die Abmeldung ist jederzeit möglich.", "I would like to receive emails about newly available appointments. I can unsubscribe at any time.")}</span>
+        </label>
+
+${ageLabel}`;
+  text = text.replace(ageLabel, newsletterLabel);
+}
+
 if (!text.includes('name="play_world"')) {
   throw new Error("Spielwelt-Auswahl konnte nicht in den Kalender eingebaut werden.");
 }
@@ -85,6 +107,9 @@ if (!text.includes("+ Ausweichtermin hinzufügen (optional)")) {
 }
 if (!text.includes("Calendar info below calendar")) {
   throw new Error("Die Kalender-Infoboxen konnten nicht unter den Kalender verschoben werden.");
+}
+if (!text.includes('name="marketing_consent"') || !text.includes("marketing_consent: marketingConsent")) {
+  throw new Error("Die freiwillige E-Mail-Einwilligung konnte nicht eingebaut werden.");
 }
 
 writeFileSync(path, text);
