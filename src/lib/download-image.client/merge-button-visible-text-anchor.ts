@@ -120,9 +120,14 @@ function ensureVisibleMergeButtons() {
   }
 }
 
-if (typeof window !== "undefined" && !mergeButtonTextAnchorInstalled) {
-  mergeButtonTextAnchorInstalled = true;
+export function installCalendarMergeButtons() {
+  if (typeof window === "undefined") return;
+
   const run = () => ensureVisibleMergeButtons();
+  run();
+
+  if (mergeButtonTextAnchorInstalled) return;
+  mergeButtonTextAnchorInstalled = true;
   queueMicrotask(run);
   window.setTimeout(run, 50);
   window.setTimeout(run, 250);
@@ -131,3 +136,5 @@ if (typeof window !== "undefined" && !mergeButtonTextAnchorInstalled) {
   window.addEventListener("pageshow", run);
   window.addEventListener("popstate", run);
 }
+
+installCalendarMergeButtons();
