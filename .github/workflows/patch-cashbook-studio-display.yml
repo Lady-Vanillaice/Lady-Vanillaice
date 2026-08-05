@@ -1,0 +1,50 @@
+name: Patch cashbook studio display
+
+on:
+  push:
+    branches:
+      - fix/cashbook-studio-display-runtime
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/cashbook-studio-display-runtime
+          fetch-depth: 0
+      - name: Apply targeted display fix
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/routes/_authenticated/admin.kassenbuch.tsx')
+          text = path.read_text()
+
+          old_mobile = '<div className="text-sm">{e.studio}</div>{e.studio_address && <div className="text-xs text-vanilla/55">{e.studio_address}</div>}'
+          new_mobile = '<div className="text-sm">{studioParts(e).studio}</div>{studioParts(e).address && <div className="text-xs text-vanilla/55">{studioParts(e).address}</div>}'
+
+          old_desktop = '<td className="p-3"><div>{e.studio}</div>{e.studio_address && <div className="text-xs text-vanilla/50 mt-1">{e.studio_address}</div>}</td>'
+          new_desktop = '<td className="p-3"><div>{studioParts(e).studio}</div>{studioParts(e).address && <div className="text-xs text-vanilla/50 mt-1">{studioParts(e).address}</div>}</td>'
+
+          if old_mobile not in text:
+              raise SystemExit('Mobile cashbook studio markup not found')
+          if old_desktop not in text:
+              raise SystemExit('Desktop cashbook studio markup not found')
+
+          text = text.replace(old_mobile, new_mobile, 1)
+          text = text.replace(old_desktop, new_desktop, 1)
+          path.write_text(text)
+          PY
+      - name: Remove one-time workflow and commit fix
+        run: |
+          rm .github/workflows/patch-cashbook-studio-display.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routes/_authenticated/admin.kassenbuch.tsx .github/workflows/patch-cashbook-studio-display.yml
+          git commit -m "Fix legacy Studio60 display in cashbook"
+          git push origin HEAD:fix/cashbook-studio-display-runtime
