@@ -13,6 +13,7 @@ import {
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import type { CustomerRow } from "@/lib/customers.functions";
+import { DEFAULT_STUDIOS, type StudioOption } from "@/lib/studio.functions";
 
 const ADMIN_TIME_ZONE = "Europe/Berlin";
 
@@ -308,9 +309,11 @@ export function BookingCard({
 export function NewSlotForm({
   onCreate,
   pending,
+  studios = DEFAULT_STUDIOS,
 }: {
   onCreate: (v: { starts_at: string; ends_at: string; location: string; is_duo?: boolean; is_content_shoot?: boolean; duo_partner?: string | null; internal_note?: string; buffer_minutes?: number; is_hidden?: boolean }) => Promise<unknown>;
   pending: boolean;
+  studios?: StudioOption[];
 }) {
   const [date, setDate] = useState("");
   const [start, setStart] = useState("18:00");
@@ -431,8 +434,7 @@ export function NewSlotForm({
       <div>
         <label className="eyebrow block mb-1">Standort</label>
         <select value={location} onChange={(e) => setLocation(e.target.value)} className="input-luxe !py-2">
-          <option value="Studio60, Gärtnerstraße 60, 80992 München">Studio60, Gärtnerstraße 60, 80992 München</option>
-          <option value="Studio Elegance, Frankfurter Ring 139, 80807 München">Studio Elegance, Frankfurter Ring 139, 80807 München</option>
+          {studios.map((studio) => <option key={studio.id} value={`${studio.name}, ${studio.address}`}>{studio.name} · {studio.address}</option>)}
         </select>
       </div>
       <div>
@@ -537,10 +539,12 @@ export function ManualBookingForm({
   onCreate,
   pending,
   customers = [],
+  studios = DEFAULT_STUDIOS,
 }: {
   onCreate: (v: ManualBookingValues) => Promise<unknown>;
   pending: boolean;
   customers?: CustomerRow[];
+  studios?: StudioOption[];
 }) {
   const [date, setDate] = useState("");
   const [start, setStart] = useState("18:00");
@@ -731,12 +735,7 @@ export function ManualBookingForm({
           onChange={(e) => setLocation(e.target.value)}
           className="input-luxe !py-2"
         >
-          <option value="Studio60, Gärtnerstraße 60, 80992 München">
-            Studio60, Gärtnerstraße 60, 80992 München
-          </option>
-          <option value="Studio Elegance, Frankfurter Ring 139, 80807 München">
-            Studio Elegance, Frankfurter Ring 139, 80807 München
-          </option>
+          {studios.map((studio) => <option key={studio.id} value={`${studio.name}, ${studio.address}`}>{studio.name} · {studio.address}</option>)}
         </select>
       </div>
 

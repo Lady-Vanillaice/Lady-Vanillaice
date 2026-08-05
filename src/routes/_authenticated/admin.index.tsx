@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { listAdminAccessRequests, decideAdminAccessRequest } from "@/lib/admin-access.functions";
+import { createStudio, deleteStudio, listStudios } from "@/lib/studio.functions";
 import {
   getPushConfiguration,
   removePushSubscription,
@@ -13,7 +14,7 @@ import { PageHeader } from "@/components/site/PageHeader";
 import {
   LogOut, Calendar, Mail, ShieldCheck, CheckCircle2, XCircle, MessageSquare, Quote,
   Camera, Sparkles, Wallet, RotateCcw, CalendarClock, Users, Clock3, BadgeEuro,
-  CircleAlert, ArrowRight, ChevronDown, Download, Share, Bell, BellOff, Send,
+  CircleAlert, ArrowRight, ChevronDown, Download, Share, Bell, BellOff, Send, Building2, Plus, Trash2,
 } from "lucide-react";
 import { endOfMonth, endOfWeek, format, isWithinInterval, startOfDay, startOfMonth, startOfWeek } from "date-fns";
 import { de } from "date-fns/locale";
@@ -139,9 +140,19 @@ function AdminHubPage() {
           <Icon size={19} className="text-champagne mt-0.5 row-span-2" /><div className="font-display text-lg text-vanilla group-hover:text-champagne transition">{title}</div><p className="text-xs text-vanilla/55 leading-relaxed">{description}</p>
         </Link>)}</div>
       </div>)}</div>
+      <StudioManagement />
       <AdminAccessRequestsPanel />
     </div></section>
   </>;
+}
+
+function StudioManagement() {
+  const qc = useQueryClient(); const list = useServerFn(listStudios); const create = useServerFn(createStudio); const remove = useServerFn(deleteStudio);
+  const [name, setName] = useState(""); const [address, setAddress] = useState("");
+  const q = useQuery({ queryKey: ["admin-studios"], queryFn: () => list() });
+  const add = useMutation({ mutationFn: () => create({ data: { name, address } }), onSuccess: async () => { setName(""); setAddress(""); await qc.invalidateQueries({ queryKey: ["admin-studios"] }); } });
+  const del = useMutation({ mutationFn: (id: string) => remove({ data: { id } }), onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-studios"] }) });
+  return <section className="mb-12 border border-champagne/25 bg-card p-5 sm:p-6"><div className="flex items-center gap-3 mb-5"><Building2 className="text-champagne" size={22} /><div><h2 className="font-display text-2xl gold-text">Studios verwalten</h2><p className="text-xs text-vanilla/50">Einmal anlegen – danach in Kalender, Buchungen und Kassenbuch auswählen.</p></div></div><form onSubmit={e => { e.preventDefault(); add.mutate(); }} className="grid md:grid-cols-[1fr_2fr_auto] gap-3 items-end mb-5"><label><span className="eyebrow block mb-1">Studio-Name</span><input required value={name} onChange={e => setName(e.target.value)} className="input-luxe !py-2" /></label><label><span className="eyebrow block mb-1">Adresse</span><input required value={address} onChange={e => setAddress(e.target.value)} className="input-luxe !py-2" /></label><button disabled={add.isPending} className="btn-gold !py-2.5"><Plus size={14} /> Hinzufügen</button></form>{add.error && <p className="text-sm text-bordeaux mb-3">{(add.error as Error).message}</p>}<div className="grid sm:grid-cols-2 gap-2">{(q.data ?? []).map(studio => <div key={studio.id} className="border border-champagne/15 p-3 flex justify-between gap-3"><div><div className="text-champagne">{studio.name}</div><div className="text-xs text-vanilla/55 mt-1">{studio.address}</div></div><button aria-label={`${studio.name} entfernen`} onClick={() => confirm("Studio aus der Auswahlliste entfernen?") && del.mutate(studio.id)} className="text-bordeaux"><Trash2 size={16} /></button></div>)}</div></section>;
 }
 
 function urlBase64ToUint8Array(value: string) {

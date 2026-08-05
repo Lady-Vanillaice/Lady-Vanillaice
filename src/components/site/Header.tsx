@@ -100,14 +100,14 @@ export function Header() {
       </div>
 
       {open && (
-        <div className="bg-anthracite/98 backdrop-blur-md border-t border-champagne/20">
-          <nav className="container-luxe flex flex-col py-4">
+        <div className="bg-[#111113] backdrop-blur-md border-t border-champagne/30 max-h-[calc(100vh-80px)] overflow-y-auto">
+          <nav className="container-luxe flex flex-col py-3">
             {mobileNav.map((item) => (
               <Link
                 key={item.to}
                 to={item.to}
                 onClick={() => setOpen(false)}
-                className="py-4 text-sm uppercase tracking-[0.24em] text-vanilla/80 hover:text-champagne border-b border-champagne/10"
+                className={`py-3.5 text-sm uppercase tracking-[0.2em] border-b border-champagne/15 ${item.to === "/kontakt" ? "text-champagne font-semibold" : "text-vanilla hover:text-champagne"}`}
                 activeProps={{ className: "text-champagne" }}
               >
                 {item.label}

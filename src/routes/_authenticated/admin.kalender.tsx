@@ -41,6 +41,7 @@ import {
 import { exportCalendarImage } from "@/lib/download-image.client";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { listStudios } from "@/lib/studio.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/kalender")({
   head: () => ({
@@ -59,6 +60,8 @@ function AdminKalenderPage() {
   const updateSlotTimesFn = useServerFn(updateSlotTimes);
   const splitCalendarSlotFn = useServerFn(splitCalendarSlot);
   const mergeCalendarSlotsFn = useServerFn(mergeCalendarSlots);
+  const listStudiosFn = useServerFn(listStudios);
+  const studiosQ = useQuery({ queryKey: ["admin-studios"], queryFn: () => listStudiosFn() });
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
   const [splittingSlotId, setSplittingSlotId] = useState<string | null>(null);
 
@@ -203,6 +206,7 @@ function AdminKalenderPage() {
           <NewSlotForm
             onCreate={(v) => createMut.mutateAsync(v)}
             pending={createMut.isPending}
+            studios={studiosQ.data}
           />
 
           <FreeSlotImageExport
