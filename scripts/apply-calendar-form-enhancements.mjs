@@ -3,29 +3,21 @@ import { readFileSync, writeFileSync } from "node:fs";
 const path = "src/routes/kalender.tsx";
 let text = readFileSync(path, "utf8");
 
-function replaceOnce(anchor, replacement, label) {
-  if (!text.includes(anchor)) {
-    throw new Error(`Calendar form enhancement failed: ${label} anchor not found.`);
-  }
-  text = text.replace(anchor, replacement);
-}
-
 if (!text.includes('name="play_world"')) {
-  replaceOnce(
-    '    const altNote = String(fd.get("alt_note") ?? "").trim();\n    const experience = String(fd.get("experience") ?? "").trim();',
-    '    const altNote = String(fd.get("alt_note") ?? "").trim();\n    const playWorld = String(fd.get("play_world") ?? "").trim();\n    const experience = String(fd.get("experience") ?? "").trim();',
-    "play-world form value",
+  text = text.replace(
+    /const altNote = String\(fd\.get\("alt_note"\) \?\? ""\)\.trim\(\);\s*const experience = String\(fd\.get\("experience"\) \?\? ""\)\.trim\(\);/,
+    'const altNote = String(fd.get("alt_note") ?? "").trim();\n    const playWorld = String(fd.get("play_world") ?? "").trim();\n    const experience = String(fd.get("experience") ?? "").trim();',
   );
 
-  replaceOnce(
-    '    const baseMessage = [\n      experience ? `Erfahrung:\\n${experience}` : null,',
-    '    const baseMessage = [\n      playWorld ? `Spielwelt: ${playWorld}` : null,\n      experience ? `Erfahrung:\\n${experience}` : null,',
-    "play-world message",
+  text = text.replace(
+    /const baseMessage = \[\s*experience \? `Erfahrung:\\n\$\{experience\}` : null,/,
+    'const baseMessage = [\n      playWorld ? `Spielwelt: ${playWorld}` : null,\n      experience ? `Erfahrung:\\n${experience}` : null,',
   );
 
-  replaceOnce(
-    '          <div>\n            <label className="eyebrow block mb-1.5">{tr("Erfahrung", "Experience")}</label>\n            <select name="experience" required defaultValue="" className="input-luxe">',
-    `          <div>
+  const experienceField = `          <div>
+            <label className="eyebrow block mb-1.5">{tr("Erfahrung", "Experience")}</label>
+            <select name="experience" required defaultValue="" className="input-luxe">`;
+  const playWorldField = `          <div>
             <label className="eyebrow block mb-1.5">{tr("Spielwelt (optional)", "World of play (optional)")}</label>
             <select name="play_world" defaultValue="" className="input-luxe">
               <option value="">{tr("Keine Auswahl", "No selection")}</option>
@@ -37,23 +29,22 @@ if (!text.includes('name="play_world"')) {
               <option value={tr("Nur für dich inszeniert", "Created only for you")}>{tr("Nur für dich inszeniert", "Created only for you")}</option>
             </select>
           </div>
-          <div>
-            <label className="eyebrow block mb-1.5">{tr("Erfahrung", "Experience")}</label>
-            <select name="experience" required defaultValue="" className="input-luxe">`,
-    "play-world select",
-  );
+${experienceField}`;
+  text = text.replace(experienceField, playWorldField);
 }
 
 if (!text.includes("+ Ausweichtermin hinzufügen (optional)")) {
-  const startMarker = '        <div className="border border-champagne/20 bg-champagne/[0.03] p-4 space-y-3">\n          <div>\n            <label className="eyebrow block mb-1.5 text-champagne">{tr("Ausweichtermin (empfohlen)", "Alternative date (recommended)")}</label>';
+  const labelPosition = text.indexOf('tr("Ausweichtermin (empfohlen)", "Alternative date (recommended)")');
+  const blockStart = text.lastIndexOf(
+    '        <div className="border border-champagne/20 bg-champagne/[0.03] p-4 space-y-3">',
+    labelPosition,
+  );
   const endMarker = '\n\n        <label className="flex items-start gap-2 text-xs text-vanilla/65 cursor-pointer">';
-  const start = text.indexOf(startMarker);
-  const end = text.indexOf(endMarker, start);
-  if (start < 0 || end < 0) {
-    throw new Error("Calendar form enhancement failed: alternative-date block not found.");
-  }
-  const block = text.slice(start, end);
-  const wrapped = `        <details className="border border-champagne/20 bg-champagne/[0.03]">
+  const blockEnd = text.indexOf(endMarker, labelPosition);
+
+  if (labelPosition >= 0 && blockStart >= 0 && blockEnd >= 0) {
+    const block = text.slice(blockStart, blockEnd);
+    const wrapped = `        <details className="border border-champagne/20 bg-champagne/[0.03]">
           <summary className="cursor-pointer px-4 py-3 text-sm text-champagne hover:text-vanilla transition">
             {tr("+ Ausweichtermin hinzufügen (optional)", "+ Add an alternative date (optional)")}
           </summary>
@@ -61,8 +52,16 @@ if (!text.includes("+ Ausweichtermin hinzufügen (optional)")) {
 ${block.replace(/^        /gm, "            ")}
           </div>
         </details>`;
-  text = text.slice(0, start) + wrapped + text.slice(end);
+    text = text.slice(0, blockStart) + wrapped + text.slice(blockEnd);
+  }
+}
+
+if (!text.includes('name="play_world"')) {
+  throw new Error("Spielwelt-Auswahl konnte nicht in den Kalender eingebaut werden.");
+}
+if (!text.includes("+ Ausweichtermin hinzufügen (optional)")) {
+  throw new Error("Ausweichtermin konnte im Kalender nicht einklappbar gemacht werden.");
 }
 
 writeFileSync(path, text);
-console.log("Applied calendar play-world selection and collapsible alternative date.");
+console.log("Calendar form enhancements applied successfully.");
