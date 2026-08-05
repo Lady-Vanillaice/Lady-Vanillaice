@@ -3,29 +3,46 @@ import { useEffect, useRef } from "react";
 import { Calendar, Crown, Instagram, Mail } from "lucide-react";
 import heroImage from "../assets/CARL0938-2.jpeg";
 import { AdminLoginWidget } from "@/components/site/AdminLoginWidget";
-import { useT } from "@/i18n";
+import { useT, useTr } from "@/i18n";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Lady Vanilla Ice – Domina in München & Umgebung | Sessions & BDSM" },
-      { name: "description", content: "Stilvolle Domina-Sessions in München und Umgebung. Diskret, intensiv, individuell auf deine Fantasien abgestimmt. Termin online buchen." },
-      { property: "og:title", content: "Lady Vanilla Ice – Domina in München & Umgebung | Sessions & BDSM" },
-      { property: "og:description", content: "Stilvolle Domina-Sessions in München und Umgebung. Diskret, intensiv, individuell auf deine Fantasien abgestimmt. Termin online buchen." },
+      {
+        name: "description",
+        content:
+          "Hart, weich und unberechenbar: individuelle Domina-Sessions in München und Umgebung mit Kopfkino, Stil und klaren Grenzen.",
+      },
+      {
+        property: "og:title",
+        content: "Lady Vanilla Ice – Hart. Weich. Unberechenbar.",
+      },
+      {
+        property: "og:description",
+        content:
+          "Individuelle Domina-Sessions in München und Umgebung. Psychologisches Spiel, sinnliche Macht und klare Führung – ganz auf meine Art.",
+      },
       { property: "og:url", content: "https://lady-vanillaice.com/" },
-      { property: "og:image", content: "https://www.lady-vanillaice.com/og-image.jpg" },
-{ property: "og:type", content: "website" },
+      {
+        property: "og:image",
+        content: "https://www.lady-vanillaice.com/og-image.jpg",
+      },
+      { property: "og:type", content: "website" },
     ],
     links: [{ rel: "canonical", href: "https://lady-vanillaice.com/" }],
   }),
   component: Index,
 });
 
+type Card = { title: string; text: string };
+
 type ExpectStep = { title: string; text: string };
 
 function Index() {
   const beholdRef = useRef<HTMLDivElement>(null);
   const t = useT();
+  const tr = useTr();
 
   useEffect(() => {
     if (!beholdRef.current) return;
@@ -45,7 +62,90 @@ function Index() {
     }
   }, []);
 
-  const steps = t<ExpectStep[]>("home.expect.steps");
+  const reasons: Card[] = [
+    {
+      title: tr("Ich spiele mit deinem Kopf", "I play with your mind"),
+      text: tr(
+        "Spannung beginnt für mich lange vor der ersten Berührung.",
+        "For me, tension begins long before the first touch."
+      ),
+    },
+    {
+      title: tr("Hart und weich", "Hard and soft"),
+      text: tr(
+        "Ich kann fordern, verführen und im nächsten Moment alles verändern.",
+        "I can demand, seduce and change everything in the next moment."
+      ),
+    },
+    {
+      title: tr("Keine Standardsession", "No standard session"),
+      text: tr(
+        "Ich beobachte, reagiere und gestalte jede Begegnung individuell.",
+        "I observe, react and shape every encounter individually."
+      ),
+    },
+    {
+      title: tr("Echt und direkt", "Real and direct"),
+      text: tr(
+        "Mit Persönlichkeit, Humor und manchmal einer bayerischen Note.",
+        "With personality, humour and sometimes a Bavarian touch."
+      ),
+    },
+  ];
+
+  const fitPoints = [
+    tr("Du mehr als eine Standardsession suchst.", "You want more than a standard session."),
+    tr(
+      "Du dich auf mein Spiel mit deinem Kopf einlassen kannst.",
+      "You can surrender to my mind games."
+    ),
+    tr(
+      "Du meine harte und meine weiche Seite erleben möchtest.",
+      "You want to experience both my hard and soft sides."
+    ),
+    tr(
+      "Du Respekt, Diskretion und klare Grenzen ernst nimmst.",
+      "You take respect, discretion and clear limits seriously."
+    ),
+  ];
+
+  const steps: ExpectStep[] = [
+    {
+      title: tr("Deine Anfrage", "Your request"),
+      text: tr(
+        "Du wählst einen Termin. Ich prüfe deine Anfrage persönlich und melde mich bei dir.",
+        "You choose a date. I personally review your request and get back to you."
+      ),
+    },
+    {
+      title: tr("Deine Wünsche", "Your wishes"),
+      text: tr(
+        "Du erzählst mir von deinen Fantasien, Vorlieben und klaren Grenzen.",
+        "You tell me about your fantasies, preferences and clear limits."
+      ),
+    },
+    {
+      title: tr("Unser Vorgespräch", "Our conversation"),
+      text: tr(
+        "Wir klären vertraulich, was dich reizt und was du dir wünschst.",
+        "We discreetly clarify what excites you and what you desire."
+      ),
+    },
+    {
+      title: tr("Mein Spiel mit dir", "My game with you"),
+      text: tr(
+        "Dann übernehme ich: mal hart, mal weich und immer auf meine Art.",
+        "Then I take over: sometimes hard, sometimes soft and always my way."
+      ),
+    },
+    {
+      title: tr("Der Nachklang", "The aftermath"),
+      text: tr(
+        "Danach bleibt Zeit, ruhig und respektvoll wieder anzukommen.",
+        "Afterwards, there is time to return calmly and respectfully."
+      ),
+    },
+  ];
 
   return (
     <>
@@ -77,7 +177,6 @@ function Index() {
               <span className="sr-only">{t<string>("home.hero.srSubtitle")}</span>
             </h1>
 
-
             <div className="flex items-center gap-4 mb-8">
               <span className="hairline" />
               <Crown size={16} className="text-champagne" />
@@ -85,62 +184,107 @@ function Index() {
             </div>
 
             <p className="font-display text-xl md:text-2xl text-vanilla/90 mb-6 tracking-wide">
-              {t<string>("home.hero.tagline")}
+              {tr(
+                "Hart. Weich. Unberechenbar. Ganz auf meine Art.",
+                "Hard. Soft. Unpredictable. Entirely my way."
+              )}
             </p>
 
             <p className="text-sm md:text-base text-vanilla/65 leading-relaxed max-w-lg mb-4">
-              {t<string>("home.hero.intro")}
+              {tr(
+                "Ich spiele mit deinem Kopf, deinen Erwartungen und der Spannung zwischen Kontrolle und Nähe.",
+                "I play with your mind, your expectations and the tension between control and closeness."
+              )}
             </p>
 
             <p className="eyebrow mb-10">
-              {t<string>("home.hero.note")}
+              {tr(
+                "Keine Standardsession. Jede Begegnung entsteht individuell.",
+                "No standard session. Every encounter is created individually."
+              )}
             </p>
 
             <div className="flex flex-wrap gap-4">
-              <Link to="/kalender" className="btn-gold">
-                {t<string>("home.hero.ctaCalendar")}
+              <Link to="/buchung" className="btn-gold">
+                {tr("Termin anfragen", "Request appointment")}
                 <Calendar size={14} />
               </Link>
               <Link to="/leistungen" className="btn-outline-gold">
-                {t<string>("home.hero.ctaServices")}
+                {tr("Meine Welt entdecken", "Discover my world")}
               </Link>
             </div>
           </div>
         </div>
 
-        {/* scroll cue */}
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-vanilla/40 text-[0.6rem] tracking-[0.3em] uppercase animate-pulse">
           {t<string>("home.hero.scroll")}
         </div>
       </section>
 
+      {/* WARUM ICH */}
+      <section className="py-24 border-b border-champagne/15">
+        <div className="container-luxe max-w-5xl">
+          <div className="text-center mb-12">
+            <div className="eyebrow mb-4">{tr("Meine Art", "My way")}</div>
+            <h2 className="font-display text-4xl md:text-5xl gold-text">
+              {tr("Warum Lady Vanilla Ice?", "Why Lady Vanilla Ice?")}
+            </h2>
+          </div>
 
-      {/* WAS DICH ERWARTET */}
-      <section className="py-28">
-        <div className="container-luxe text-center max-w-3xl">
-          <div className="eyebrow mb-4">{t<string>("home.expect.kicker")}</div>
-          <h2 className="font-display text-4xl md:text-5xl gold-text mb-3 leading-[1.25] pb-2">
-            {t<string>("home.expect.title")}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-px bg-champagne/15">
+            {reasons.map((reason) => (
+              <article key={reason.title} className="bg-background p-7">
+                <h3 className="font-display text-xl text-vanilla mb-3">{reason.title}</h3>
+                <p className="text-sm text-vanilla/60 leading-relaxed">{reason.text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* PASST ZU MIR */}
+      <section className="py-20 border-b border-champagne/15">
+        <div className="container-luxe max-w-3xl">
+          <div className="eyebrow mb-4 text-center">{tr("Passt das zu dir?", "Is this for you?")}</div>
+          <h2 className="font-display text-3xl md:text-4xl text-center gold-text mb-10">
+            {tr("Bei mir bist du richtig, wenn …", "You are right for me if …")}
           </h2>
-          <p className="font-script italic text-vanilla/60 text-lg mb-6">
-            {t<string>("home.expect.subtitle")}
-          </p>
-          <div className="flex justify-center mb-12"><span className="hairline" /></div>
 
-          <div className="grid gap-px bg-champagne/15">
-            {steps.map((item, i) => (
-              <div key={item.title} className="bg-background p-10 text-left">
-                <div className="font-display text-5xl gold-text/70 gold-text mb-4 opacity-50">
-                  0{i + 1}
-                </div>
-                <h3 className="font-display text-2xl text-vanilla mb-3">{item.title}</h3>
-                <p className="text-sm md:text-base text-vanilla/65 leading-relaxed">{item.text}</p>
+          <div className="grid sm:grid-cols-2 gap-4">
+            {fitPoints.map((point) => (
+              <div key={point} className="bg-card border border-champagne/10 p-5 flex gap-3">
+                <Crown size={15} className="text-champagne mt-1 shrink-0" />
+                <p className="text-sm text-vanilla/75 leading-relaxed">{point}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
+      {/* WAS DICH ERWARTET */}
+      <section className="py-24">
+        <div className="container-luxe text-center max-w-4xl">
+          <div className="eyebrow mb-4">{tr("Was dich erwartet", "What awaits you")}</div>
+          <h2 className="font-display text-4xl md:text-5xl gold-text mb-4 leading-[1.25]">
+            {tr("Dein Weg in meine Welt", "Your path into my world")}
+          </h2>
+          <p className="font-script italic text-vanilla/60 text-lg mb-10">
+            {tr("Klar, diskret und persönlich.", "Clear, discreet and personal.")}
+          </p>
+
+          <div className="grid md:grid-cols-5 gap-px bg-champagne/15">
+            {steps.map((item, i) => (
+              <div key={item.title} className="bg-background p-6 text-left">
+                <div className="font-display text-3xl gold-text mb-3 opacity-60">
+                  0{i + 1}
+                </div>
+                <h3 className="font-display text-xl text-vanilla mb-2">{item.title}</h3>
+                <p className="text-sm text-vanilla/60 leading-relaxed">{item.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* CTA BAND */}
       <section className="border-y border-champagne/15">
@@ -148,7 +292,9 @@ function Index() {
           <div>
             <div className="eyebrow mb-4">{t<string>("home.cta.kicker")}</div>
             <h2 className="font-display text-4xl md:text-5xl text-vanilla leading-tight">
-              {t<string>("home.cta.title1")}<span className="gold-text">{t<string>("home.cta.titleAccent")}</span>{t<string>("home.cta.title2")}
+              {t<string>("home.cta.title1")}
+              <span className="gold-text">{t<string>("home.cta.titleAccent")}</span>
+              {t<string>("home.cta.title2")}
             </h2>
           </div>
           <div className="flex flex-col sm:flex-row md:justify-end gap-4">
