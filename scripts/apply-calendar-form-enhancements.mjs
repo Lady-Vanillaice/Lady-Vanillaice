@@ -84,8 +84,18 @@ if (!text.includes('name="marketing_consent"')) {
   );
 
   text = text.replace(
+    '    mutationFn: (vars: { name: string; email: string; phone: string; message: string; proposedStart: string }) => {',
+    '    mutationFn: (vars: { name: string; email: string; phone: string; message: string; proposedStart: string; marketingConsent: boolean }) => {',
+  );
+
+  text = text.replace(
     '          age_confirmed: true,\n        },',
-    '          age_confirmed: true,\n          marketing_consent: marketingConsent,\n        },',
+    '          age_confirmed: true,\n          marketing_consent: vars.marketingConsent,\n        },',
+  );
+
+  text = text.replace(
+    '      proposedStart: effectiveProposed.start,\n    });',
+    '      proposedStart: effectiveProposed.start,\n      marketingConsent,\n    });',
   );
 
   const ageLabel = `        <label className="flex items-start gap-2 text-xs text-vanilla/65 cursor-pointer">
@@ -99,6 +109,31 @@ ${ageLabel}`;
   text = text.replace(ageLabel, newsletterLabel);
 }
 
+// Repair builds where an earlier version inserted the consent value directly
+// into the mutation closure, where the form-local variable is not in scope.
+text = text.replace(
+  'marketing_consent: marketingConsent,',
+  'marketing_consent: vars.marketingConsent,',
+);
+if (
+  text.includes('marketing_consent: vars.marketingConsent,') &&
+  text.includes('mutationFn: (vars: { name: string; email: string; phone: string; message: string; proposedStart: string }) => {')
+) {
+  text = text.replace(
+    'mutationFn: (vars: { name: string; email: string; phone: string; message: string; proposedStart: string }) => {',
+    'mutationFn: (vars: { name: string; email: string; phone: string; message: string; proposedStart: string; marketingConsent: boolean }) => {',
+  );
+}
+if (
+  text.includes('const marketingConsent = fd.get("marketing_consent") === "on";') &&
+  !text.includes('      marketingConsent,\n    });')
+) {
+  text = text.replace(
+    '      proposedStart: effectiveProposed.start,\n    });',
+    '      proposedStart: effectiveProposed.start,\n      marketingConsent,\n    });',
+  );
+}
+
 if (!text.includes('name="play_world"')) {
   throw new Error("Spielwelt-Auswahl konnte nicht in den Kalender eingebaut werden.");
 }
@@ -108,7 +143,11 @@ if (!text.includes("+ Ausweichtermin hinzufügen (optional)")) {
 if (!text.includes("Calendar info below calendar")) {
   throw new Error("Die Kalender-Infoboxen konnten nicht unter den Kalender verschoben werden.");
 }
-if (!text.includes('name="marketing_consent"') || !text.includes("marketing_consent: marketingConsent")) {
+if (
+  !text.includes('name="marketing_consent"') ||
+  !text.includes("marketing_consent: vars.marketingConsent") ||
+  !text.includes("marketingConsent,")
+) {
   throw new Error("Die freiwillige E-Mail-Einwilligung konnte nicht eingebaut werden.");
 }
 
