@@ -235,3 +235,16 @@ form.bg-card.border.border-champagne\/15.p-5.space-y-3 > label:first-of-type > s
   line-height: 1.5;
   color: color-mix(in oklab, var(--color-vanilla) 70%, transparent);
 }
+
+/* Im mobilen Kalender steht die eigentliche Buchungsanfrage direkt unter dem Kalender.
+   Die Hinweisboxen folgen erst danach; ab Desktop bleibt das bestehende Layout unverändert. */
+@media (max-width: 1023px) {
+  section.py-20 > .container-luxe.grid:has(> .lg\:col-span-7) > .lg\:col-span-5 {
+    display: flex;
+    flex-direction: column;
+  }
+
+  section.py-20 > .container-luxe.grid:has(> .lg\:col-span-7) > .lg\:col-span-5 > .bg-card {
+    order: -1;
+  }
+}
