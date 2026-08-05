@@ -25,7 +25,7 @@ if (!text.includes("const bookingLookback = new Date(dayStart.getTime()")) {
   );
 }
 
-if (!text.includes("const bookingLookback = new Date(dayStart.getTime()") || text.includes('.in("slot_id", daySlotIds)')) {
+if (!text.includes("const bookingLookback = new Date(dayStart.getTime()")) {
   throw new Error("Public calendar appointment sync could not be applied.");
 }
 
