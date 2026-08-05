@@ -33,5 +33,7 @@ if (!text.includes("const bookingLookback = new Date(dayStart.getTime()")) {
   text = text.replace(pattern, replacement);
 }
 
+text = text.replace("    const daySlotIds = slotsForDay.map((s) => s.id);\n\n", "");
+
 writeFileSync(path, text);
 console.log("Public calendar now includes every overlapping confirmed appointment.");
