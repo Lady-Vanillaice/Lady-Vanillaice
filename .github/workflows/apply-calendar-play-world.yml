@@ -18,8 +18,9 @@ jobs:
         with:
           ref: feature/calendar-play-world
       - name: Add optional play world selection
-        shell: python
+        shell: bash
         run: |
+          python <<'PY'
           from pathlib import Path
 
           path = Path("src/routes/kalender.tsx")
@@ -31,7 +32,7 @@ jobs:
     const playWorld = String(fd.get("play_world") ?? "").trim();
     const experience = String(fd.get("experience") ?? "").trim();'''
           if old not in text:
-            raise SystemExit("Could not find submit field anchor")
+              raise SystemExit("Could not find submit field anchor")
           text = text.replace(old, new, 1)
 
           old = '''    const baseMessage = [
@@ -40,7 +41,7 @@ jobs:
       playWorld ? `Spielwelt: ${playWorld}` : null,
       experience ? `Erfahrung:\\n${experience}` : null,'''
           if old not in text:
-            raise SystemExit("Could not find message anchor")
+              raise SystemExit("Could not find message anchor")
           text = text.replace(old, new, 1)
 
           old = '''          <div>
@@ -62,11 +63,13 @@ jobs:
             <label className="eyebrow block mb-1.5">{tr("Erfahrung", "Experience")}</label>
             <select name="experience" required defaultValue="" className="input-luxe">'''
           if old not in text:
-            raise SystemExit("Could not find form anchor")
+              raise SystemExit("Could not find form anchor")
           text = text.replace(old, new, 1)
 
           path.write_text(text)
+          PY
       - name: Commit change
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
