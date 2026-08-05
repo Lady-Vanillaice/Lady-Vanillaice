@@ -3,19 +3,9 @@ import { readFileSync, writeFileSync } from "node:fs";
 const path = "src/lib/public-booking.functions.ts";
 let text = readFileSync(path, "utf8");
 
-const oldBlock = `    const { data: bookings } = await supabaseAdmin
-      .from("bookings")
-      .select("slot_id, requested_start, duration_minutes, status, updated_at")
-      .in("slot_id", daySlotIds)
-      // A plain inquiry is not a reservation. Only a confirmed booking or a
-      // booking explicitly waiting for its deposit blocks the public timeline.
-      .in("status", ["waiting_deposit", "confirmed"])
-      .not("requested_start", "is", null)
-      .not("duration_minutes", "is", null);
-
-    const activeBookings = (bookings ?? []).filter((b) => isActiveBlockingBooking(b));`;
-
-const newBlock = `    const bookingLookback = new Date(dayStart.getTime() - 24 * 60 * 60_000);
+if (!text.includes("const bookingLookback = new Date(dayStart.getTime()")) {
+  const pattern = /    const \{ data: bookings \} = await supabaseAdmin[\s\S]*?    const activeBookings = \(bookings \?\? \[\]\)\.filter\(\(b\) => isActiveBlockingBooking\(b\)\);/;
+  const replacement = `    const bookingLookback = new Date(dayStart.getTime() - 24 * 60 * 60_000);
     const { data: bookings } = await supabaseAdmin
       .from("bookings")
       .select("slot_id, requested_start, duration_minutes, status, updated_at")
@@ -37,11 +27,10 @@ const newBlock = `    const bookingLookback = new Date(dayStart.getTime() - 24 *
       return bookingStart < dayEnd.getTime() && bookingEnd > dayStart.getTime();
     });`;
 
-if (!text.includes(newBlock)) {
-  if (!text.includes(oldBlock)) {
+  if (!pattern.test(text)) {
     throw new Error("Public calendar booking query could not be located.");
   }
-  text = text.replace(oldBlock, newBlock);
+  text = text.replace(pattern, replacement);
 }
 
 writeFileSync(path, text);
