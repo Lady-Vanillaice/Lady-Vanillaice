@@ -79,7 +79,7 @@ function Preise() {
       price: tr("300 € pro Stunde pro Domina", "€ 300 per hour per domina"),
       priceRows: [
         {
-          amount: tr("300 €", "€ 300"),
+          amount: tr("ab 300 €", "from € 300"),
           unit: tr("je Stunde & Domina", "per hour & domina"),
         },
       ],
@@ -104,9 +104,12 @@ function Preise() {
         "€ 10 per image · € 30 per video minute",
       ),
       priceRows: [
-        { amount: tr("10 €", "€ 10"), unit: tr("pro Bild", "per image") },
         {
-          amount: tr("30 €", "€ 30"),
+          amount: tr("ab 10 €", "from € 10"),
+          unit: tr("pro Bild", "per image"),
+        },
+        {
+          amount: tr("ab 30 €", "from € 30"),
           unit: tr("pro Minute Video", "per video minute"),
         },
       ],
