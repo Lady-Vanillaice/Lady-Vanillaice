@@ -184,10 +184,12 @@ function Index() {
             </div>
 
             <p className="font-display text-xl md:text-2xl text-vanilla/90 mb-6 tracking-wide">
-              {tr(
-                "Hart. Weich. Unberechenbar. Ganz auf meine Art.",
-                "Hard. Soft. Unpredictable. Entirely my way."
-              )}
+              <span className="block md:inline">
+                {tr("Hart. Weich. Unberechenbar.", "Hard. Soft. Unpredictable.")}
+              </span>{" "}
+              <span className="block md:inline">
+                {tr("Ganz auf meine Art.", "Entirely my way.")}
+              </span>
             </p>
 
             <p className="text-sm md:text-base text-vanilla/65 leading-relaxed max-w-lg mb-4">
