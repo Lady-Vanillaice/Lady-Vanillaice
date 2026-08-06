@@ -82,4 +82,14 @@ if (!styles.includes(styleMarker)) {
 }
 writeFileSync(stylesPath, styles);
 
-console.log("Mobile orange classification and booking/info order fixed.");
+const adminBookingFunctionsPath = "src/lib/booking.functions.ts";
+let adminBookingFunctions = readFileSync(adminBookingFunctionsPath, "utf8");
+adminBookingFunctions = replaceOnce(
+  adminBookingFunctions,
+  '.rpc("set_booking_studio_override", {',
+  '.rpc("admin_update_booking_studio", {',
+  "booking studio RPC name",
+);
+writeFileSync(adminBookingFunctionsPath, adminBookingFunctions);
+
+console.log("Mobile orange classification, booking/info order, and studio RPC fixed.");
