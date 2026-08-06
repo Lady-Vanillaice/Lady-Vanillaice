@@ -67,7 +67,7 @@ const newTimelineBlock = [
   '                  : isReserved',
   '                  ? "bg-vanilla/35 border-x border-vanilla/45"',
   '                  : isSingleOnly',
-  '                  ? "bg-orange-500/65 border-x border-orange-300/75"',
+  '                  ? "bg-orange-500/60 border-x border-orange-700/70"',
   '                  : "bg-bordeaux/60 border-x border-bordeaux/70"',
   '              }`}',
 ].join("\n");
