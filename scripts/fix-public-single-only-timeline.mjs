@@ -67,7 +67,7 @@ const newTimelineBlock = [
   '                  : isReserved',
   '                  ? "bg-vanilla/35 border-x border-vanilla/45"',
   '                  : isSingleOnly',
-  '                  ? "bg-cyan-500/60 border-x border-cyan-300/70"',
+  '                  ? "bg-orange-500/65 border-x border-orange-300/75"',
   '                  : "bg-bordeaux/60 border-x border-bordeaux/70"',
   '              }`}',
 ].join("\n");
@@ -82,7 +82,7 @@ calendar = replaceOnce(
 calendar = replaceOnce(
   calendar,
   `        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-bordeaux" /> {tr("belegt", "booked")}</span>\n        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-vanilla/40" /> {tr("reserviert", "reserved")}</span>`,
-  `        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-bordeaux" /> {tr("belegt", "booked")}</span>\n        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-cyan-400" /> {tr("nur Einzel", "single only")}</span>\n        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-vanilla/40" /> {tr("reserviert", "reserved")}</span>`,
+  `        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-bordeaux" /> {tr("belegt", "booked")}</span>\n        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-orange-400" /> {tr("nur Einzel", "single only")}</span>\n        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-vanilla/40" /> {tr("reserviert", "reserved")}</span>`,
   "timeline single-only legend",
 );
 
