@@ -14,17 +14,17 @@ function enhanceManualBookingForm() {
   const input = wrapper?.querySelector("input");
   if (!contactLabel || !wrapper || !input) return;
 
-  contactLabel.textContent = "E-Mail-Adresse";
+  contactLabel.textContent = "E-Mail-Adresse (optional)";
   input.type = "email";
-  input.required = true;
+  input.required = false;
   input.autocomplete = "email";
   input.placeholder = "kunde@example.de";
-  input.setAttribute("aria-label", "E-Mail-Adresse des Kunden");
+  input.setAttribute("aria-label", "Optionale E-Mail-Adresse des Kunden");
 
   const hint = document.createElement("p");
   hint.className = "mt-1 text-[0.65rem] text-vanilla/45";
   hint.textContent =
-    "Wird nur beim Termin gespeichert. Es wird keine automatische Bestätigung verschickt.";
+    "Optional. Wird nur beim Termin gespeichert. Es wird keine automatische Bestätigung verschickt.";
   wrapper.appendChild(hint);
 
   form.dataset.emailFieldEnhanced = "true";
