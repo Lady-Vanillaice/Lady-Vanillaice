@@ -88,13 +88,18 @@
     "eslint": "^9.32.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.6",
-    "eslint-plugin-react-hooks": "^6.1.1",
-    "eslint-plugin-react-refresh": "^0.4.24",
-    "globals": "^16.5.0",
-    "prettier": "^3.7.4",
-    "typescript": "~5.9.3",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^15.15.0",
+    "prettier": "^3.7.3",
+    "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "^7.2.4",
-    "vite-tsconfig-paths": "^5.1.4"
+    "vite": "^8.0.16",
+    "vite-tsconfig-paths": "^6.0.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "entities": "4.5.0"
+    }
   }
 }
