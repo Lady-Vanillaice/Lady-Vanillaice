@@ -8,17 +8,49 @@ function replaceOnce(source, before, after, label) {
 const bookingPath = "src/lib/public-booking.functions.ts";
 let booking = readFileSync(bookingPath, "utf8");
 
-const metadataMarker = "const activeBookingSlotIds = [...new Set(";
-if (!booking.includes(metadataMarker)) {
-  booking = replaceOnce(
-    booking,
-    `    const bufferBySlotId = new Map(\n      slotsForDay.map((s) => [s.id, s.buffer_minutes ?? 30]),\n    );`,
-    `    // The mobile/day-wide query can return bookings whose hidden manual slot\n    // is not part of the visible day-slot list. Load those slot markers as well\n    // so \"single on duo day\" remains orange on every viewport.\n    const activeBookingSlotIds = [...new Set(\n      activeBookings.flatMap((booking) => booking.slot_id ? [booking.slot_id] : []),\n    )];\n    if (activeBookingSlotIds.length) {\n      const { data: activeBookingSlots, error: activeBookingSlotsError } = await supabaseAdmin\n        .from(\"availability_slots\")\n        .select(\"id, is_duo, duo_partner, buffer_minutes\")\n        .in(\"id\", activeBookingSlotIds);\n      if (activeBookingSlotsError) throw activeBookingSlotsError;\n      for (const activeSlot of activeBookingSlots ?? []) {\n        slotById.set(activeSlot.id, activeSlot);\n      }\n    }\n\n    const bufferBySlotId = new Map(\n      slotsForDay.map((s) => [s.id, s.buffer_minutes ?? 30]),\n    );\n    for (const [slotId, activeSlot] of slotById) {\n      if (!bufferBySlotId.has(slotId) && activeSlot.buffer_minutes != null) {\n        bufferBySlotId.set(slotId, activeSlot.buffer_minutes);\n      }\n    }`,
-    "load hidden manual slot metadata",
-  );
-}
+const oldSlotMaps = `    const bufferBySlotId = new Map(
+      slotsForDay.map((s) => [s.id, s.buffer_minutes ?? 30]),
+    );
+    const slotById = new Map(slotsForDay.map((s) => [s.id, s]));`;
 
-if (!booking.includes(metadataMarker)) {
+const newSlotMaps = `    // Build the slot lookup before loading metadata for hidden manual slots.
+    // The day-wide query also returns external appointments whose source slot
+    // is hidden and therefore not part of slotsForDay.
+    const slotById = new Map(slotsForDay.map((s) => [s.id, s]));
+    const activeBookingSlotIds = [...new Set(
+      activeBookings.flatMap((activeBooking) =>
+        activeBooking.slot_id ? [activeBooking.slot_id] : [],
+      ),
+    )];
+
+    if (activeBookingSlotIds.length) {
+      const { data: activeBookingSlots, error: activeBookingSlotsError } = await supabaseAdmin
+        .from("availability_slots")
+        .select("id, is_duo, duo_partner, buffer_minutes")
+        .in("id", activeBookingSlotIds);
+      if (activeBookingSlotsError) throw activeBookingSlotsError;
+      for (const activeSlot of activeBookingSlots ?? []) {
+        slotById.set(activeSlot.id, activeSlot);
+      }
+    }
+
+    const bufferBySlotId = new Map(
+      slotsForDay.map((s) => [s.id, s.buffer_minutes ?? 30]),
+    );
+    for (const [slotId, activeSlot] of slotById) {
+      if (!bufferBySlotId.has(slotId) && activeSlot.buffer_minutes != null) {
+        bufferBySlotId.set(slotId, activeSlot.buffer_minutes);
+      }
+    }`;
+
+booking = replaceOnce(
+  booking,
+  oldSlotMaps,
+  newSlotMaps,
+  "hidden manual slot metadata order",
+);
+
+if (!booking.includes("const activeBookingSlotIds = [...new Set(")) {
   throw new Error("Mobile single-only slot metadata patch could not be applied.");
 }
 writeFileSync(bookingPath, booking);
@@ -26,13 +58,28 @@ writeFileSync(bookingPath, booking);
 const calendarPath = "src/routes/kalender.tsx";
 let calendar = readFileSync(calendarPath, "utf8");
 calendar = calendar.replace(
+  'className="lg:col-span-5 public-booking-stack"',
+  'className="lg:col-span-5 public-booking-stack flex flex-col"',
+);
+calendar = calendar.replace(
   'className="bg-card border border-champagne/15 p-6 min-h-[300px] public-booking-card"',
   'className="bg-card border border-champagne/15 p-6 min-h-[300px] public-booking-card order-first lg:order-none"',
 );
 
+if (!calendar.includes("public-booking-stack flex flex-col")) {
+  throw new Error("Mobile booking stack layout could not be applied.");
+}
 if (!calendar.includes("public-booking-card order-first lg:order-none")) {
   throw new Error("Mobile booking-first order could not be applied.");
 }
 writeFileSync(calendarPath, calendar);
 
-console.log("Mobile single-only colour and booking/info order patched.");
+const stylesPath = "src/styles.css";
+let styles = readFileSync(stylesPath, "utf8");
+const styleMarker = "/* Force booking before calendar information boxes on mobile. */";
+if (!styles.includes(styleMarker)) {
+  styles += `\n\n${styleMarker}\n@media (max-width: 1023px) {\n  .public-booking-stack {\n    display: flex !important;\n    flex-direction: column !important;\n  }\n\n  .public-booking-card {\n    order: -1 !important;\n  }\n}\n`;
+}
+writeFileSync(stylesPath, styles);
+
+console.log("Mobile orange classification and booking/info order fixed.");
