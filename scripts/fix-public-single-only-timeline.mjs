@@ -48,10 +48,34 @@ calendar = replaceOnce(
   "timeline single-only flag",
 );
 
+const oldTimelineBlock = [
+  '              title={`${isUnavailable ? tr("Nicht freigegeben","Unavailable") : isReserved ? tr("Reserviert","Reserved") : tr("Belegt","Booked")} ${fmtHm(seg.s)} – ${fmtHm(seg.e)}`}',
+  '              className={`absolute top-0 bottom-0 pointer-events-none ${',
+  '                isUnavailable',
+  '                  ? "bg-anthracite/80 border-x border-vanilla/15"',
+  '                  : isReserved',
+  '                  ? "bg-vanilla/35 border-x border-vanilla/45"',
+  '                  : "bg-bordeaux/60 border-x border-bordeaux/70"',
+  '              }`}',
+].join("\n");
+
+const newTimelineBlock = [
+  '              title={`${isUnavailable ? tr("Nicht freigegeben","Unavailable") : isReserved ? tr("Reserviert","Reserved") : isSingleOnly ? tr("Nur Einzel","Single only") : tr("Belegt","Booked")} ${fmtHm(seg.s)} – ${fmtHm(seg.e)}`}',
+  '              className={`absolute top-0 bottom-0 pointer-events-none ${',
+  '                isUnavailable',
+  '                  ? "bg-anthracite/80 border-x border-vanilla/15"',
+  '                  : isReserved',
+  '                  ? "bg-vanilla/35 border-x border-vanilla/45"',
+  '                  : isSingleOnly',
+  '                  ? "bg-cyan-500/60 border-x border-cyan-300/70"',
+  '                  : "bg-bordeaux/60 border-x border-bordeaux/70"',
+  '              }`}',
+].join("\n");
+
 calendar = replaceOnce(
   calendar,
-  `              title={\`${isUnavailable ? tr("Nicht freigegeben","Unavailable") : isReserved ? tr("Reserviert","Reserved") : tr("Belegt","Booked")} \${fmtHm(seg.s)} – \${fmtHm(seg.e)}\`}\n              className={\`absolute top-0 bottom-0 pointer-events-none \${\n                isUnavailable\n                  ? "bg-anthracite/80 border-x border-vanilla/15"\n                  : isReserved\n                  ? "bg-vanilla/35 border-x border-vanilla/45"\n                  : "bg-bordeaux/60 border-x border-bordeaux/70"\n              }\`}`, 
-  `              title={\`${isUnavailable ? tr("Nicht freigegeben","Unavailable") : isReserved ? tr("Reserviert","Reserved") : isSingleOnly ? tr("Nur Einzel","Single only") : tr("Belegt","Booked")} \${fmtHm(seg.s)} – \${fmtHm(seg.e)}\`}\n              className={\`absolute top-0 bottom-0 pointer-events-none \${\n                isUnavailable\n                  ? "bg-anthracite/80 border-x border-vanilla/15"\n                  : isReserved\n                  ? "bg-vanilla/35 border-x border-vanilla/45"\n                  : isSingleOnly\n                  ? "bg-cyan-500/60 border-x border-cyan-300/70"\n                  : "bg-bordeaux/60 border-x border-bordeaux/70"\n              }\`}`,
+  oldTimelineBlock,
+  newTimelineBlock,
   "timeline single-only color",
 );
 
