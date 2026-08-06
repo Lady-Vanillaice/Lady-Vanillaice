@@ -15,6 +15,7 @@ import { Header } from "../components/site/Header";
 import { Footer } from "../components/site/Footer";
 import { AgeGate } from "../components/site/AgeGate";
 import { StickyContact } from "../components/site/StickyContact";
+import { CookieConsent } from "../components/site/CookieConsent";
 import { PwaRegistration } from "../components/PwaRegistration";
 import { LanguageProvider, useT } from "../i18n";
 
@@ -165,6 +166,7 @@ function RootComponent() {
         <Footer />
         <AgeGate />
         <StickyContact />
+        <CookieConsent />
         <PwaRegistration />
       </div>
     </QueryClientProvider>
