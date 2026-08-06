@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "prebuild": "node scripts/apply-calendar-form-enhancements.mjs && node scripts/stack-calendar-booking-info.mjs && node scripts/link-my-holy-desire.mjs && node scripts/admin-buffer-select.mjs && node scripts/custom-content-booking.mjs && node scripts/add-liegezeit-booking.mjs && node scripts/fix-admin-dashboard-revenue.mjs && node scripts/fix-public-calendar-aug11-mobile-info.mjs",
+    "prebuild": "node scripts/fix-manual-booking-single-duo.mjs && node scripts/apply-calendar-form-enhancements.mjs && node scripts/stack-calendar-booking-info.mjs && node scripts/link-my-holy-desire.mjs && node scripts/admin-buffer-select.mjs && node scripts/custom-content-booking.mjs && node scripts/add-liegezeit-booking.mjs && node scripts/fix-admin-dashboard-revenue.mjs && node scripts/fix-public-calendar-aug11-mobile-info.mjs",
     "build": "vite build",
-    "prebuild:dev": "node scripts/apply-calendar-form-enhancements.mjs && node scripts/stack-calendar-booking-info.mjs && node scripts/link-my-holy-desire.mjs && node scripts/admin-buffer-select.mjs && node scripts/custom-content-booking.mjs && node scripts/add-liegezeit-booking.mjs && node scripts/fix-admin-dashboard-revenue.mjs && node scripts/fix-public-calendar-aug11-mobile-info.mjs",
+    "prebuild:dev": "node scripts/fix-manual-booking-single-duo.mjs && node scripts/apply-calendar-form-enhancements.mjs && node scripts/stack-calendar-booking-info.mjs && node scripts/link-my-holy-desire.mjs && node scripts/admin-buffer-select.mjs && node scripts/custom-content-booking.mjs && node scripts/add-liegezeit-booking.mjs && node scripts/fix-admin-dashboard-revenue.mjs && node scripts/fix-public-calendar-aug11-mobile-info.mjs",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
@@ -83,23 +83,18 @@
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
-    "@types/web-push": "^3.6.4",
+    "@types/web-push": "^3.6.7",
     "@vitejs/plugin-react": "^5.2.0",
     "eslint": "^9.32.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.6",
-    "eslint-plugin-react-hooks": "^5.2.0",
-    "eslint-plugin-react-refresh": "^0.4.20",
-    "globals": "^15.15.0",
-    "nitro": "3.0.260603-beta",
-    "prettier": "^3.7.3",
-    "typescript": "^5.8.3",
+    "eslint-plugin-react-hooks": "^6.1.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "prettier": "^3.7.4",
+    "typescript": "~5.9.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "^8.0.16"
-  },
-  "pnpm": {
-    "overrides": {
-      "entities": "4.5.0"
-    }
+    "vite": "^7.2.4",
+    "vite-tsconfig-paths": "^5.1.4"
   }
 }
