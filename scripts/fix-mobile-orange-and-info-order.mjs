@@ -95,7 +95,7 @@ if (!styles.includes(styleMarker)) {
 
 const infoOrderMarker = "/* Keep the three public calendar info boxes after the booking request on mobile. */";
 if (!styles.includes(infoOrderMarker)) {
-  styles += `\n\n${infoOrderMarker}\n@media (max-width: 1023px) {\n  .public-booking-stack {\n    display: flex !important;\n    flex-direction: column !important;\n  }\n\n  .public-booking-card {\n    order: -100 !important;\n  }\n\n  .public-calendar-info-box {\n    order: 100 !important;\n  }\n}\n`;
+  styles += `\n\n${infoOrderMarker}\n@media (max-width: 1023px) {\n  /* apply-calendar-form-enhancements moves the three boxes into the calendar column.\n     Flatten that column on mobile so the booking column can sit between the calendar\n     card and those information boxes. Desktop keeps the two-column structure. */\n  .public-calendar-layout {\n    display: flex !important;\n    flex-direction: column !important;\n  }\n\n  .public-calendar-layout > .lg\\:col-span-7 {\n    display: contents !important;\n  }\n\n  .public-calendar-layout > .lg\\:col-span-7 > .bg-card {\n    order: 0 !important;\n  }\n\n  .public-calendar-layout > .public-booking-stack {\n    order: 10 !important;\n    display: flex !important;\n    flex-direction: column !important;\n  }\n\n  .public-booking-card {\n    order: 0 !important;\n  }\n\n  .public-calendar-info-box {\n    order: 20 !important;\n  }\n}\n`;
 }
 writeFileSync(stylesPath, styles);
 
