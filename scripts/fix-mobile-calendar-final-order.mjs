@@ -3,12 +3,6 @@ import { readFileSync, writeFileSync } from "node:fs";
 const calendarPath = "src/routes/kalender.tsx";
 let calendar = readFileSync(calendarPath, "utf8");
 
-const mobileMarker = "{/* Mobile info boxes after booking card */}";
-if (calendar.includes(mobileMarker)) {
-  console.log("Mobile calendar info placement already applied.");
-  process.exit(0);
-}
-
 function findMatchingDiv(source, start) {
   const tokenRe = /<div\b[^>]*>|<\/div>/g;
   tokenRe.lastIndex = start;
@@ -25,19 +19,16 @@ function findMatchingDiv(source, start) {
 }
 
 const bookingMarker = "          {/* Booking panel */}";
-const bookingIndex = calendar.indexOf(bookingMarker);
 const firstTitle = 'tr("Längere Session ab 4 Stunden?", "Longer session from 4 hours?")';
 const firstTitleIndex = calendar.indexOf(firstTitle);
+const bookingIndex = calendar.indexOf(bookingMarker);
 
-if (bookingIndex < 0 || firstTitleIndex < 0) {
-  throw new Error("Booking panel or calendar info boxes could not be located.");
+if (firstTitleIndex < 0 || bookingIndex < 0) {
+  throw new Error("Booking panel or info cards could not be located.");
 }
 
-// Locate the three consecutive info cards wherever previous prebuild steps left them.
 const firstBlockStart = calendar.lastIndexOf('<div className="mt-6 border', firstTitleIndex);
-if (firstBlockStart < 0) {
-  throw new Error("First calendar info card could not be located.");
-}
+if (firstBlockStart < 0) throw new Error("First info card could not be located.");
 
 const firstBlockEnd = findMatchingDiv(calendar, firstBlockStart);
 const secondBlockStart = calendar.indexOf('<div className="mt-4 border', firstBlockEnd);
@@ -46,36 +37,35 @@ const thirdBlockStart = secondBlockEnd >= 0 ? calendar.indexOf('<div className="
 const thirdBlockEnd = thirdBlockStart >= 0 ? findMatchingDiv(calendar, thirdBlockStart) : -1;
 
 if ([firstBlockEnd, secondBlockStart, secondBlockEnd, thirdBlockStart, thirdBlockEnd].some((n) => n < 0)) {
-  throw new Error("All three calendar info cards could not be isolated.");
+  throw new Error("All three info cards could not be isolated.");
 }
 
 const infoBlocks = calendar.slice(firstBlockStart, thirdBlockEnd);
+calendar = calendar.slice(0, firstBlockStart) + calendar.slice(thirdBlockEnd);
 
-// Keep the existing desktop position, but hide that copy on phones.
-const desktopCopy = `<div className="hidden lg:contents">\n${infoBlocks}\n</div>`;
-calendar = calendar.slice(0, firstBlockStart) + desktopCopy + calendar.slice(thirdBlockEnd);
+// Remove empty wrappers from earlier mobile-only attempts if present.
+calendar = calendar
+  .replace(/\s*\{\/\* Mobile info boxes after booking card \*\/\}\s*/g, "\n")
+  .replace(/<div className="hidden lg:contents">\s*<\/div>/g, "")
+  .replace(/<div className="lg:hidden">\s*<\/div>/g, "");
 
-// Find the actual booking card (not merely the Booking panel comment) and put a
-// dedicated mobile copy directly AFTER that card. This guarantees the requested
-// mobile order regardless of Safari flex/grid ordering or earlier build transforms.
 const refreshedBookingIndex = calendar.indexOf(bookingMarker);
 const bookingCardStart = calendar.indexOf('<div className="bg-card border border-champagne/15 p-6 min-h-[300px]', refreshedBookingIndex);
-if (bookingCardStart < 0) {
-  throw new Error("Booking card could not be located.");
-}
+if (bookingCardStart < 0) throw new Error("Booking card could not be located.");
+
 const bookingCardEnd = findMatchingDiv(calendar, bookingCardStart);
-if (bookingCardEnd < 0) {
-  throw new Error("Booking card end could not be located.");
-}
+if (bookingCardEnd < 0) throw new Error("Booking card end could not be located.");
 
-const mobileCopy = `\n\n            ${mobileMarker}\n            <div className="lg:hidden">\n${infoBlocks}\n            </div>`;
-calendar = calendar.slice(0, bookingCardEnd) + mobileCopy + calendar.slice(bookingCardEnd);
+// Identical order on phone, tablet and desktop:
+// calendar -> booking request -> three information cards.
+calendar = calendar.slice(0, bookingCardEnd) + `\n${infoBlocks}` + calendar.slice(bookingCardEnd);
 
-// Sanity check: on mobile the inserted copy must occur after the booking card.
-const markerIndex = calendar.indexOf(mobileMarker);
-if (markerIndex < bookingCardEnd) {
-  throw new Error("Mobile info cards were not inserted after the booking card.");
+const finalBookingCardStart = calendar.indexOf('<div className="bg-card border border-champagne/15 p-6 min-h-[300px]', calendar.indexOf(bookingMarker));
+const finalBookingCardEnd = findMatchingDiv(calendar, finalBookingCardStart);
+const finalInfoIndex = calendar.indexOf(firstTitle);
+if (finalInfoIndex < finalBookingCardEnd) {
+  throw new Error("Info cards are still before the booking request.");
 }
 
 writeFileSync(calendarPath, calendar);
-console.log("Mobile order fixed: calendar -> booking request -> info boxes; desktop unchanged.");
+console.log("Calendar order fixed on all devices: calendar -> booking request -> info boxes.");
