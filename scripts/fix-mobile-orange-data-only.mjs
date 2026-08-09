@@ -65,4 +65,4 @@ adminBookingFunctions = replaceOnce(
 );
 writeFileSync(adminBookingFunctionsPath, adminBookingFunctions);
 
-console.log("Mobile booking metadata and studio RPC fixed without changing calendar layout.");
+console.log("Mobile booking data and studio RPC fixes applied without changing calendar layout.");
