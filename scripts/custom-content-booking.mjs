@@ -24,6 +24,10 @@ apply("src/lib/booking.functions.ts", (text) => {
     '      data.preferences ? `${data.booking_type === "custom_content" ? "Custom-Content-Wunsch" : "Vorlieben & Wünsche"}:\\n${data.preferences}` : null,',
   );
   text = text.replace(
+    '    ].join("\\n\\n");\n    const combinedInternalNote = [',
+    '    ].join("\\n\\n").slice(0, 2000);\n    const combinedInternalNote = [',
+  );
+  text = text.replace(
     '  is_content_shoot: data.booking_type === "content",',
     '  is_content_shoot: data.booking_type === "content" || data.booking_type === "custom_content",',
   );
