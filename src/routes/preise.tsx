@@ -83,6 +83,7 @@ function Preise() {
           unit: tr("je Stunde & Domina", "per hour & domina"),
         },
       ],
+      priceUnitBelow: true,
       desc: tr(
         "Eine gemeinsame Session mit zwei Dominas. Der Preis gilt je angefangener Stunde und pro Domina.",
         "A shared session with two dominas. The rate applies per started hour and per domina.",
