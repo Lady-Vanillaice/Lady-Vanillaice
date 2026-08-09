@@ -1,0 +1,1 @@
+Calendar layout invariant: build scripts must not move or reorder the public calendar booking panel or its information boxes. The source JSX order is authoritative: calendar -> booking request -> info boxes. Mobile and desktop must use the same DOM order.
