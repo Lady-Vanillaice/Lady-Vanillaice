@@ -24,9 +24,12 @@ apply("src/lib/booking.functions.ts", (text) => {
     '      data.preferences ? `${data.booking_type === "custom_content" ? "Custom-Content-Wunsch" : "Vorlieben & Wünsche"}:\\n${data.preferences}` : null,',
   );
   text = text.replace(
-    '    ].join("\\n\\n");\n    const combinedInternalNote = [',
-    '    ].join("\\n\\n").slice(0, 2000);\n    const combinedInternalNote = [',
+    '    const message = [\n      ...originLines,\n      ...profileSections,\n      "—\\nManuell durch Admin eingetragen.",\n    ].join("\\n\\n");',
+    '    const message = data.booking_type === "custom_content"\n      ? "Custom Content – manuell durch Admin eingetragen."\n      : [\n          ...originLines,\n          ...profileSections,\n          "—\\nManuell durch Admin eingetragen.",\n        ].join("\\n\\n").slice(0, 2000);',
   );
+  if (!text.includes('const message = data.booking_type === "custom_content"')) {
+    throw new Error("Custom-Content-Nachricht konnte nicht sicher gepatcht werden.");
+  }
   text = text.replace(
     '  is_content_shoot: data.booking_type === "content",',
     '  is_content_shoot: data.booking_type === "content" || data.booking_type === "custom_content",',
