@@ -7,6 +7,8 @@ import { createCashBookEntry } from "@/lib/cashbook.functions";
 const today = () => new Date().toISOString().slice(0, 10);
 const PAYMENT_METHODS = ["PayPal", "Überweisung", "Bar", "Kreditkarte", "EC-/Debitkarte", "Sofortüberweisung", "Sonstiges"] as const;
 
+type SpecialPaymentType = "Zahlsklave" | "Keuschhaltung";
+
 function parseEuroAmount(value: string) {
   const compact = value.trim().replace(/[\s€]/g, "");
   const lastComma = compact.lastIndexOf(",");
@@ -26,7 +28,7 @@ function parseEuroAmount(value: string) {
   return Number(normalized);
 }
 
-export function FinancialSlaveEntryForm() {
+function SpecialPaymentEntryForm({ type }: { type: SpecialPaymentType }) {
   const qc = useQueryClient();
   const create = useServerFn(createCashBookEntry);
   const [date, setDate] = useState(today());
@@ -49,13 +51,13 @@ export function FinancialSlaveEntryForm() {
 
       return create({
         data: {
-          studio: "Zahlsklave",
+          studio: type,
           datum: date,
           kunde: name.trim(),
           anzahlung: parsedAmount,
           anzahlung_method: selectedPaymentMethod,
           bar: 0,
-          notiz: "Zahlsklave",
+          notiz: type,
         },
       });
     },
@@ -77,12 +79,12 @@ export function FinancialSlaveEntryForm() {
       className="bg-card border border-champagne/40 p-4 space-y-4"
     >
       <div>
-        <h2 className="eyebrow">Zahlsklave</h2>
+        <h2 className="eyebrow">{type}</h2>
         <p className="mt-1 text-xs text-vanilla/50">Das ausgewählte Zahlungsdatum wird als Einnahmedatum im Kassenbuch gespeichert.</p>
       </div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <label className="block space-y-1.5">
-          <span className="block text-[10px] uppercase tracking-[.2em] text-vanilla/55">Datum</span>
+          <span className="block text-[10px] uppercase tracking-[.2em] text-vanilla/55">Bezahlt am</span>
           <input
             required
             type="date"
@@ -107,7 +109,7 @@ export function FinancialSlaveEntryForm() {
           />
         </label>
         <label className="block space-y-1.5">
-          <span className="block text-[10px] uppercase tracking-[.2em] text-vanilla/55">Bezahlt mit</span>
+          <span className="block text-[10px] uppercase tracking-[.2em] text-vanilla/55">Wie bezahlt</span>
           <select
             required
             value={paymentMethod}
@@ -136,9 +138,18 @@ export function FinancialSlaveEntryForm() {
       </div>
       <button disabled={mutation.isPending} className="btn-gold inline-flex gap-2">
         <Plus size={15} />
-        {mutation.isPending ? "Speichere…" : "Zahlsklave speichern"}
+        {mutation.isPending ? "Speichere…" : `${type} speichern`}
       </button>
       {mutation.error && <p className="text-sm text-bordeaux">{(mutation.error as Error).message}</p>}
     </form>
+  );
+}
+
+export function FinancialSlaveEntryForm() {
+  return (
+    <>
+      <SpecialPaymentEntryForm type="Zahlsklave" />
+      <SpecialPaymentEntryForm type="Keuschhaltung" />
+    </>
   );
 }
