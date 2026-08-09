@@ -66,11 +66,23 @@ calendar = calendar.replace(
   'className="bg-card border border-champagne/15 p-6 min-h-[300px] public-booking-card order-first lg:order-none"',
 );
 
+calendar = calendar.replace(
+  'className="mt-6 border border-champagne/40 bg-champagne/5 p-4 text-xs text-vanilla/75 leading-relaxed"',
+  'className="mt-6 border border-champagne/40 bg-champagne/5 p-4 text-xs text-vanilla/75 leading-relaxed public-calendar-info-box"',
+);
+calendar = calendar.replaceAll(
+  'className="mt-4 border border-champagne/40 bg-champagne/5 p-4 text-xs text-vanilla/75 leading-relaxed"',
+  'className="mt-4 border border-champagne/40 bg-champagne/5 p-4 text-xs text-vanilla/75 leading-relaxed public-calendar-info-box"',
+);
+
 if (!calendar.includes("public-booking-stack flex flex-col")) {
   throw new Error("Mobile booking stack layout could not be applied.");
 }
 if (!calendar.includes("public-booking-card order-first lg:order-none")) {
   throw new Error("Mobile booking-first order could not be applied.");
+}
+if ((calendar.match(/public-calendar-info-box/g) ?? []).length < 3) {
+  throw new Error("The three mobile calendar information boxes could not be marked.");
 }
 writeFileSync(calendarPath, calendar);
 
@@ -79,6 +91,11 @@ let styles = readFileSync(stylesPath, "utf8");
 const styleMarker = "/* Force booking before calendar information boxes on mobile. */";
 if (!styles.includes(styleMarker)) {
   styles += `\n\n${styleMarker}\n@media (max-width: 1023px) {\n  .public-booking-stack {\n    display: flex !important;\n    flex-direction: column !important;\n  }\n\n  .public-booking-card {\n    order: -1 !important;\n  }\n}\n`;
+}
+
+const infoOrderMarker = "/* Keep the three public calendar info boxes after the booking request on mobile. */";
+if (!styles.includes(infoOrderMarker)) {
+  styles += `\n\n${infoOrderMarker}\n@media (max-width: 1023px) {\n  .public-booking-stack {\n    display: flex !important;\n    flex-direction: column !important;\n  }\n\n  .public-booking-card {\n    order: -100 !important;\n  }\n\n  .public-calendar-info-box {\n    order: 100 !important;\n  }\n}\n`;
 }
 writeFileSync(stylesPath, styles);
 
