@@ -6,6 +6,7 @@ import type { FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { updateBookingStatus, deleteBooking } from "@/lib/booking.functions";
 import { createCashBookEntry } from "@/lib/cashbook.functions";
+import { updateBookingRestPaymentMethod } from "@/lib/rest-payment.functions";
 import { PageHeader } from "@/components/site/PageHeader";
 import { BookingCard, type Booking, type Slot } from "@/components/admin/admin-shared";
 import { ArrowLeft, Plus, X, CheckCircle2 } from "lucide-react";
@@ -86,6 +87,7 @@ function matchKind(b: Booking, kind: BookingKind): boolean {
 export function BookingsList({ kind }: { kind: BookingKind }) {
   const qc = useQueryClient();
   const updateBookingFn = useServerFn(updateBookingStatus);
+  const updateRestPaymentFn = useServerFn(updateBookingRestPaymentMethod);
   const deleteBookingFn = useServerFn(deleteBooking);
   const createCashBookEntryFn = useServerFn(createCashBookEntry);
 
@@ -133,7 +135,7 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
   });
 
   const statusMut = useMutation({
-    mutationFn: (v: {
+    mutationFn: async (v: {
       id: string;
       status: Booking["status"];
       decline_reason?: "services_not_offered" | "slot_taken" | "not_yet_offered" | "no_response";
@@ -142,12 +144,20 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
       confirmation_note?: string;
       anzahlung_method?: string | null;
       anzahlung_paid_at?: string | null;
+      restzahlung_method?: string | null;
       deposit_exemption_reason?: "regular_customer" | "trust" | "exception" | "colleague_guarantees" | "spontaneous" | null;
-    }) => updateBookingFn({ data: v }),
+    }) => {
+      const { restzahlung_method, ...bookingData } = v;
+      await updateBookingFn({ data: bookingData });
+      if (restzahlung_method !== undefined) {
+        await updateRestPaymentFn({ data: { id: v.id, restzahlung_method } });
+      }
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-bookings"] });
       qc.invalidateQueries({ queryKey: ["admin-slots"] });
       qc.invalidateQueries({ queryKey: ["cashbook"] });
+      qc.invalidateQueries({ queryKey: ["booking-rest-payment-methods"] });
     },
   });
 
@@ -266,6 +276,8 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
   );
 }
 
+const PAYMENT_METHODS = ["Bar", "PayPal", "Überweisung", "Karte", "Sonstige"] as const;
+
 function FixBookingDialog({
   booking,
   pending,
@@ -275,32 +287,33 @@ function FixBookingDialog({
   booking: Booking;
   pending: boolean;
   onClose: () => void;
-  onSave: (values: { anzahlung: number; bar: number; anzahlung_method: string | null; anzahlung_paid_at: string | null; deposit_exemption_reason: "regular_customer" | "trust" | "exception" | "colleague_guarantees" | "spontaneous" | null }) => void;
+  onSave: (values: { anzahlung: number; bar: number; anzahlung_method: string | null; anzahlung_paid_at: string | null; restzahlung_method: string | null; deposit_exemption_reason: "regular_customer" | "trust" | "exception" | "colleague_guarantees" | "spontaneous" | null }) => void;
 }) {
   const [total, setTotal] = useState("");
   const [deposit, setDeposit] = useState("");
   const [shortSessionPrice, setShortSessionPrice] = useState("");
   const [depositExemptionReason, setDepositExemptionReason] = useState<"regular_customer" | "trust" | "exception" | "colleague_guarantees" | "spontaneous" | "">("");
-  const [paymentMode, setPaymentMode] = useState<"deposit_cash" | "full_non_cash">("deposit_cash");
-  const [method, setMethod] = useState("Überweisung");
+  const [depositMethod, setDepositMethod] = useState("Überweisung");
+  const [restMethod, setRestMethod] = useState("Bar");
   const [paidAt, setPaidAt] = useState(() => new Date().toISOString().slice(0, 10));
   const [error, setError] = useState("");
   const totalValue = Number(total.replace(",", ".")) || 0;
   const depositValue = Number(deposit.replace(",", ".")) || 0;
-  const fullNonCash = !depositExemptionReason && paymentMode === "full_non_cash";
-  const rest = fullNonCash ? 0 : Math.max(0, totalValue - depositValue);
+  const rest = depositExemptionReason ? totalValue : Math.max(0, totalValue - depositValue);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
     setError("");
     if (totalValue <= 0) return setError("Bitte den Gesamtpreis eintragen.");
-    if (!depositExemptionReason && !fullNonCash && (depositValue <= 0 || depositValue > totalValue)) return setError("Die erhaltene Anzahlung muss größer als 0 € und höchstens so hoch wie der Gesamtpreis sein.");
-    if (!depositExemptionReason && (!method.trim() || !paidAt)) return setError("Bitte Zahlungsart und Eingangsdatum angeben.");
+    if (!depositExemptionReason && (depositValue <= 0 || depositValue > totalValue)) return setError("Die erhaltene Anzahlung muss größer als 0 € und höchstens so hoch wie der Gesamtpreis sein.");
+    if (!depositExemptionReason && (!depositMethod.trim() || !paidAt)) return setError("Bitte Zahlungsart und Eingangsdatum der Anzahlung angeben.");
+    if (rest > 0 && !restMethod.trim()) return setError("Bitte die Zahlungsart der Restzahlung angeben.");
     onSave({
-      anzahlung: depositExemptionReason ? 0 : fullNonCash ? totalValue : depositValue,
-      bar: depositExemptionReason ? totalValue : rest,
-      anzahlung_method: depositExemptionReason ? null : method.trim(),
+      anzahlung: depositExemptionReason ? 0 : depositValue,
+      bar: rest,
+      anzahlung_method: depositExemptionReason ? null : depositMethod.trim(),
       anzahlung_paid_at: depositExemptionReason ? null : paidAt,
+      restzahlung_method: rest > 0 ? restMethod.trim() : null,
       deposit_exemption_reason: depositExemptionReason || null,
     });
   };
@@ -312,18 +325,18 @@ function FixBookingDialog({
           <div><div className="eyebrow">Termin fixieren</div><h2 className="font-display text-2xl text-vanilla">{booking.guest_name}</h2></div>
           <button type="button" onClick={onClose} aria-label="Schließen"><X size={20} /></button>
         </div>
-        <p className="text-sm text-vanilla/60">Trage Preis und Zahlungsweise ein. Du kannst eine Anzahlung mit Bar-Rest oder eine bereits vollständig unbar bezahlte Session erfassen. Der Termin wird anschließend in Terminplan und Kassenbuch übernommen.</p>
+        <p className="text-sm text-vanilla/60">Anzahlung und Restzahlung werden getrennt erfasst. Für beide kannst du unabhängig die Zahlungsart auswählen; die Restzahlung muss also nicht automatisch Bar sein.</p>
         <div className="grid sm:grid-cols-2 gap-3">
           <label className="space-y-1"><span className="eyebrow block">Kurzsession</span><select value={shortSessionPrice} onChange={(e) => { const value = e.target.value; setShortSessionPrice(value); if (value) setTotal(value); }} className="input-luxe"><option value="">Preis auswählen</option><option value="60">60 €</option><option value="75">75 €</option><option value="100">100 €</option></select></label>
-          <label className="space-y-1"><span className="eyebrow block">Anzahlungsregel</span><select value={depositExemptionReason} onChange={(e) => { const value = e.target.value as typeof depositExemptionReason; setDepositExemptionReason(value); if (value) { setDeposit("0"); setPaymentMode("deposit_cash"); } }} className="input-luxe"><option value="">Normale Zahlung</option><option value="regular_customer">Keine Anzahlung – Stammkunde</option><option value="trust">Keine Anzahlung – Vertrauensbasis</option><option value="exception">Keine Anzahlung – Ausnahme</option><option value="colleague_guarantees">Keine Anzahlung – Kollegin bürgt</option><option value="spontaneous">Keine Anzahlung – Spontaner Termin</option></select></label>
+          <label className="space-y-1"><span className="eyebrow block">Anzahlungsregel</span><select value={depositExemptionReason} onChange={(e) => { const value = e.target.value as typeof depositExemptionReason; setDepositExemptionReason(value); if (value) setDeposit("0"); }} className="input-luxe"><option value="">Normale Anzahlung</option><option value="regular_customer">Keine Anzahlung – Stammkunde</option><option value="trust">Keine Anzahlung – Vertrauensbasis</option><option value="exception">Keine Anzahlung – Ausnahme</option><option value="colleague_guarantees">Keine Anzahlung – Kollegin bürgt</option><option value="spontaneous">Keine Anzahlung – Spontaner Termin</option></select></label>
           <label className="space-y-1"><span className="eyebrow block">Gesamtpreis (€)</span><input autoFocus required inputMode="decimal" value={total} onChange={(e) => setTotal(e.target.value)} placeholder="z. B. 450" className="input-luxe" /></label>
-          <label className="space-y-1"><span className="eyebrow block">Zahlungsaufteilung</span><select disabled={Boolean(depositExemptionReason)} value={paymentMode} onChange={(e) => setPaymentMode(e.target.value as typeof paymentMode)} className="input-luxe disabled:opacity-40"><option value="deposit_cash">Anzahlung + Bar-Rest</option><option value="full_non_cash">Komplett unbar bezahlt</option></select></label>
-          {!fullNonCash && <label className="space-y-1"><span className="eyebrow block">Anzahlung erhalten (€)</span><input required={!depositExemptionReason} disabled={Boolean(depositExemptionReason)} inputMode="decimal" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="z. B. 150" className="input-luxe disabled:opacity-40" /></label>}
-          {fullNonCash && <div className="space-y-1"><span className="eyebrow block">Komplett erhalten</span><div className="input-luxe opacity-80">{totalValue.toLocaleString("de-DE")} €</div></div>}
-          <label className="space-y-1"><span className="eyebrow block">Zahlungsart</span><select disabled={Boolean(depositExemptionReason)} value={method} onChange={(e) => setMethod(e.target.value)} className="input-luxe disabled:opacity-40"><option>Überweisung</option><option>PayPal</option><option>Bar</option><option>Sonstige</option></select></label>
-          <label className="space-y-1"><span className="eyebrow block">Eingegangen am</span><input required={!depositExemptionReason} disabled={Boolean(depositExemptionReason)} type="date" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} className="input-luxe disabled:opacity-40" /></label>
+          <label className="space-y-1"><span className="eyebrow block">Anzahlung erhalten (€)</span><input required={!depositExemptionReason} disabled={Boolean(depositExemptionReason)} inputMode="decimal" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="z. B. 150" className="input-luxe disabled:opacity-40" /></label>
+          <label className="space-y-1"><span className="eyebrow block">Zahlungsart Anzahlung</span><select disabled={Boolean(depositExemptionReason)} value={depositMethod} onChange={(e) => setDepositMethod(e.target.value)} className="input-luxe disabled:opacity-40">{PAYMENT_METHODS.map((v) => <option key={v}>{v}</option>)}</select></label>
+          <label className="space-y-1"><span className="eyebrow block">Anzahlung eingegangen am</span><input required={!depositExemptionReason} disabled={Boolean(depositExemptionReason)} type="date" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} className="input-luxe disabled:opacity-40" /></label>
+          <div className="space-y-1"><span className="eyebrow block">Restzahlung (€)</span><div className="input-luxe opacity-80">{rest.toLocaleString("de-DE")} €</div></div>
+          <label className="space-y-1"><span className="eyebrow block">Zahlungsart Rest / vor Ort</span><select disabled={rest <= 0} value={restMethod} onChange={(e) => setRestMethod(e.target.value)} className="input-luxe disabled:opacity-40">{PAYMENT_METHODS.map((v) => <option key={v}>{v}</option>)}</select></label>
         </div>
-        <div className="flex items-center justify-between border border-champagne/25 bg-champagne/[0.05] p-4"><span className="text-sm text-vanilla/65">Noch bar beim Termin</span><strong className="font-display text-3xl text-champagne">{rest.toLocaleString("de-DE")} €</strong></div>
+        <div className="grid grid-cols-2 gap-3 border border-champagne/25 bg-champagne/[0.05] p-4 text-sm"><div><span className="text-vanilla/50 block">Anzahlung</span><strong>{depositExemptionReason ? "0" : depositValue.toLocaleString("de-DE")} € · {depositExemptionReason ? "entfällt" : depositMethod}</strong></div><div><span className="text-vanilla/50 block">Restzahlung</span><strong>{rest.toLocaleString("de-DE")} €{rest > 0 ? ` · ${restMethod}` : ""}</strong></div></div>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <div className="flex flex-col-reverse sm:flex-row justify-end gap-2"><button type="button" onClick={onClose} className="btn-outline-gold">Abbrechen</button><button disabled={pending} className="btn-gold"><CheckCircle2 size={14} />{pending ? "Wird gespeichert…" : "Termin fixieren"}</button></div>
       </form>
