@@ -44,3 +44,20 @@ export const updateBookingRestPaymentMethod = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+export const updateBookingRestPaymentMethodBySlot = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((value: unknown) => z.object({
+    slot_id: z.string().uuid(),
+    restzahlung_method: paymentMethod,
+  }).parse(value))
+  .handler(async ({ data, context }) => {
+    await ensureAdmin(context.supabase, context.userId);
+    const db = context.supabase as any;
+    const { error } = await db
+      .from("bookings")
+      .update({ restzahlung_method: data.restzahlung_method?.trim() || null })
+      .eq("slot_id", data.slot_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
