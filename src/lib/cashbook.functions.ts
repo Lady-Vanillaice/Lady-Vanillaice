@@ -161,6 +161,24 @@ export const createCashBookEntry = createServerFn({ method: "POST" })
     return row;
   });
 
+export const updateCashBookEntry = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => entrySchema.extend({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    await ensureAdmin(context.supabase, context.userId);
+    const { error } = await context.supabase.from("cash_book_entries").update({
+      studio: data.studio.trim(),
+      datum: data.datum,
+      kunde: data.kunde.trim(),
+      anzahlung: data.anzahlung,
+      anzahlung_method: data.anzahlung_method?.trim() || null,
+      bar: data.bar,
+      notiz: data.notiz?.trim() || null,
+    }).eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 const expenseSchema = z.object({
   studio: z.string().min(1, "Studio fehlt").max(200),
   datum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Datum ungültig"),
