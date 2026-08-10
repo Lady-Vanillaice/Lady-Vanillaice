@@ -1,0 +1,2 @@
+payment-editor-production-refresh 2026-08-10T21:06+02:00
+Enthält den aktuellen Kassenbuch-Zahlungseditor mit getrennter Zahlungsart für Anzahlung und Restzahlung.
