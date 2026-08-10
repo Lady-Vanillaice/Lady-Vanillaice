@@ -49,5 +49,6 @@ if (!text.includes('setOnsiteMethod("Bar")')) text = text.replace('      setShor
 if (text !== before) { writeFileSync(path, text); console.log("Short-session payment form simplified."); }
 else console.log("Short-session payment form already simplified.");
 
-// Cashbook patch runs last, after all legacy/prebuild rewrites.
-await import("./add-cashbook-full-payments.mjs");
+// Only the safe remove patch runs here. The larger cashbook payment rewrite is
+// disabled until it can be moved out of prebuild without generating invalid TSX.
+await import("./add-cashbook-remove-only.mjs");
