@@ -44,12 +44,18 @@ if (!text.includes('const hideBookingMut = useMutation')) {
 }
 text = text.replace(
   '  const incomeActions = (e: CashBookEntry) => e.source === "booking" ? (\n    <button onClick={() => setEditing(e)} className="text-champagne text-xs uppercase">Bearbeiten</button>\n  ) : (',
-  '  const incomeActions = (e: CashBookEntry) => e.source === "booking" ? (\n    <div className="flex items-center gap-3">\n      <button onClick={() => setEditing(e)} className="text-champagne text-xs uppercase">Bearbeiten</button>\n      <button onClick={() => e.booking_id && confirm("Diesen Eintrag nur aus dem Kassenbuch entfernen? Termin und Kundendaten bleiben erhalten.") && hideBookingMut.mutate(e.booking_id)} aria-label="Aus Kassenbuch entfernen" title="Aus Kassenbuch entfernen"><Trash2 size={15} /></button>\n    </div>\n  ) : (',
+  '  const incomeActions = (e: CashBookEntry) => e.source === "booking" ? (\n    <div className="flex items-center gap-3">\n      <button onClick={() => setEditing(e)} className="text-champagne text-xs uppercase">Bearbeiten</button>\n      <button onClick={() => e.booking_id && confirm("Termin und Kassenbucheintrag endgültig löschen? Der Zeitraum wird wieder freigegeben.") && hideBookingMut.mutate(e.booking_id)} aria-label="Termin löschen" title="Termin löschen"><Trash2 size={15} /></button>\n    </div>\n  ) : (',
 );
 
-for (const marker of ['hideBookingFromCashbook', 'cashbook-hidden-bookings', 'hiddenBookingSet.has(e.booking_id)', 'Aus Kassenbuch entfernen']) {
-  if (!text.includes(marker)) throw new Error(`Kassenbuch-Entfernen konnte nicht sicher eingebaut werden: ${marker}`);
+text = text.replaceAll(
+  'Diesen Eintrag nur aus dem Kassenbuch entfernen? Termin und Kundendaten bleiben erhalten.',
+  'Termin und Kassenbucheintrag endgültig löschen? Der Zeitraum wird wieder freigegeben.',
+);
+text = text.replaceAll('aria-label="Aus Kassenbuch entfernen" title="Aus Kassenbuch entfernen"', 'aria-label="Termin löschen" title="Termin löschen"');
+
+for (const marker of ['hideBookingFromCashbook', 'cashbook-hidden-bookings', 'hiddenBookingSet.has(e.booking_id)', 'Termin löschen']) {
+  if (!text.includes(marker)) throw new Error(`Kassenbuch-Löschen konnte nicht sicher eingebaut werden: ${marker}`);
 }
 
 if (text !== before) writeFileSync(path, text);
-console.log("Cashbook remove option applied safely.");
+console.log("Cashbook delete option applied safely.");
