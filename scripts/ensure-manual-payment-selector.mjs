@@ -86,3 +86,7 @@ if (text !== before) {
 } else {
   console.log("Manual payment form already stable.");
 }
+
+// Keep the cashbook delete option stable as well. This patch only hides a
+// booking from the cashbook; it never deletes the appointment or customer.
+await import("./add-cashbook-booking-delete.mjs");
