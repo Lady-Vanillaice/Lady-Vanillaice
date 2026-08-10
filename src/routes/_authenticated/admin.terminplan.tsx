@@ -51,7 +51,12 @@ function TerminplanPage() {
   const studiosQ = useQuery({ queryKey: ["admin-studios"], queryFn: () => listStudiosFn() });
   const customersQ = useQuery({ queryKey: ["customers"], queryFn: () => listCustomersFn() });
   const manualMut = useMutation({
-    mutationFn: (input: ManualBookingValues) => createManualBookingFn({ data: input }),
+    mutationFn: (input: ManualBookingValues) => createManualBookingFn({
+      data: {
+        ...input,
+        deposit_exemption_reason: input.deposit_exemption_reason === "spontaneous" ? "exception" : input.deposit_exemption_reason,
+      },
+    }),
     onSuccess: async () => {
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["admin-terminplan"], refetchType: "all" }),
@@ -87,8 +92,6 @@ function TerminplanPage() {
             } | null);
         const start = b.requested_start ?? slot?.starts_at ?? null;
         if (!start) return null;
-        // Prefer the actual booking duration over the availability window end,
-        // otherwise a short booking inside a long window would display the window's end time.
         const end = b.duration_minutes
           ? new Date(new Date(start).getTime() + b.duration_minutes * 60_000).toISOString()
           : (slot?.ends_at ?? null);
@@ -111,7 +114,7 @@ function TerminplanPage() {
           anzahlung_paid: b.anzahlung_paid,
           deposit_exemption_reason: b.deposit_exemption_reason,
           anzahlung: b.anzahlung != null ? Number(b.anzahlung) : null,
-bar: b.bar != null ? Number(b.bar) : null,
+          bar: b.bar != null ? Number(b.bar) : null,
         } as Entry;
       });
       return rows
@@ -124,7 +127,6 @@ bar: b.bar != null ? Number(b.bar) : null,
   const upcoming = (q.data ?? []).filter((e) => new Date(e.end ?? e.start).getTime() >= now);
   const past = (q.data ?? []).filter((e) => new Date(e.end ?? e.start).getTime() < now).reverse();
 
-  // Gruppierung nach Tag
   const groups: { day: Date; items: Entry[] }[] = [];
   for (const e of upcoming) {
     const d = startOfDay(new Date(e.start));
