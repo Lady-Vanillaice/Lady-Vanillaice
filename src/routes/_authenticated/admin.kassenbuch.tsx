@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/site/PageHeader";
 import { FinancialSlaveEntryForm } from "@/components/admin/financial-slave-entry-form";
 import { updateBookingAccounting } from "@/lib/accounting.functions";
 import { createCashBookEntry, createStudioRentExpense, deleteCashBookEntry, listCashBookEntries, updateCashBookEntry, type CashBookEntry, type DepositExemptionReason } from "@/lib/cashbook.functions";
+import { hideBookingFromCashbook, listHiddenCashbookBookings } from "@/lib/cashbook-visibility.functions";
 import { listBookingRestPaymentMethods, updateBookingRestPaymentMethod } from "@/lib/rest-payment.functions";
 import { calculateStudioDistances } from "@/lib/travel-log.functions";
 
@@ -65,6 +66,8 @@ function KassenbuchPage() {
   const qc = useQueryClient();
   const list = useServerFn(listCashBookEntries);
   const listRestPayments = useServerFn(listBookingRestPaymentMethods);
+  const listHiddenBookings = useServerFn(listHiddenCashbookBookings);
+  const hideBooking = useServerFn(hideBookingFromCashbook);
   const updateRestPayment = useServerFn(updateBookingRestPaymentMethod);
   const create = useServerFn(createCashBookEntry);
   const updateManual = useServerFn(updateCashBookEntry);
@@ -74,6 +77,7 @@ function KassenbuchPage() {
   const saveAccounting = useServerFn(updateBookingAccounting);
   const { data = [], isLoading, error } = useQuery({ queryKey: ["cashbook"], queryFn: () => list() });
   const { data: restPaymentMethods = {} } = useQuery({ queryKey: ["booking-rest-payment-methods"], queryFn: () => listRestPayments() });
+  const { data: hiddenBookingIds = [] } = useQuery({ queryKey: ["cashbook-hidden-bookings"], queryFn: () => listHiddenBookings() });
   const now = new Date();
   const [month, setMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
   const [studioFilter, setStudioFilter] = useState("");
@@ -86,6 +90,7 @@ function KassenbuchPage() {
   const [expenseStudio, setExpenseStudio] = useState(""); const [expenseDate, setExpenseDate] = useState(today());
   const [expenseAmount, setExpenseAmount] = useState(""); const [expenseMethod, setExpenseMethod] = useState(""); const [expenseNote, setExpenseNote] = useState("");
   const [travelLogPending, setTravelLogPending] = useState(false);
+  const hiddenBookingSet = useMemo(() => new Set(hiddenBookingIds), [hiddenBookingIds]);
 
   const restMethodFor = (e: CashBookEntry) => {
     if (e.source !== "booking" || !e.booking_id) return null;
@@ -93,6 +98,7 @@ function KassenbuchPage() {
   };
 
   const filtered = useMemo(() => data.filter((e) => {
+    if (e.source === "booking" && e.booking_id && hiddenBookingSet.has(e.booking_id)) return false;
     const matchesMonth = !month || e.termin_datum.startsWith(month) || Boolean(e.anzahlung_datum?.startsWith(month)) || Boolean(e.bar_datum?.startsWith(month));
     const restMethod = e.source === "booking" && e.booking_id ? restPaymentMethods[e.booking_id] ?? (e.restbetrag_vorgemerkt > 0 ? "Bar" : null) : null;
     const haystack = `${e.kunde} ${e.studio} ${e.studio_address ?? ""} ${e.art} ${e.dauer ?? ""} ${e.expense_category ?? ""} ${e.payment_method ?? ""} ${e.anzahlung_method ?? ""} ${restMethod ?? ""}`.toLowerCase();
@@ -101,7 +107,7 @@ function KassenbuchPage() {
   }).sort((a, b) => {
     const dateOrder = (a.payment_date ?? a.termin_datum).localeCompare(b.payment_date ?? b.termin_datum);
     return dateOrder || (a.termin_start ?? "99:99").localeCompare(b.termin_start ?? "99:99");
-  }), [data, month, studioFilter, methodFilter, statusFilter, search, restPaymentMethods]);
+  }), [data, month, studioFilter, methodFilter, statusFilter, search, restPaymentMethods, hiddenBookingSet]);
 
   const incomeEntries = filtered.filter(e => e.entry_type === "income");
   const receivedIncomeEntries = incomeEntries.filter(e => e.source === "manual" ? Boolean(e.payment_date?.startsWith(month) && e.gesamt > 0) : Boolean((e.anzahlung_datum?.startsWith(month) && e.anzahlung > 0) || (e.bar_datum?.startsWith(month) && e.bar > 0)));
@@ -139,6 +145,7 @@ function KassenbuchPage() {
   const createMut = useMutation({ mutationFn: () => create({ data: { studio, datum, kunde, anzahlung: Number(anzahlung.replace(",", ".")) || 0, anzahlung_method: anzahlungMethod || null, bar: Number(bar.replace(",", ".")) || 0, notiz: notiz || null } }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["cashbook"] }); setKunde(""); setAnzahlung("0"); setBar("0"); setNotiz(""); } });
   const expenseMut = useMutation({ mutationFn: () => createExpense({ data: { studio: expenseStudio, datum: expenseDate, betrag: Number(expenseAmount.replace(",", ".")), zahlungsart: expenseMethod, notiz: expenseNote || null } }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["cashbook"] }); setExpenseAmount(""); setExpenseMethod(""); setExpenseNote(""); } });
   const deleteMut = useMutation({ mutationFn: (id: string) => del({ data: { id } }), onSuccess: () => qc.invalidateQueries({ queryKey: ["cashbook"] }) });
+  const hideBookingMut = useMutation({ mutationFn: (booking_id: string) => hideBooking({ data: { booking_id } }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["cashbook-hidden-bookings"] }); qc.invalidateQueries({ queryKey: ["cashbook"] }); } });
 
   function canExport() {
     if (isLoading) { alert("Das Kassenbuch wird noch geladen. Bitte kurz warten."); return false; }
@@ -218,7 +225,10 @@ function KassenbuchPage() {
   }
 
   const incomeActions = (e: CashBookEntry) => e.source === "booking" ? (
-    <button onClick={() => setEditing(e)} className="text-champagne text-xs uppercase">Bearbeiten</button>
+    <div className="flex items-center gap-3">
+      <button onClick={() => setEditing(e)} className="text-champagne text-xs uppercase">Bearbeiten</button>
+      <button onClick={() => e.booking_id && confirm("Diesen Eintrag nur aus dem Kassenbuch entfernen? Termin und Kundendaten bleiben erhalten.") && hideBookingMut.mutate(e.booking_id)} aria-label="Aus Kassenbuch entfernen" title="Aus Kassenbuch entfernen"><Trash2 size={15} /></button>
+    </div>
   ) : (
     <div className="flex items-center gap-3">
       <button onClick={() => setEditing(e)} className="text-champagne text-xs uppercase">Bearbeiten</button>
