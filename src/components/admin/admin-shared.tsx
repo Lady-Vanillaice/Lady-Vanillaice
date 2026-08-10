@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import {
   Plus,
   CalendarPlus,
@@ -14,6 +15,7 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import type { CustomerRow } from "@/lib/customers.functions";
 import { DEFAULT_STUDIOS, type StudioOption } from "@/lib/studio.functions";
+import { updateBookingRestPaymentMethodBySlot } from "@/lib/rest-payment.functions";
 
 const ADMIN_TIME_ZONE = "Europe/Berlin";
 
@@ -546,6 +548,7 @@ export function ManualBookingForm({
   customers?: CustomerRow[];
   studios?: StudioOption[];
 }) {
+  const updateRestPaymentMethodBySlotFn = useServerFn(updateBookingRestPaymentMethodBySlot);
   const [date, setDate] = useState("");
   const [start, setStart] = useState("18:00");
   const [end, setEnd] = useState("19:00");
@@ -644,7 +647,7 @@ export function ManualBookingForm({
       : location;
 
     try {
-      await onCreate({
+      const created = await onCreate({
         starts_at: starts_at.toISOString(),
         ends_at: ends_at.toISOString(),
         location: fullLocation,
@@ -660,10 +663,22 @@ export function ManualBookingForm({
           bookingType === "duo" ? duoPartner.trim() : null,
         total_amount: total,
         deposit_amount: depositExemptionReason ? 0 : deposit,
-        deposit_method: depositExemptionReason ? null : depositMethod.trim(),
+        deposit_method: depositMethod.trim(),
         deposit_paid_at: depositExemptionReason ? null : depositPaidAt,
         deposit_exemption_reason: depositExemptionReason,
       });
+
+      if (depositExemptionReason && created && typeof created === "object" && "slot_id" in created) {
+        const slotId = (created as { slot_id?: unknown }).slot_id;
+        if (typeof slotId === "string") {
+          await updateRestPaymentMethodBySlotFn({
+            data: {
+              slot_id: slotId,
+              restzahlung_method: depositMethod.trim(),
+            },
+          });
+        }
+      }
 
       setOk(true);
       setDate("");
@@ -680,6 +695,7 @@ export function ManualBookingForm({
       setDepositAmount("");
       setShortSessionPrice("");
       setDepositExemptionReason(null);
+      setDepositMethod("Überweisung");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Fehler");
     }
@@ -929,7 +945,7 @@ export function ManualBookingForm({
           <div><label className="eyebrow block mb-1">Anzahlungsregel</label><select value={depositExemptionReason ?? ""} onChange={(e) => { const value = e.target.value as ManualBookingValues["deposit_exemption_reason"] | ""; setDepositExemptionReason(value || null); if (value) setDepositAmount("0"); }} className="input-luxe !py-2"><option value="">Normale Anzahlung</option><option value="regular_customer">Keine Anzahlung – Stammkunde</option><option value="trust">Keine Anzahlung – Vertrauensbasis</option><option value="exception">Keine Anzahlung – Ausnahme</option><option value="colleague_guarantees">Keine Anzahlung – Kollegin bürgt</option><option value="spontaneous">Keine Anzahlung – Spontaner Termin</option></select></div>
           <div><label className="eyebrow block mb-1">Gesamtpreis (€)</label><input required inputMode="decimal" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} placeholder="z. B. 450" className="input-luxe !py-2" /></div>
           <div><label className="eyebrow block mb-1">Anzahlung erhalten (€)</label><input required={!depositExemptionReason} disabled={Boolean(depositExemptionReason)} inputMode="decimal" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} placeholder="z. B. 150" className="input-luxe !py-2 disabled:opacity-40" /></div>
-          <div><label className="eyebrow block mb-1">Zahlungsart</label><select disabled={Boolean(depositExemptionReason)} value={depositMethod} onChange={(e) => setDepositMethod(e.target.value)} className="input-luxe !py-2 disabled:opacity-40"><option>Überweisung</option><option>PayPal</option><option>Bar</option><option>Sonstige</option></select></div>
+          <div><label className="eyebrow block mb-1">{depositExemptionReason ? "Zahlungsart Restzahlung" : "Zahlungsart Anzahlung"}</label><select value={depositMethod} onChange={(e) => setDepositMethod(e.target.value)} className="input-luxe !py-2"><option>Überweisung</option><option>PayPal</option><option>Bar</option><option>Sonstige</option></select></div>
           <div><label className="eyebrow block mb-1">Anzahlung eingegangen am</label><input required={!depositExemptionReason} disabled={Boolean(depositExemptionReason)} type="date" value={depositPaidAt} onChange={(e) => setDepositPaidAt(e.target.value)} className="input-luxe !py-2 disabled:opacity-40" /></div>
         </div>
         <div className="flex items-center justify-between border-t border-champagne/20 pt-3"><span className="text-sm text-vanilla/65">Noch bar beim Termin</span><strong className="font-display text-2xl text-champagne">{Math.max(0, (Number(totalAmount.replace(",", ".")) || 0) - (Number(depositAmount.replace(",", ".")) || 0)).toLocaleString("de-DE")} €</strong></div>
