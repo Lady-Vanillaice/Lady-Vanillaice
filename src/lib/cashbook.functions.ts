@@ -89,7 +89,7 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
     const [manualRes, bookingRes] = await Promise.all([
       db.from("cash_book_entries").select("id, studio, datum, kunde, anzahlung, anzahlung_method, bar, gesamt, notiz, created_at"),
       db.from("bookings")
-        .select("id, guest_name, duration, duration_minutes, status, anzahlung, anzahlung_method, anzahlung_paid, anzahlung_paid_at, deposit_exemption_reason, deposit_guarantor, bar, restzahlung_method, completed_at, cash_received_at, fully_paid, admin_note, created_at, requested_start, studio_override, studio_address_override, availability_slots(starts_at, ends_at, location, location_address, is_duo, is_content_shoot)")
+        .select("id, guest_name, duration, duration_minutes, status, anzahlung, anzahlung_method, anzahlung_paid, anzahlung_paid_at, deposit_exemption_reason, deposit_guarantor, bar, completed_at, cash_received_at, fully_paid, admin_note, created_at, requested_start, studio_override, studio_address_override, availability_slots(starts_at, ends_at, location, location_address, is_duo, is_content_shoot)")
         .in("status", ["confirmed", "cancelled", "rescheduling"]),
     ]);
     if (manualRes.error) throw new Error(manualRes.error.message);
@@ -153,7 +153,7 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
         anzahlung_vorgemerkt: plannedDeposit,
         anzahlung_method: b.anzahlung_method ?? null, anzahlung_datum: depositDate,
         deposit_exemption_reason: b.deposit_exemption_reason ?? null, deposit_guarantor: b.deposit_guarantor ?? null,
-        restbetrag_vorgemerkt: plannedCash, restzahlung_method: b.restzahlung_method ?? null,
+        restbetrag_vorgemerkt: plannedCash, restzahlung_method: b.deposit_exemption_reason || plannedDeposit === 0 ? b.anzahlung_method ?? null : null,
         bar_datum: cashDate, durchgefuehrt_datum: dateOnly(b.completed_at),
         status, notiz: b.admin_note ?? null, created_at: b.created_at,
       };
