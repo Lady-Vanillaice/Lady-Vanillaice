@@ -27,7 +27,11 @@ text = text.replace(
   '<div><label className="eyebrow block mb-1">Gesamtpreis (€)</label><input required inputMode="decimal" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} placeholder="z. B. 450" className="input-luxe !py-2" /></div>',
   '<div className={shortSessionPrice ? "hidden" : ""}><label className="eyebrow block mb-1">Sessionpreis (€)</label><input required={!shortSessionPrice} inputMode="decimal" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} placeholder="z. B. 450" className="input-luxe !py-2" /></div>',
 );
-if (!text.includes('Zahlungsart vor Ort')) {
+
+// `ensure-manual-payment-selector.mjs` may already have converted the existing
+// selector to "Zahlungsart Zahlung vor Ort". Treat that as the same field and
+// never add a second onsite selector next to it.
+if (!text.includes('Zahlungsart Zahlung vor Ort') && !text.includes('Zahlungsart vor Ort')) {
   const marker = '<div><label className="eyebrow block mb-1">Anzahlung eingegangen am</label>';
   const block = `<div className={shortSessionPrice && depositExemptionReason === "spontaneous" ? "" : "hidden"}><label className="eyebrow block mb-1">Zahlungsart vor Ort</label><select value={onsiteMethod} onChange={(e) => setOnsiteMethod(e.target.value)} className="input-luxe !py-2"><option>Bar</option><option>PayPal</option><option>Überweisung</option><option>Karte</option><option>Sonstige</option></select></div>`;
   text = text.replace(marker, block + marker);
@@ -55,3 +59,4 @@ await import("./add-cashbook-remove-only.mjs");
 await import("./unify-payment-external.mjs");
 await import("./unify-payment-bookings.mjs");
 await import("./unify-payment-cashbook.mjs");
+await import("./fix-cashbook-ui-and-times.mjs");
