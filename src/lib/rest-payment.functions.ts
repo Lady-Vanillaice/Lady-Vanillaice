@@ -95,7 +95,9 @@ export const updateBookingOnsitePayment = createServerFn({ method: "POST" })
       .from("bookings")
       .update({
         ...onsiteUpdate(data),
-        fully_paid: Boolean(data.paid_at && data.amount > 0 && (booking.anzahlung_paid || booking.deposit_exemption_reason)),
+        ...(data.paid_at ? {
+          fully_paid: Boolean(data.amount > 0 && (booking.anzahlung_paid || booking.deposit_exemption_reason)),
+        } : {}),
       })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
@@ -119,7 +121,9 @@ export const updateBookingOnsitePaymentBySlot = createServerFn({ method: "POST" 
         .from("bookings")
         .update({
           ...onsiteUpdate(data),
-          fully_paid: Boolean(data.paid_at && data.amount > 0 && (booking.anzahlung_paid || booking.deposit_exemption_reason)),
+          ...(data.paid_at ? {
+            fully_paid: Boolean(data.amount > 0 && (booking.anzahlung_paid || booking.deposit_exemption_reason)),
+          } : {}),
         })
         .eq("id", booking.id);
       if (error) throw new Error(error.message);
