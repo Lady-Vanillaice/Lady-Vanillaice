@@ -1,0 +1,89 @@
+name: Add single-day calendar export
+
+on:
+  push:
+    branches:
+      - feature/calendar-export-single-day
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/calendar-export-single-day
+          fetch-depth: 0
+      - name: Patch source
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+
+          {
+            const path = 'src/lib/download-image.client/calendar-image-export.ts';
+            let text = readFileSync(path, 'utf8');
+            text = text.replace(
+              'export type CalendarExportMode =\n  | { type: "month"; monthKey: string }',
+              'export type CalendarExportMode =\n  | { type: "day"; dayKey: string }\n  | { type: "month"; monthKey: string }'
+            );
+            text = text.replace(
+              '    if (mode.type === "month") return parts.monthKey === mode.monthKey;\n    if (mode.type === "year") return parts.year === mode.year;',
+              '    if (mode.type === "day") return parts.dayKey === mode.dayKey;\n    if (mode.type === "month") return parts.monthKey === mode.monthKey;\n    if (mode.type === "year") return parts.year === String(mode.year);'
+            );
+            if (!text.includes('{ type: "day"; dayKey: string }') || !text.includes('parts.dayKey === mode.dayKey')) throw new Error('calendar export day patch failed');
+            writeFileSync(path, text);
+          }
+
+          {
+            const path = 'src/routes/_authenticated/admin.kalender.tsx';
+            let text = readFileSync(path, 'utf8');
+            text = text.replace('type ExportChoice = "month" | "year" | "all";', 'type ExportChoice = "day" | "month" | "year" | "all";');
+            text = text.replace(
+              '  const monthKeys = [\n    ...new Set(\n      freeSlots.map((slot) => format(new Date(slot.starts_at), "yyyy-MM")),\n    ),\n  ].sort();',
+              '  const dayKeys = [\n    ...new Set(\n      freeSlots.map((slot) => format(new Date(slot.starts_at), "yyyy-MM-dd")),\n    ),\n  ].sort();\n  const monthKeys = [...new Set(dayKeys.map((day) => day.slice(0, 7)))].sort();'
+            );
+            text = text.replace(
+              '  const [monthKey, setMonthKey] = useState<string>(monthKeys[0] ?? "");\n  const [exporting, setExporting] = useState(false);',
+              '  const [monthKey, setMonthKey] = useState<string>(monthKeys[0] ?? "");\n  const [dayKey, setDayKey] = useState<string>(dayKeys[0] ?? "");\n  const [exporting, setExporting] = useState(false);'
+            );
+            text = text.replace(
+              '  const activeMonth = monthsForYear.includes(monthKey)\n    ? monthKey\n    : (monthsForYear[0] ?? "");',
+              '  const activeMonth = monthsForYear.includes(monthKey)\n    ? monthKey\n    : (monthsForYear[0] ?? "");\n  const daysForMonth = dayKeys.filter((day) => day.startsWith(`${activeMonth}-`));\n  const activeDay = daysForMonth.includes(dayKey) ? dayKey : (daysForMonth[0] ?? "");'
+            );
+            text = text.replace(
+              '      if (choice === "month") {\n        if (!activeMonth)',
+              '      if (choice === "day") {\n        if (!activeDay) throw new Error("Für diesen Monat gibt es keinen offenen Tag.");\n        await exportCalendarImage({ type: "day", dayKey: activeDay });\n      } else if (choice === "month") {\n        if (!activeMonth)'
+            );
+            text = text.replace(
+              '        Wähle einen Monat, ein Jahr oder alle offenen Termine und lade das Bild\n        direkt herunter.',
+              '        Wähle einen einzelnen Tag, einen Monat, ein Jahr oder alle offenen Termine und lade das Bild\n        direkt herunter.'
+            );
+            text = text.replace(
+              '          <option value="month">Einzelner Monat</option>',
+              '          <option value="day">Einzelner Tag</option>\n          <option value="month">Einzelner Monat</option>'
+            );
+            text = text.replace('{choice === "month" && (', '{(choice === "month" || choice === "day") && (');
+            text = text.replace(
+              '            onChange={(event) => setMonthKey(event.target.value)}',
+              '            onChange={(event) => { setMonthKey(event.target.value); const firstDay = dayKeys.find((day) => day.startsWith(`${event.target.value}-`)); if (firstDay) setDayKey(firstDay); }}'
+            );
+            text = text.replace(
+              '        <button\n          type="button"\n          onClick={downloadImage}',
+              '        {choice === "day" && (\n          <select className="input-luxe" value={activeDay} onChange={(event) => setDayKey(event.target.value)}>\n            {daysForMonth.map((day) => (\n              <option key={day} value={day}>\n                {format(new Date(`${day}T12:00:00`), "EEEE, dd.MM.yyyy", { locale: de })}\n              </option>\n            ))}\n          </select>\n        )}\n\n        <button\n          type="button"\n          onClick={downloadImage}'
+            );
+            if (!text.includes('type ExportChoice = "day"') || !text.includes('type: "day", dayKey: activeDay') || !text.includes('<option value="day">Einzelner Tag</option>')) throw new Error('admin calendar day UI patch failed');
+            writeFileSync(path, text);
+          }
+          NODE
+      - name: Verify source
+        run: npm run build
+      - name: Commit source changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src
+          git commit -m "Add single-day calendar image export"
+          git push origin HEAD:feature/calendar-export-single-day
