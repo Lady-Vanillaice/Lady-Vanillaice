@@ -2,15 +2,13 @@ name: Patch parallel content and session
 
 on:
   push:
-    branches:
-      - fix/parallel-content-and-session
+    branches: [fix/parallel-content-and-session]
 
 permissions:
   contents: write
 
 jobs:
   patch:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,8 +43,7 @@ jobs:
     if (blockingErr) throw new Error(blockingErr.message);
 
     // A normal customer session and a content appointment may run in parallel.
-    // We still block two normal sessions or two content appointments at the same time,
-    // so this does not turn the calendar into unrestricted double-booking.
+    // Two normal sessions or two content appointments still block each other.
     const newIsContentAppointment = data.booking_type === "content" || data.booking_type === "custom_content";
     const incompatibleBlocking = (blocking ?? []).filter(
       (slot) => Boolean(slot.is_content_shoot) === newIsContentAppointment,
@@ -59,19 +56,16 @@ jobs:
       );
     }
 '''
-          if old not in text:
+          if old in text:
+              path.write_text(text.replace(old, new, 1))
+          elif 'newIsContentAppointment' not in text:
               raise SystemExit('parallel booking anchor not found')
-          text = text.replace(old, new, 1)
-          path.write_text(text)
           PY
       - name: Commit source change
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/lib/booking.functions.ts
-          if git diff --cached --quiet; then
-            echo "No changes needed"
-            exit 0
-          fi
+          if git diff --cached --quiet; then exit 0; fi
           git commit -m "Allow content and session appointments in parallel"
           git push origin HEAD:fix/parallel-content-and-session
