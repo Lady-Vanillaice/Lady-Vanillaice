@@ -17,6 +17,11 @@ export const listHiddenCashbookBookings = createServerFn({ method: "GET" })
     return (data ?? []).map((row: { booking_id: string }) => row.booking_id);
   });
 
+/**
+ * Der historische Name bleibt bestehen, damit bestehende Admin-Seiten keinen
+ * Import-Bruch bekommen. Die Funktion blendet aber nicht mehr nur aus:
+ * Papierkorb im Kassenbuch bedeutet endgültiges Löschen der Buchung.
+ */
 export const hideBookingFromCashbook = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((value: unknown) => z.object({ booking_id: z.string().uuid() }).parse(value))
@@ -30,16 +35,27 @@ export const hideBookingFromCashbook = createServerFn({ method: "POST" })
       .eq("id", data.booking_id)
       .maybeSingle();
     if (bookingErr) throw new Error(bookingErr.message);
-    if (!booking) throw new Error("Termin nicht gefunden.");
 
-    // Ein ggf. bereits archivierter/manueller Kassenbucheintrag mit derselben
-    // Buchungs-ID wird ebenfalls entfernt. Der Papierkorb bedeutet hier bewusst
-    // vollständiges Löschen des Termins inklusive Kassenbuch-Dublette.
-    const { error: cashbookErr } = await supabaseAdmin
-      .from("cash_book_entries")
-      .delete()
-      .eq("id", data.booking_id);
-    if (cashbookErr) throw new Error(cashbookErr.message);
+    // Ein früher archivierter Kassenbucheintrag mit derselben Buchungs-ID soll
+    // bei einem Löschversuch ebenfalls verschwinden. Dadurch ist der Vorgang
+    // auch nach einem früher nur teilweise erfolgreichen Löschversuch sicher.
+    const cleanupCashbook = async () => {
+      const { error } = await supabaseAdmin
+        .from("cash_book_entries")
+        .delete()
+        .eq("id", data.booking_id);
+      if (error) throw new Error(error.message);
+    };
+
+    if (!booking) {
+      await cleanupCashbook();
+      const { error: hiddenCleanupErr } = await supabaseAdmin
+        .from("cashbook_hidden_bookings")
+        .delete()
+        .eq("booking_id", data.booking_id);
+      if (hiddenCleanupErr) throw new Error(hiddenCleanupErr.message);
+      return { ok: true, already_deleted: true };
+    }
 
     const { error: hiddenErr } = await supabaseAdmin
       .from("cashbook_hidden_bookings")
@@ -47,11 +63,19 @@ export const hideBookingFromCashbook = createServerFn({ method: "POST" })
       .eq("booking_id", data.booking_id);
     if (hiddenErr) throw new Error(hiddenErr.message);
 
-    const { error: deleteErr } = await supabaseAdmin
+    await cleanupCashbook();
+
+    const { data: deletedRows, error: deleteErr } = await supabaseAdmin
       .from("bookings")
       .delete()
-      .eq("id", data.booking_id);
-    if (deleteErr) throw new Error(deleteErr.message);
+      .eq("id", data.booking_id)
+      .select("id");
+    if (deleteErr) throw new Error(`Termin konnte nicht gelöscht werden: ${deleteErr.message}`);
+    if (!deletedRows || deletedRows.length === 0) throw new Error("Termin konnte nicht gelöscht werden.");
+
+    // Falls irgendein Datenbank-Trigger beim Löschen doch noch einen
+    // Kassenbuch-Snapshot erzeugt, wird er anschließend ebenfalls entfernt.
+    await cleanupCashbook();
 
     if (booking.slot_id) {
       const { data: remaining, error: remainingErr } = await supabaseAdmin
@@ -71,5 +95,5 @@ export const hideBookingFromCashbook = createServerFn({ method: "POST" })
       }
     }
 
-    return { ok: true };
+    return { ok: true, deleted: true };
   });
