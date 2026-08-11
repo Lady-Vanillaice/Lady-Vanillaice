@@ -60,3 +60,6 @@ await import("./unify-payment-external.mjs");
 await import("./unify-payment-bookings.mjs");
 await import("./unify-payment-cashbook.mjs");
 await import("./fix-cashbook-ui-and-times.mjs");
+// Production compatibility runs absolutely last: the Kassenbuch must remain
+// usable even while optional payment-detail columns are not yet in Supabase.
+await import("./restore-cashbook-legacy-db.mjs");
