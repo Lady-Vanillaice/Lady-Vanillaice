@@ -629,7 +629,7 @@ function SlotSplitEditor({
   );
 }
 
-type ExportChoice = "month" | "year" | "all";
+type ExportChoice = "day" | "month" | "year" | "all";
 
 function FreeSlotImageExport({
   slots,
@@ -644,11 +644,12 @@ function FreeSlotImageExport({
       !slot.is_hidden &&
       new Date(slot.ends_at).getTime() > Date.now(),
   );
-  const monthKeys = [
+  const dayKeys = [
     ...new Set(
-      freeSlots.map((slot) => format(new Date(slot.starts_at), "yyyy-MM")),
+      freeSlots.map((slot) => format(new Date(slot.starts_at), "yyyy-MM-dd")),
     ),
   ].sort();
+  const monthKeys = [...new Set(dayKeys.map((day) => day.slice(0, 7)))].sort();
   const years = [
     ...new Set(monthKeys.map((month) => Number(month.slice(0, 4)))),
   ].sort((a, b) => a - b);
@@ -660,17 +661,23 @@ function FreeSlotImageExport({
     (month) => Number(month.slice(0, 4)) === year,
   );
   const [monthKey, setMonthKey] = useState<string>(monthKeys[0] ?? "");
+  const [dayKey, setDayKey] = useState<string>(dayKeys[0] ?? "");
   const [exporting, setExporting] = useState(false);
 
   const activeMonth = monthsForYear.includes(monthKey)
     ? monthKey
     : (monthsForYear[0] ?? "");
+  const daysForMonth = dayKeys.filter((day) => day.startsWith(`${activeMonth}-`));
+  const activeDay = daysForMonth.includes(dayKey) ? dayKey : (daysForMonth[0] ?? "");
 
   async function downloadImage() {
     if (freeSlots.length === 0) return;
     setExporting(true);
     try {
-      if (choice === "month") {
+      if (choice === "day") {
+        if (!activeDay) throw new Error("Für diesen Monat gibt es keinen offenen Tag.");
+        await exportCalendarImage({ type: "day", dayKey: activeDay });
+      } else if (choice === "month") {
         if (!activeMonth)
           throw new Error("Für dieses Jahr gibt es keinen offenen Monat.");
         await exportCalendarImage({ type: "month", monthKey: activeMonth });
@@ -697,7 +704,7 @@ function FreeSlotImageExport({
         <h2 className="font-display text-2xl">Freie Termine als Bild</h2>
       </div>
       <p className="mt-2 text-xs leading-relaxed text-vanilla/55">
-        Wähle einen Monat, ein Jahr oder alle offenen Termine und lade das Bild
+        Wähle einen einzelnen Tag, einen Monat, ein Jahr oder alle offenen Termine und lade das Bild
         direkt herunter.
       </p>
 
@@ -710,6 +717,7 @@ function FreeSlotImageExport({
           value={choice}
           onChange={(event) => setChoice(event.target.value as ExportChoice)}
         >
+          <option value="day">Einzelner Tag</option>
           <option value="month">Einzelner Monat</option>
           <option value="year">Ganzes Jahr</option>
           <option value="all">Alle offenen Termine</option>
@@ -738,17 +746,27 @@ function FreeSlotImageExport({
           </select>
         )}
 
-        {choice === "month" && (
+        {(choice === "month" || choice === "day") && (
           <select
             className="input-luxe"
             value={activeMonth}
-            onChange={(event) => setMonthKey(event.target.value)}
+            onChange={(event) => { setMonthKey(event.target.value); const firstDay = dayKeys.find((day) => day.startsWith(`${event.target.value}-`)); if (firstDay) setDayKey(firstDay); }}
           >
             {monthsForYear.map((month) => (
               <option key={month} value={month}>
                 {format(new Date(`${month}-15T12:00:00`), "MMMM yyyy", {
                   locale: de,
                 })}
+              </option>
+            ))}
+          </select>
+        )}
+
+        {choice === "day" && (
+          <select className="input-luxe" value={activeDay} onChange={(event) => setDayKey(event.target.value)}>
+            {daysForMonth.map((day) => (
+              <option key={day} value={day}>
+                {format(new Date(`${day}T12:00:00`), "EEEE, dd.MM.yyyy", { locale: de })}
               </option>
             ))}
           </select>
