@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { listAdminAccessRequests, decideAdminAccessRequest } from "@/lib/admin-access.functions";
 import { createStudio, deleteStudio, listStudios } from "@/lib/studio.functions";
+import { listCashBookEntries } from "@/lib/cashbook.functions";
 import {
   getPushConfiguration,
   removePushSubscription,
@@ -347,6 +348,11 @@ function InstallAdminApp() {
 
 function DashboardOverview() {
   const [detail, setDetail] = useState<DetailKind>(null);
+  const listCashbook = useServerFn(listCashBookEntries);
+  const cashbookQ = useQuery({
+    queryKey: ["admin-dashboard-cashbook"],
+    queryFn: () => listCashbook(),
+  });
   const q = useQuery({
     queryKey: ["admin-dashboard-bookings"],
     queryFn: async (): Promise<DashboardBooking[]> => {
@@ -369,19 +375,19 @@ function DashboardOverview() {
     .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
   const now = new Date();
   const currentMonth = { start: startOfMonth(now), end: endOfMonth(now) };
-  const monthRevenue = (q.data ?? []).reduce((sum, booking) => {
-    let received = 0;
-    if (booking.anzahlung_paid && Number(booking.anzahlung ?? 0) > 0 && booking.anzahlung_paid_at && isWithinInterval(new Date(booking.anzahlung_paid_at), currentMonth)) {
-      received += Number(booking.anzahlung);
-    }
-    const cashDate = booking.cash_received_at ?? (booking.fully_paid ? booking.completed_at : null);
-    if (Number(booking.bar ?? 0) > 0 && cashDate && isWithinInterval(new Date(cashDate), currentMonth)) {
-      received += Number(booking.bar);
-    }
-    return sum + received;
-  }, 0);
+  const monthKey = format(now, "yyyy-MM");
+  const monthRevenue = (cashbookQ.data ?? [])
+    .filter((entry) => entry.entry_type === "income")
+    .reduce((sum, entry) => {
+      if (entry.source === "manual") {
+        return entry.payment_date?.startsWith(monthKey) ? sum + Number(entry.gesamt ?? 0) : sum;
+      }
+      const deposit = entry.anzahlung_datum?.startsWith(monthKey) ? Number(entry.anzahlung ?? 0) : 0;
+      const cash = entry.bar_datum?.startsWith(monthKey) ? Number(entry.bar ?? 0) : 0;
+      return sum + deposit + cash;
+    }, 0);
   return <div className="mb-10">
-    {q.isLoading ? <p className="text-sm text-vanilla/50">Offene Anfragen werden geladen…</p> : q.isError ? <p className="text-sm text-bordeaux">Offene Anfragen konnten nicht geladen werden.</p> : (
+    {q.isLoading || cashbookQ.isLoading ? <p className="text-sm text-vanilla/50">Dashboard wird geladen…</p> : q.isError || cashbookQ.isError ? <p className="text-sm text-bordeaux">Dashboard konnte nicht vollständig geladen werden.</p> : (
       <div className="space-y-4">
         <Link to="/admin/termine" className="block bg-card border border-champagne/35 p-5 hover:border-champagne/70 transition">
           <Mail size={20} className="text-champagne mb-4" />

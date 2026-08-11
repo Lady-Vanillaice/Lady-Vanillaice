@@ -182,9 +182,9 @@ function KalenderPage() {
       />
 
       <section className="py-20">
-        <div className="container-luxe grid lg:grid-cols-12 gap-10">
+        <div className="container-luxe space-y-10">
           {/* Calendar */}
-          <div className="lg:col-span-7">
+          <div>
             <div className="bg-card border border-champagne/15 p-6">
               <div className="flex items-center justify-between mb-6">
                 <button
@@ -268,8 +268,8 @@ function KalenderPage() {
           </div>
 
           {/* Booking panel */}
-          <div className="lg:col-span-5">
-            <div className="bg-card border border-champagne/15 p-6 min-h-[300px]">
+          <div>
+            <div className="bg-card border border-champagne/15 p-6 min-h-[300px] public-booking-card">
               {slotsQ.isLoading && <p className="text-vanilla/50 text-sm">{tr("Lade Termine…", "Loading dates…")}</p>}
 
               {!slotsQ.isLoading && !selectedSlot && (
@@ -294,9 +294,11 @@ function KalenderPage() {
                   {tr("Aktuell sind keine Termine eingestellt. Schreib mir gerne direkt eine Nachricht für eine individuelle Vereinbarung.", "No dates are set at the moment. Feel free to write to me directly for an individual arrangement.")}
                 </p>
               )}
-            </div>
-
-            <div className="mt-6 border border-champagne/40 bg-champagne/5 p-4 text-xs text-vanilla/75 leading-relaxed">
+            
+              {selectedSlot && (
+                <div className="lg:hidden mt-6">
+                  {/* FINAL mobile info boxes inside booking card */}
+<div className="mt-6 border border-champagne/40 bg-champagne/5 p-4 text-xs text-vanilla/75 leading-relaxed">
               <div className="eyebrow mb-1.5 text-champagne">{tr("Längere Session ab 4 Stunden?", "Longer session from 4 hours?")}</div>
               <p>
                 {tr("Buchbar, solange ein entsprechender Slot im Kalender frei ist. Falls kein Slot ab 4 Stunden im gewünschten Zeitraum verfügbar ist, melde dich gerne — wir finden einen passenden Termin.", "Bookable as long as a suitable slot is free in the calendar. If no slot of 4 h or more is available in your preferred window, get in touch — we'll find a suitable date.")}{" "}
@@ -306,21 +308,49 @@ function KalenderPage() {
               </p>
             </div>
 
-            <div className="mt-4 border border-champagne/40 bg-champagne/5 p-4 text-xs text-vanilla/75 leading-relaxed">
+<div className="mt-4 border border-champagne/40 bg-champagne/5 p-4 text-xs text-vanilla/75 leading-relaxed">
               <div className="eyebrow mb-1.5 text-champagne">{tr("Duo Sessions", "Duo sessions")}</div>
               {tr(<>Duo-Termine biete ich nur gelegentlich an — sie sind im Kalender mit <span className="text-champagne">Duo</span> markiert. Mehr Infos und Interesse hinterlegen auf der{" "}<a href="/duo-sessions" className="text-champagne hover:underline">Duo Sessions</a>-Seite.</>, <>I only offer duo dates occasionally — they are marked as <span className="text-champagne">Duo</span> in the calendar. More info and register interest on the{" "}<a href="/duo-sessions" className="text-champagne hover:underline">duo sessions</a> page.</>)}
             </div>
 
-            <div className="mt-4 border border-champagne/40 bg-champagne/5 p-4 text-xs text-vanilla/75 leading-relaxed">
+<div className="mt-4 border border-champagne/40 bg-champagne/5 p-4 text-xs text-vanilla/75 leading-relaxed">
               <div className="eyebrow mb-1.5 text-champagne">{tr("Content-Dreh", "Content shoot")}</div>
               {tr(<>Gelegentlich suche ich Leute, die zusammen mit mir Content für meine Seiten drehen. Diese Termine sind im Kalender mit <span className="text-champagne">Content</span> markiert. Bei Interesse einfach auf den Termin klicken und eine Nachricht hinterlassen.</>, <>Occasionally I look for people to shoot content with me for my platforms. These dates are marked as <span className="text-champagne">Content</span> in the calendar. If interested, just click the date and leave a message.</>)}
             </div>
-          </div>
+                </div>
+              )}
+            </div>
+
+            {/* FINAL: info boxes after visible booking card */}
+<div className="hidden lg:block">
+<div className="mt-6 border border-champagne/40 bg-champagne/5 p-4 text-xs text-vanilla/75 leading-relaxed">
+              <div className="eyebrow mb-1.5 text-champagne">{tr("Längere Session ab 4 Stunden?", "Longer session from 4 hours?")}</div>
+              <p>
+                {tr("Buchbar, solange ein entsprechender Slot im Kalender frei ist. Falls kein Slot ab 4 Stunden im gewünschten Zeitraum verfügbar ist, melde dich gerne — wir finden einen passenden Termin.", "Bookable as long as a suitable slot is free in the calendar. If no slot of 4 h or more is available in your preferred window, get in touch — we'll find a suitable date.")}{" "}
+                <Link to="/buchung" className="text-champagne hover:underline">
+                  {tr("Anfrage stellen", "Send request")}
+                </Link>
+              </p>
+            </div>
+
+<div className="mt-4 border border-champagne/40 bg-champagne/5 p-4 text-xs text-vanilla/75 leading-relaxed">
+              <div className="eyebrow mb-1.5 text-champagne">{tr("Duo Sessions", "Duo sessions")}</div>
+              {tr(<>Duo-Termine biete ich nur gelegentlich an — sie sind im Kalender mit <span className="text-champagne">Duo</span> markiert. Mehr Infos und Interesse hinterlegen auf der{" "}<a href="/duo-sessions" className="text-champagne hover:underline">Duo Sessions</a>-Seite.</>, <>I only offer duo dates occasionally — they are marked as <span className="text-champagne">Duo</span> in the calendar. More info and register interest on the{" "}<a href="/duo-sessions" className="text-champagne hover:underline">duo sessions</a> page.</>)}
+            </div>
+
+<div className="mt-4 border border-champagne/40 bg-champagne/5 p-4 text-xs text-vanilla/75 leading-relaxed">
+              <div className="eyebrow mb-1.5 text-champagne">{tr("Content-Dreh", "Content shoot")}</div>
+              {tr(<>Gelegentlich suche ich Leute, die zusammen mit mir Content für meine Seiten drehen. Diese Termine sind im Kalender mit <span className="text-champagne">Content</span> markiert. Bei Interesse einfach auf den Termin klicken und eine Nachricht hinterlassen.</>, <>Occasionally I look for people to shoot content with me for my platforms. These dates are marked as <span className="text-champagne">Content</span> in the calendar. If interested, just click the date and leave a message.</>)}
+            </div>
+</div>
+</div>
         </div>
       </section>
     </>
   );
 }
+
+const OPTIONAL_DUO_PREFIX = "OPTIONAL_DUO::";
 
 function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) {
   const tr = useTr();
@@ -337,6 +367,8 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [sessionType, setSessionType] = useState<"duo" | "single">("duo");
+  const duoIsOptional = Boolean(slot.duo_partner?.startsWith(OPTIONAL_DUO_PREFIX));
+  const duoPartner = duoIsOptional ? slot.duo_partner?.slice(OPTIONAL_DUO_PREFIX.length) || null : slot.duo_partner;
   const applyingProposalRef = useRef(false);
 
   const slotStartHm = formatMunichTime(slot.starts_at);
@@ -410,7 +442,7 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
   });
 
   const submitMut = useMutation({
-    mutationFn: (vars: { name: string; email: string; phone: string; message: string; proposedStart: string }) => {
+    mutationFn: (vars: { name: string; email: string; phone: string; message: string; proposedStart: string; marketingConsent: boolean }) => {
       return submit({
         data: {
           slot_id: slot.id,
@@ -422,6 +454,7 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
           requested_start: vars.proposedStart,
           message: vars.message,
           age_confirmed: true,
+          marketing_consent: vars.marketingConsent,
         },
       });
     },
@@ -440,13 +473,21 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
     const altDate = String(fd.get("alt_date") ?? "").trim();
     const altTime = String(fd.get("alt_time") ?? "").trim();
     const altNote = String(fd.get("alt_note") ?? "").trim();
+    const liegezeitDuration = String(fd.get("liegezeit_duration") ?? "").trim();
+    const liegezeitType = String(fd.get("liegezeit_type") ?? "").trim();
+    const liegezeitNote = String(fd.get("liegezeit_note") ?? "").trim();
+    const marketingConsent = fd.get("marketing_consent") === "on";
+    const playWorld = String(fd.get("play_world") ?? "").trim();
     const experience = String(fd.get("experience") ?? "").trim();
     const preferences = String(fd.get("preferences") ?? "").trim();
     const taboos = String(fd.get("taboos") ?? "").trim();
     const health = String(fd.get("health") ?? "").trim();
     const safeword = String(fd.get("safeword") ?? "").trim();
     const note = String(fd.get("message") ?? "").trim();
+    const liegezeitText = liegezeitDuration ? `Liegezeit: ${liegezeitDuration === "custom" ? (liegezeitNote || "individuelle Dauer") : `${liegezeitDuration} Minuten`} · ${liegezeitType || "unbeaufsichtigt"}` : null;
     const baseMessage = [
+      liegezeitText,
+      playWorld ? `Spielwelt: ${playWorld}` : null,
       experience ? `Erfahrung:\n${experience}` : null,
       preferences ? `Vorlieben & Wünsche:\n${preferences}` : null,
       taboos ? `Tabus & Grenzen:\n${taboos}` : null,
@@ -458,7 +499,7 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
     if (altDate) altParts.push(`Datum: ${altDate}${altTime ? ` um ${altTime}` : ""}`);
     if (altNote) altParts.push(altNote);
     const duoPrefix = slot.is_duo
-      ? `— Session-Art —\n${sessionType === "duo" ? `Duo Session${slot.duo_partner ? ` (mit ${slot.duo_partner})` : ""}` : "Single Session (nur mit Lady Vanilla Ice)"}\n\n`
+      ? `— Session-Art —\n${sessionType === "duo" ? `Duo Session${duoPartner ? ` (mit ${duoPartner})` : ""}` : "Single Session (nur mit Lady Vanilla Ice)"}\n\n`
       : "";
     const withAlt = altParts.length
       ? `${baseMessage}\n\n— Ausweichtermin —\n${altParts.join("\n")}`
@@ -488,6 +529,7 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
       phone: String(fd.get("phone") ?? "").trim(),
       message: fullMessage,
       proposedStart: effectiveProposed.start,
+      marketingConsent,
     });
   }
 
@@ -512,29 +554,34 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
         {formatMunichDate(slot.starts_at, lang)}
         {slot.is_duo && slot.duo_partner && (
           <span className="block font-script gold-text text-3xl mt-2">
-            {tr("mit", "with")} {slot.duo_partner}
+            {tr("mit", "with")} {duoPartner}
           </span>
         )}
       </h3>
-      <div className="text-xs text-vanilla/60 mb-5 flex flex-wrap items-start gap-3">
-        <span className="flex items-start gap-1.5"><Clock size={11} className="text-champagne mt-0.5 shrink-0" />
-          <span className="flex flex-col gap-1">
-            <span>{tr("Verfügbar", "Available")}</span>
-            {windows.map((window) => (
-              <span key={window.id}>
-                {formatMunichTime(window.starts_at)} – {formatMunichTime(window.ends_at)}
-              </span>
-            ))}
-          </span>
-        </span>
-        <span className="flex items-center gap-1.5"><MapPin size={11} className="text-champagne" />{slot.location}</span>
+      {/* Booking information stacked vertically */}
+      <div className="text-xs text-vanilla/60 mb-5 flex flex-col items-start gap-2">
+        <div className="flex items-center gap-1.5">
+          <Clock size={11} className="text-champagne shrink-0" />
+          <span>{tr("Verfügbar", "Available")}</span>
+        </div>
+        <div className="flex flex-col gap-1 pl-[17px] text-vanilla/80">
+          {windows.map((window) => (
+            <span key={window.id}>
+              {formatMunichTime(window.starts_at)} – {formatMunichTime(window.ends_at)}{lang === "en" ? "" : " Uhr"}
+            </span>
+          ))}
+        </div>
+        <div className="flex items-start gap-1.5">
+          <MapPin size={11} className="text-champagne mt-0.5 shrink-0" />
+          <span>{slot.location}</span>
+        </div>
       </div>
 
-      {slot.is_duo && (
+      {slot.is_duo && duoIsOptional && (
         <div className="mb-5 border border-champagne/30 bg-champagne/[0.04] p-4">
           <div className="eyebrow mb-2 text-champagne">{tr("Session-Art wählen", "Choose session type")}</div>
           <p className="text-[0.7rem] text-vanilla/60 leading-relaxed mb-3">
-            {tr(`An diesem Termin ist eine Duo-Session möglich${slot.duo_partner ? ` (mit ${slot.duo_partner})` : ""}. Du kannst aber auch eine Single-Session nur mit mir buchen.`, `A duo session is possible on this date${slot.duo_partner ? ` (with ${slot.duo_partner})` : ""}. You can also book a single session with me only.`)}
+            {tr(`An diesem Termin ist eine Duo-Session möglich${duoPartner ? ` (mit ${duoPartner})` : ""}. Du kannst aber auch eine Single-Session nur mit mir buchen.`, `A duo session is possible on this date${duoPartner ? ` (with ${duoPartner})` : ""}. You can also book a single session with me only.`)}
           </p>
           <div className="grid grid-cols-2 gap-2">
             <label className={`cursor-pointer border p-3 text-center text-xs transition ${
@@ -548,7 +595,7 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
                 onChange={() => setSessionType("duo")}
               />
               <div className="eyebrow text-champagne mb-1">Duo</div>
-              <div>{tr(`mit ${slot.duo_partner ?? "Partnerin"} & mir`, `with ${slot.duo_partner ?? "partner"} & me`)}</div>
+              <div>{tr(`mit ${duoPartner ?? "Partnerin"} & mir`, `with ${duoPartner ?? "partner"} & me`)}</div>
             </label>
             <label className={`cursor-pointer border p-3 text-center text-xs transition ${
               sessionType === "single"
@@ -673,6 +720,18 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
             <p className="mt-1 text-[0.7rem] leading-relaxed text-vanilla/55">{tr("Diese Angaben helfen mir, deine Anfrage schnell und sicher einzuordnen.", "These details help me assess your request quickly and safely.")}</p>
           </div>
           <div>
+            <label className="eyebrow block mb-1.5">{tr("Spielwelt (optional)", "World of play (optional)")}</label>
+            <select name="play_world" defaultValue="" className="input-luxe">
+              <option value="">{tr("Keine Auswahl", "No selection")}</option>
+              <option value={tr("Dein erstes Loslassen", "Your first surrender")}>{tr("Dein erstes Loslassen", "Your first surrender")}</option>
+              <option value={tr("Mein Spiel mit deinem Kopf", "My game with your mind")}>{tr("Mein Spiel mit deinem Kopf", "My game with your mind")}</option>
+              <option value={tr("Sanfte Macht", "Soft power")}>{tr("Sanfte Macht", "Soft power")}</option>
+              <option value={tr("Wenn ich hart werde", "When I turn hard")}>{tr("Wenn ich hart werde", "When I turn hard")}</option>
+              <option value={tr("Deine Verwandlung", "Your transformation")}>{tr("Deine Verwandlung", "Your transformation")}</option>
+              <option value={tr("Nur für dich inszeniert", "Created only for you")}>{tr("Nur für dich inszeniert", "Created only for you")}</option>
+            </select>
+          </div>
+          <div>
             <label className="eyebrow block mb-1.5">{tr("Erfahrung", "Experience")}</label>
             <select name="experience" required defaultValue="" className="input-luxe">
               <option value="" disabled>{tr("Bitte auswählen", "Please select")}</option>
@@ -709,37 +768,86 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
           </div>
         </div>
 
-        <div className="border border-champagne/20 bg-champagne/[0.03] p-4 space-y-3">
-          <div>
-            <label className="eyebrow block mb-1.5 text-champagne">{tr("Ausweichtermin (empfohlen)", "Alternative date (recommended)")}</label>
-            <p className="text-[0.7rem] text-vanilla/55 leading-relaxed mb-2">
-              {tr("Falls dein Wunschtermin bei mir nicht klappt, schlage mir bitte einen Ausweichtermin vor — so können wir schneller verbindlich planen.", "If your preferred date doesn't work for me, please suggest an alternative — so we can lock things in faster.")}
-            </p>
-            <p className="text-[0.7rem] text-vanilla/70 leading-relaxed border-l-2 border-champagne/40 pl-3">
-              {tr(<><span className="text-champagne">Tipp:</span> Falls dein Wunschtermin in einen Zeitraum fällt, der gerade als <em className="not-italic text-vanilla/90">„reserviert"</em> angezeigt wird, schreibe ihn mir bitte trotzdem hier hinein. Sollte der Termin nicht bestätigt werden, kann ich ihn an dich weitergeben.</>, <><span className="text-champagne">Tip:</span> If your preferred date falls in a period currently shown as <em className="not-italic text-vanilla/90">"reserved"</em>, please still enter it here. If that reservation isn't confirmed, I can pass it on to you.</>)}
-            </p>
+        <details className="border border-champagne/20 bg-champagne/[0.03]">
+          <summary className="cursor-pointer px-4 py-3 text-sm text-champagne hover:text-vanilla transition">
+            {tr("+ Ausweichtermin hinzufügen (optional)", "+ Add an alternative date (optional)")}
+          </summary>
+          <div className="border-t border-champagne/15 p-4">
+            <div className="border border-champagne/20 bg-champagne/[0.03] p-4 space-y-3">
+              <div>
+                <label className="eyebrow block mb-1.5 text-champagne">{tr("Ausweichtermin (empfohlen)", "Alternative date (recommended)")}</label>
+                <p className="text-[0.7rem] text-vanilla/55 leading-relaxed mb-2">
+                  {tr("Falls dein Wunschtermin bei mir nicht klappt, schlage mir bitte einen Ausweichtermin vor — so können wir schneller verbindlich planen.", "If your preferred date doesn't work for me, please suggest an alternative — so we can lock things in faster.")}
+                </p>
+                <p className="text-[0.7rem] text-vanilla/70 leading-relaxed border-l-2 border-champagne/40 pl-3">
+                  {tr(<><span className="text-champagne">Tipp:</span> Falls dein Wunschtermin in einen Zeitraum fällt, der gerade als <em className="not-italic text-vanilla/90">„reserviert"</em> angezeigt wird, schreibe ihn mir bitte trotzdem hier hinein. Sollte der Termin nicht bestätigt werden, kann ich ihn an dich weitergeben.</>, <><span className="text-champagne">Tip:</span> If your preferred date falls in a period currently shown as <em className="not-italic text-vanilla/90">"reserved"</em>, please still enter it here. If that reservation isn't confirmed, I can pass it on to you.</>)}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[0.65rem] uppercase tracking-[0.2em] text-vanilla/45 mb-1">{tr("Datum", "Date")}</label>
+                  <input name="alt_date" type="date" className="input-luxe" />
+                </div>
+                <div>
+                  <label className="block text-[0.65rem] uppercase tracking-[0.2em] text-vanilla/45 mb-1">{tr("Uhrzeit", "Time")}</label>
+                  <input name="alt_time" type="time" step={900} className="input-luxe" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[0.65rem] uppercase tracking-[0.2em] text-vanilla/45 mb-1">{tr("Hinweis (optional)", "Note (optional)")}</label>
+                <input
+                  name="alt_note"
+                  type="text"
+                  maxLength={200}
+                  className="input-luxe"
+                  placeholder={tr("z. B. 'auch am Wochenende möglich'", "e.g. 'weekends also possible'")}
+                />
+              </div>
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[0.65rem] uppercase tracking-[0.2em] text-vanilla/45 mb-1">{tr("Datum", "Date")}</label>
-              <input name="alt_date" type="date" className="input-luxe" />
+        </details>
+
+
+        {/* LIEGEZEIT_BOOKING_FEATURE */}
+        <details className="border border-champagne/20 bg-champagne/[0.03]">
+          <summary className="cursor-pointer px-4 py-3 text-sm text-champagne hover:text-vanilla transition">
+            {tr("+ Liegezeit hinzufügen (optional)", "+ Add restraint time (optional)")}
+          </summary>
+          <div className="space-y-4 border-t border-champagne/15 p-4">
+            <p className="text-[0.7rem] leading-relaxed text-vanilla/55">
+              {tr("Die Liegezeit liegt innerhalb deiner gebuchten Sessiondauer. Ein möglicher Aufpreis wird anschließend individuell bestätigt.", "The restraint time is included within your booked session duration. Any surcharge will be confirmed individually afterwards.")}
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="eyebrow block mb-1.5">{tr("Gewünschte Dauer", "Requested duration")}</label>
+                <select name="liegezeit_duration" defaultValue="" className="input-luxe">
+                  <option value="">{tr("Keine Liegezeit", "No restraint time")}</option>
+                  <option value="30">30 {tr("Minuten", "minutes")}</option>
+                  <option value="60">60 {tr("Minuten", "minutes")}</option>
+                  <option value="90">90 {tr("Minuten", "minutes")}</option>
+                  <option value="120">120 {tr("Minuten", "minutes")}</option>
+                  <option value="custom">{tr("Andere Dauer", "Other duration")}</option>
+                </select>
+              </div>
+              <div>
+                <label className="eyebrow block mb-1.5">{tr("Art", "Type")}</label>
+                <select name="liegezeit_type" defaultValue="unbeaufsichtigt" className="input-luxe">
+                  <option value="unbeaufsichtigt">{tr("Unbeaufsichtigt", "Unsupervised")}</option>
+                  <option value="beaufsichtigt">{tr("Beaufsichtigt", "Supervised")}</option>
+                </select>
+              </div>
             </div>
             <div>
-              <label className="block text-[0.65rem] uppercase tracking-[0.2em] text-vanilla/45 mb-1">{tr("Uhrzeit", "Time")}</label>
-              <input name="alt_time" type="time" step={900} className="input-luxe" />
+              <label className="eyebrow block mb-1.5">{tr("Dauer-Hinweis (optional)", "Duration note (optional)")}</label>
+              <input name="liegezeit_note" maxLength={120} className="input-luxe" placeholder={tr("z. B. 45 Minuten", "e.g. 45 minutes")} />
             </div>
           </div>
-          <div>
-            <label className="block text-[0.65rem] uppercase tracking-[0.2em] text-vanilla/45 mb-1">{tr("Hinweis (optional)", "Note (optional)")}</label>
-            <input
-              name="alt_note"
-              type="text"
-              maxLength={200}
-              className="input-luxe"
-              placeholder={tr("z. B. 'auch am Wochenende möglich'", "e.g. 'weekends also possible'")}
-            />
-          </div>
-        </div>
+        </details>
+
+        <label className="flex items-start gap-3 text-xs text-vanilla/45 cursor-pointer">
+          <input name="marketing_consent" type="checkbox" className="mt-0.5 accent-[var(--color-champagne)]" />
+          <span>{tr("Ich möchte per E-Mail über neue verfügbare Termine informiert werden. Die Abmeldung ist jederzeit möglich.", "I would like to receive emails about newly available appointments. I can unsubscribe at any time.")}</span>
+        </label>
 
         <label className="flex items-start gap-2 text-xs text-vanilla/65 cursor-pointer">
           <input type="checkbox" required className="mt-0.5 accent-[var(--color-champagne)]" />
@@ -778,27 +886,46 @@ function AvailabilityTimeline({ slotId }: { slotId: string }) {
   const totalMs = winEnd - winStart;
   if (totalMs <= 0) return null;
 
-  // Booking and reservation ranges include their safety buffer. Gaps between
-  // explicitly opened windows are neutral and must never be extended or shown
-  // as bookings.
+  // Session and reservation colours include their own buffer. When two
+  // buffers overlap, the shared interval is divided exactly in the middle so
+  // the timeline stays continuous without one colour covering another.
   const raw = q.data.busy
     .map((b) => {
       const kind = b.kind ?? "booked";
       const rangeBuffer = (b.buffer_minutes ?? q.data.buffer_minutes) * 60_000;
+      const coreStart = new Date(b.start).getTime();
+      const coreEnd = new Date(b.end).getTime();
       return {
-        s: Math.max(winStart, new Date(b.start).getTime() - rangeBuffer),
-        e: Math.min(winEnd, new Date(b.end).getTime() + rangeBuffer),
+        s: Math.max(winStart, coreStart - rangeBuffer),
+        e: Math.min(winEnd, coreEnd + rangeBuffer),
+        coreStart,
+        coreEnd,
         kind,
       };
     })
     .filter((r) => r.e > r.s)
-    .sort((a, b) => a.s - b.s);
+    .sort((a, b) => a.coreStart - b.coreStart);
 
-  const merged: Array<{ s: number; e: number; kind: "booked" | "reserved" | "unavailable" }> = [];
+  for (let i = 0; i < raw.length - 1; i += 1) {
+    const current = raw[i];
+    const next = raw[i + 1];
+    if (current.e <= next.s) continue;
+
+    const overlapStart = next.s;
+    const overlapEnd = current.e;
+    const split = overlapStart + (overlapEnd - overlapStart) / 2;
+    current.e = Math.max(current.coreEnd, split);
+    next.s = Math.min(next.coreStart, split);
+  }
+
+  const merged: Array<{ s: number; e: number; kind: "booked" | "reserved" | "unavailable" | "single_only" }> = [];
   for (const r of raw) {
     const last = merged[merged.length - 1];
-    if (last && r.s <= last.e && last.kind === r.kind) last.e = Math.max(last.e, r.e);
-    else merged.push({ ...r });
+    if (last && r.s <= last.e && last.kind === r.kind) {
+      last.e = Math.max(last.e, r.e);
+    } else {
+      merged.push({ s: r.s, e: r.e, kind: r.kind });
+    }
   }
   // Build free segments as the complement of merged busy ranges.
   const freeSegs: Array<{ s: number; e: number }> = [];
@@ -857,15 +984,18 @@ function AvailabilityTimeline({ slotId }: { slotId: string }) {
           const width = pct(seg.e) - left;
           const isReserved = seg.kind === "reserved";
           const isUnavailable = seg.kind === "unavailable";
+          const isSingleOnly = seg.kind === "single_only";
           return (
             <div
               key={`b-${seg.s}`}
-              title={`${isUnavailable ? tr("Nicht freigegeben","Unavailable") : isReserved ? tr("Reserviert","Reserved") : tr("Belegt","Booked")} ${fmtHm(seg.s)} – ${fmtHm(seg.e)}`}
+              title={`${isUnavailable ? tr("Nicht freigegeben","Unavailable") : isReserved ? tr("Reserviert","Reserved") : isSingleOnly ? tr("Nur Einzel","Single only") : tr("Belegt","Booked")} ${fmtHm(seg.s)} – ${fmtHm(seg.e)}`}
               className={`absolute top-0 bottom-0 pointer-events-none ${
                 isUnavailable
                   ? "bg-anthracite/80 border-x border-vanilla/15"
                   : isReserved
                   ? "bg-vanilla/35 border-x border-vanilla/45"
+                  : isSingleOnly
+                  ? "bg-orange-500/60 border-x border-orange-700/70"
                   : "bg-bordeaux/60 border-x border-bordeaux/70"
               }`}
               style={{ left: `${left}%`, width: `${width}%` }}
@@ -918,6 +1048,7 @@ function AvailabilityTimeline({ slotId }: { slotId: string }) {
       <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-vanilla/60">
         <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-champagne" /> {tr("verfügbar", "available")}</span>
         <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-bordeaux" /> {tr("belegt", "booked")}</span>
+        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-orange-400" /> {tr("nur Einzel", "single only")}</span>
         <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-vanilla/40" /> {tr("reserviert", "reserved")}</span>
       </div>
     </div>

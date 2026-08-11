@@ -1197,7 +1197,7 @@ export const updateBookingStudio = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await ensureAdmin(context.supabase, context.userId);
-    const { error } = await (context.supabase as any).rpc("set_booking_studio_override", {
+    const { error } = await (context.supabase as any).rpc("admin_update_booking_studio", {
       p_booking_id: data.id,
       p_location: data.studio,
       p_location_address: data.studio_address || null,
@@ -1214,12 +1214,15 @@ const manualBookingInput = z.object({
   location: z.string().trim().min(1).max(200),
   guest_name: z.string().trim().min(1).max(120),
   guest_contact: z.string().trim().max(200).optional().nullable(),
+  guest_email: z.string().trim().email().max(200).optional().nullable(),
+  calendar_day_type: z.enum(["single", "duo"]).optional(),
+  calendar_duo_partner: z.string().trim().max(120).optional().nullable(),
   source: z.string().trim().max(60).optional().nullable(),
   internal_note: z.string().trim().max(2000).optional().nullable(),
   preferences: z.string().trim().max(2000).optional().nullable(),
   taboos: z.string().trim().max(2000).optional().nullable(),
   health_notes: z.string().trim().max(2000).optional().nullable(),
-  booking_type: z.enum(["single", "duo", "content"]),
+  booking_type: z.enum(["single", "duo", "content", "custom_content"]),
   duo_partner: z.string().trim().max(120).optional().nullable(),
   total_amount: z.number().positive().max(1_000_000),
   deposit_amount: z.number().min(0).max(1_000_000),
@@ -1243,10 +1246,10 @@ export const createManualBooking = createServerFn({ method: "POST" })
     if (durationMinutes < 15) {
       throw new Error("Termin muss mindestens 15 Minuten dauern.");
     }
-    if (!data.deposit_exemption_reason && !data.deposit_paid_at) {
-      throw new Error("Das Eingangsdatum der Anzahlung fehlt.");
+    if (!data.deposit_exemption_reason && data.deposit_amount > 0 && !data.deposit_paid_at) {
+      throw new Error("Das Eingangsdatum der Zahlung fehlt.");
     }
-    if (!data.deposit_exemption_reason && data.deposit_amount <= 0) {
+    if (data.booking_type !== "custom_content" && !data.deposit_exemption_reason && data.deposit_amount <= 0) {
       throw new Error("Die erhaltene Anzahlung muss größer als 0 € sein.");
     }
     if (data.deposit_amount > data.total_amount) {
@@ -1255,26 +1258,25 @@ export const createManualBooking = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // Decide guest_email — the DB enforces an email format check.
     const contact = data.guest_contact?.trim() ?? "";
-    const isEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(contact);
-    const guestEmail = isEmail
-      ? contact
-      : `manuell+${crypto.randomUUID().slice(0, 8)}@intern.local`;
+    const guestEmail = data.guest_email?.trim() ||
+      `manuell+${crypto.randomUUID().slice(0, 8)}@intern.local`;
     const profileSections = [
-      data.preferences ? `Vorlieben & Wünsche:\n${data.preferences}` : null,
+      data.preferences ? `${data.booking_type === "custom_content" ? "Custom-Content-Wunsch" : "Vorlieben & Wünsche"}:\n${data.preferences}` : null,
       data.taboos ? `Tabus & Grenzen:\n${data.taboos}` : null,
       data.health_notes ? `Gesundheitliche Hinweise:\n${data.health_notes}` : null,
     ].filter(Boolean);
     const originLines = [
       data.source ? `Quelle: ${data.source}` : null,
-      contact && !isEmail ? `Kontakt: ${contact}` : null,
+      contact ? `Kontakt: ${contact}` : null,
     ].filter(Boolean);
-    const message = [
-      ...originLines,
-      ...profileSections,
-      "—\nManuell durch Admin eingetragen.",
-    ].join("\n\n");
+    const message = data.booking_type === "custom_content"
+      ? "Custom Content – manuell durch Admin eingetragen."
+      : [
+          ...originLines,
+          ...profileSections,
+          "—\nManuell durch Admin eingetragen.",
+        ].join("\n\n").slice(0, 2000);
     const combinedInternalNote = [
       data.preferences ? `Vorlieben & Wünsche:\n${data.preferences}` : null,
       data.taboos ? `Tabus & Grenzen:\n${data.taboos}` : null,
@@ -1304,6 +1306,17 @@ export const createManualBooking = createServerFn({ method: "POST" })
       .lt("starts_at", endsAt.toISOString())
       .gt("ends_at", startsAt.toISOString());
     if (openOverlapErr) throw new Error(openOverlapErr.message);
+
+    const inferredDuoPartner = (openOverlaps ?? []).find((slot) => slot.is_duo && slot.duo_partner)?.duo_partner ?? null;
+    const duoDayPartner = data.booking_type === "duo"
+      ? data.duo_partner?.trim() || data.calendar_duo_partner?.trim() || inferredDuoPartner
+      : data.booking_type === "single" && data.calendar_day_type === "duo"
+        ? data.calendar_duo_partner?.trim() || inferredDuoPartner
+        : null;
+
+    if ((data.booking_type === "duo" || (data.booking_type === "single" && data.calendar_day_type === "duo")) && !duoDayPartner) {
+      throw new Error("Bitte die Duo-Partnerin für diesen Tag angeben.");
+    }
 
     for (const s of openOverlaps ?? []) {
       const sStart = new Date(s.starts_at);
@@ -1362,11 +1375,13 @@ export const createManualBooking = createServerFn({ method: "POST" })
   status: "booked",
   is_hidden: true,
   is_duo: data.booking_type === "duo",
-  is_content_shoot: data.booking_type === "content",
+  is_content_shoot: data.booking_type === "content" || data.booking_type === "custom_content",
   duo_partner:
     data.booking_type === "duo"
-      ? data.duo_partner?.trim() ?? null
-      : null,
+      ? duoDayPartner
+      : data.booking_type === "single" && data.calendar_day_type === "duo"
+        ? duoDayPartner
+        : null,
 })
       .select("id")
       .single();
@@ -1394,9 +1409,11 @@ export const createManualBooking = createServerFn({ method: "POST" })
         duration:
   data.booking_type === "duo"
     ? "Duo Session"
-    : data.booking_type === "content"
-      ? "Content Dreh"
-      : `${durationMinutes} Minuten`,
+    : data.booking_type === "custom_content"
+      ? "Custom Content"
+      : data.booking_type === "content"
+        ? "Content Dreh"
+        : `${durationMinutes} Minuten`,
         duration_minutes: durationMinutes,
         requested_start: data.starts_at,
         message,
@@ -1404,8 +1421,8 @@ export const createManualBooking = createServerFn({ method: "POST" })
         admin_note: combinedInternalNote,
         anzahlung: data.deposit_exemption_reason ? 0 : data.deposit_amount,
         anzahlung_method: data.deposit_exemption_reason ? null : data.deposit_method,
-        anzahlung_paid: data.deposit_exemption_reason ? false : true,
-        anzahlung_paid_at: data.deposit_exemption_reason ? null : `${data.deposit_paid_at}T12:00:00.000Z`,
+        anzahlung_paid: !data.deposit_exemption_reason && data.deposit_amount > 0,
+        anzahlung_paid_at: !data.deposit_exemption_reason && data.deposit_amount > 0 && data.deposit_paid_at ? `${data.deposit_paid_at}T12:00:00.000Z` : null,
         deposit_exemption_reason: data.deposit_exemption_reason,
         bar: data.total_amount - (data.deposit_exemption_reason ? 0 : data.deposit_amount),
         fully_paid: !data.deposit_exemption_reason && data.total_amount === data.deposit_amount,
