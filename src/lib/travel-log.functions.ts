@@ -17,9 +17,17 @@ async function ensureAdmin(supabase: any, userId: string) {
 
 type Coordinates = { lat: number; lon: number };
 
+function normalizeGeocodingAddress(address: string) {
+  return address
+    .replace(/\s+[—–-]\s+(?:Raum|Zimmer|Suite|Lounge|Studio)\b.*$/iu, "")
+    .replace(/,\s*(?:Raum|Zimmer|Suite|Lounge|Studio)\b.*$/iu, "")
+    .trim();
+}
+
 async function geocode(address: string): Promise<Coordinates> {
+  const normalizedAddress = normalizeGeocodingAddress(address);
   const url = new URL("https://nominatim.openstreetmap.org/search");
-  url.searchParams.set("q", address);
+  url.searchParams.set("q", normalizedAddress);
   url.searchParams.set("format", "jsonv2");
   url.searchParams.set("limit", "1");
   url.searchParams.set("countrycodes", "de");
@@ -28,7 +36,7 @@ async function geocode(address: string): Promise<Coordinates> {
   });
   if (!response.ok) throw new Error(`Adresse konnte nicht geprüft werden (${response.status})`);
   const results = await response.json() as Array<{ lat: string; lon: string }>;
-  if (!results[0]) throw new Error(`Adresse nicht gefunden: ${address}`);
+  if (!results[0]) throw new Error(`Adresse nicht gefunden: ${normalizedAddress}`);
   return { lat: Number(results[0].lat), lon: Number(results[0].lon) };
 }
 
