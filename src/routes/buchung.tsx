@@ -52,6 +52,9 @@ function Buchung() {
     const experience = String(form.get("experience") ?? "").trim();
     const health = String(form.get("health") ?? "").trim();
     const safeword = String(form.get("safeword") ?? "").trim();
+    const liegezeitDuration = String(form.get("liegezeit_duration") ?? "").trim();
+    const liegezeitType = String(form.get("liegezeit_type") ?? "").trim();
+    const liegezeitNote = String(form.get("liegezeit_note") ?? "").trim();
     const notes = String(form.get("message") ?? "").trim();
 
     let requestedStartIso: string | undefined;
@@ -77,7 +80,9 @@ function Buchung() {
       const d = new Date(s);
       return isNaN(d.getTime()) ? s : d.toLocaleString("de-DE", { dateStyle: "full", timeStyle: "short" });
     };
+    const liegezeitText = liegezeitDuration ? `Liegezeit: ${liegezeitDuration === "custom" ? (liegezeitNote || "individuelle Dauer") : `${liegezeitDuration} Minuten`} · ${liegezeitType || "unbeaufsichtigt"}` : null;
     const message = [
+      liegezeitText,
       phone ? `WhatsApp: ${phone}` : null,
       date ? `Wunschtermin: ${fmt(date)}${endDate ? ` – ${fmt(endDate)}` : ""}` : null,
       altDate ? `Ausweichtermin: ${fmt(altDate)}${altEnd ? ` – ${fmt(altEnd)}` : ""}` : null,
@@ -162,6 +167,43 @@ function Buchung() {
                 <div><label className="eyebrow block mb-2">{tr("Gewünschtes Safeword (optional)", "Preferred safeword (optional)")}</label><input name="safeword" maxLength={40} className="input-luxe" placeholder={tr("Zum Beispiel: Rot", "For example: Red")} /></div>
                 <div><label className="eyebrow block mb-2">{tr("Weitere Nachricht (optional)", "Additional message (optional)")}</label><textarea name="message" rows={3} maxLength={250} className="input-luxe resize-y" placeholder={tr("Gibt es noch etwas, das ich wissen sollte?", "Is there anything else I should know?")} /></div>
               </div>
+
+        {/* LIEGEZEIT_BOOKING_FEATURE */}
+        <details className="border border-champagne/20 bg-champagne/[0.03]">
+          <summary className="cursor-pointer px-4 py-3 text-sm text-champagne hover:text-vanilla transition">
+            {tr("+ Liegezeit hinzufügen (optional)", "+ Add restraint time (optional)")}
+          </summary>
+          <div className="space-y-4 border-t border-champagne/15 p-4">
+            <p className="text-xs leading-relaxed text-vanilla/55">
+              {tr("Die Liegezeit liegt innerhalb deiner gebuchten Sessiondauer. Ein möglicher Aufpreis wird anschließend individuell bestätigt.", "The restraint time is included within your booked session duration. Any surcharge will be confirmed individually afterwards.")}
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="eyebrow block mb-1.5">{tr("Gewünschte Dauer", "Requested duration")}</label>
+                <select name="liegezeit_duration" defaultValue="" className="input-luxe">
+                  <option value="">{tr("Keine Liegezeit", "No restraint time")}</option>
+                  <option value="30">30 {tr("Minuten", "minutes")}</option>
+                  <option value="60">60 {tr("Minuten", "minutes")}</option>
+                  <option value="90">90 {tr("Minuten", "minutes")}</option>
+                  <option value="120">120 {tr("Minuten", "minutes")}</option>
+                  <option value="custom">{tr("Andere Dauer", "Other duration")}</option>
+                </select>
+              </div>
+              <div>
+                <label className="eyebrow block mb-1.5">{tr("Art", "Type")}</label>
+                <select name="liegezeit_type" defaultValue="unbeaufsichtigt" className="input-luxe">
+                  <option value="unbeaufsichtigt">{tr("Unbeaufsichtigt", "Unsupervised")}</option>
+                  <option value="beaufsichtigt">{tr("Beaufsichtigt", "Supervised")}</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="eyebrow block mb-1.5">{tr("Dauer-Hinweis (optional)", "Duration note (optional)")}</label>
+              <input name="liegezeit_note" maxLength={120} className="input-luxe" placeholder={tr("z. B. 45 Minuten", "e.g. 45 minutes")} />
+            </div>
+          </div>
+        </details>
+
               <label className="flex items-start gap-3 text-sm text-vanilla/70 cursor-pointer"><input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-1 accent-[var(--color-champagne)]" required /><span>{tr(<>Ich bin volljährig (18+) und stimme der vertraulichen Verarbeitung meiner Daten zur Terminvereinbarung gemäß <a href="/datenschutz" className="text-champagne hover:underline">Datenschutzerklärung</a> zu.</>, <>I am 18+ and consent to the confidential processing of my data for scheduling in accordance with the <a href="/datenschutz" className="text-champagne hover:underline">privacy policy</a>.</>)}</span></label>
               <label className="flex items-start gap-3 text-sm text-vanilla/70 cursor-pointer border border-champagne/20 p-4"><input type="checkbox" checked={marketingConsent} onChange={(e) => setMarketingConsent(e.target.checked)} className="mt-1 accent-[var(--color-champagne)]" /><span>{tr("Ich möchte freiwillig per E-Mail über neue verfügbare Termine informiert werden. Nach dem Absenden erhalte ich eine Bestätigungs-E-Mail. Ich kann mich jederzeit wieder abmelden.", "I voluntarily want to receive emails about newly available appointments. I will receive a confirmation email and can unsubscribe at any time.")}</span></label>
               <div className="pt-2"><button type="submit" className="btn-gold w-full md:w-auto" disabled={!agree || status === "sending"}><Crown size={14} />{status === "sending" ? tr("Wird gesendet…", "Sending…") : status === "sent" ? tr("Anfrage erhalten — danke!", "Request received — thank you!") : tr("Termin anfragen", "Request appointment")}</button></div>

@@ -7,6 +7,7 @@ import { ArrowLeft, CalendarPlus, Download, Crown } from "lucide-react";
 import { format, isSameDay, startOfDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { ManualBookingForm, type ManualBookingValues } from "@/components/admin/admin-shared";
+import { CustomContentForm } from "@/components/admin/custom-content-form";
 import { saveCanvasAsPng } from "@/lib/download-image.client";
 import { createManualBooking } from "@/lib/booking.functions";
 import { listCustomers } from "@/lib/customers.functions";
@@ -157,6 +158,20 @@ function TerminplanPage() {
             </summary>
             <div className="p-5 border-t border-champagne/15">
               <ManualBookingForm onCreate={(values) => manualMut.mutateAsync(values)} pending={manualMut.isPending} customers={customersQ.data ?? []} studios={studiosQ.data} />
+            </div>
+          </details>
+
+          <details className="mb-8 bg-card border border-champagne/25">
+            <summary className="cursor-pointer px-5 py-4 text-sm text-vanilla/80 hover:text-champagne flex items-center gap-2">
+              <Crown size={16} className="text-champagne" />
+              Custom Content eintragen
+            </summary>
+            <div className="p-5 border-t border-champagne/15">
+              <CustomContentForm
+                onCreate={(values) => manualMut.mutateAsync(values)}
+                pending={manualMut.isPending}
+                studios={studiosQ.data}
+              />
             </div>
           </details>
 
@@ -328,8 +343,10 @@ function DayPlanDownloadButton({ day, items }: { day: Date; items: Entry[] }) {
         : entry.duration || "—";
       const appointmentType = entry.is_duo
         ? `DUO · ${entry.duo_partner?.trim() || "Partnerin"}`
-        : entry.is_content_shoot
-          ? "CONTENT"
+        : entry.duration === "Custom Content"
+          ? "CUSTOM CONTENT"
+          : entry.is_content_shoot
+            ? "CONTENT"
           : "SINGLE";
 
       ctx.fillStyle = card;
@@ -454,7 +471,7 @@ function EntryCard({ e }: { e: Entry }) {
           </span>
           {e.is_content_shoot ? (
             <span className="border border-champagne/30 px-1.5 py-0.5 text-vanilla/80">
-              Content
+              {e.duration === "Custom Content" ? "Custom Content" : "Content"}
             </span>
           ) : null}
         </div>

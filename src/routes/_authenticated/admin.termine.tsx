@@ -6,7 +6,7 @@ import type { FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { updateBookingStatus, deleteBooking } from "@/lib/booking.functions";
 import { createCashBookEntry } from "@/lib/cashbook.functions";
-import { updateBookingRestPaymentMethod } from "@/lib/rest-payment.functions";
+import { updateBookingOnsitePayment } from "@/lib/rest-payment.functions";
 import { PageHeader } from "@/components/site/PageHeader";
 import { BookingCard, type Booking, type Slot } from "@/components/admin/admin-shared";
 import { ArrowLeft, Plus, X, CheckCircle2 } from "lucide-react";
@@ -87,7 +87,7 @@ function matchKind(b: Booking, kind: BookingKind): boolean {
 export function BookingsList({ kind }: { kind: BookingKind }) {
   const qc = useQueryClient();
   const updateBookingFn = useServerFn(updateBookingStatus);
-  const updateRestPaymentFn = useServerFn(updateBookingRestPaymentMethod);
+  const updateOnsitePaymentFn = useServerFn(updateBookingOnsitePayment);
   const deleteBookingFn = useServerFn(deleteBooking);
   const createCashBookEntryFn = useServerFn(createCashBookEntry);
 
@@ -145,12 +145,13 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
       anzahlung_method?: string | null;
       anzahlung_paid_at?: string | null;
       restzahlung_method?: string | null;
+      onsite_paid_at?: string | null;
       deposit_exemption_reason?: "regular_customer" | "trust" | "exception" | "colleague_guarantees" | "spontaneous" | null;
     }) => {
-      const { restzahlung_method, ...bookingData } = v;
+      const { restzahlung_method, onsite_paid_at, ...bookingData } = v;
       await updateBookingFn({ data: bookingData });
-      if (restzahlung_method !== undefined) {
-        await updateRestPaymentFn({ data: { id: v.id, restzahlung_method } });
+      if (bookingData.bar !== undefined || restzahlung_method !== undefined || onsite_paid_at !== undefined) {
+        await updateOnsitePaymentFn({ data: { id: v.id, amount: bookingData.bar ?? 0, method: restzahlung_method ?? null, paid_at: onsite_paid_at ?? null } });
       }
     },
     onSuccess: () => {
@@ -287,7 +288,7 @@ function FixBookingDialog({
   booking: Booking;
   pending: boolean;
   onClose: () => void;
-  onSave: (values: { anzahlung: number; bar: number; anzahlung_method: string | null; anzahlung_paid_at: string | null; restzahlung_method: string | null; deposit_exemption_reason: "regular_customer" | "trust" | "exception" | "colleague_guarantees" | "spontaneous" | null }) => void;
+  onSave: (values: { anzahlung: number; bar: number; anzahlung_method: string | null; anzahlung_paid_at: string | null; restzahlung_method: string | null; onsite_paid_at: string | null; deposit_exemption_reason: "regular_customer" | "trust" | "exception" | "colleague_guarantees" | "spontaneous" | null }) => void;
 }) {
   const [total, setTotal] = useState("");
   const [deposit, setDeposit] = useState("");
@@ -296,6 +297,7 @@ function FixBookingDialog({
   const [depositMethod, setDepositMethod] = useState("Überweisung");
   const [restMethod, setRestMethod] = useState("Bar");
   const [paidAt, setPaidAt] = useState(() => new Date().toISOString().slice(0, 10));
+  const [onsitePaidAt, setOnsitePaidAt] = useState("");
   const [error, setError] = useState("");
   const totalValue = Number(total.replace(",", ".")) || 0;
   const depositValue = Number(deposit.replace(",", ".")) || 0;
@@ -314,6 +316,7 @@ function FixBookingDialog({
       anzahlung_method: depositExemptionReason ? null : depositMethod.trim(),
       anzahlung_paid_at: depositExemptionReason ? null : paidAt,
       restzahlung_method: rest > 0 ? restMethod.trim() : null,
+      onsite_paid_at: onsitePaidAt || null,
       deposit_exemption_reason: depositExemptionReason || null,
     });
   };
@@ -330,13 +333,13 @@ function FixBookingDialog({
           <label className="space-y-1"><span className="eyebrow block">Kurzsession</span><select value={shortSessionPrice} onChange={(e) => { const value = e.target.value; setShortSessionPrice(value); if (value) setTotal(value); }} className="input-luxe"><option value="">Preis auswählen</option><option value="60">60 €</option><option value="75">75 €</option><option value="100">100 €</option></select></label>
           <label className="space-y-1"><span className="eyebrow block">Anzahlungsregel</span><select value={depositExemptionReason} onChange={(e) => { const value = e.target.value as typeof depositExemptionReason; setDepositExemptionReason(value); if (value) setDeposit("0"); }} className="input-luxe"><option value="">Normale Anzahlung</option><option value="regular_customer">Keine Anzahlung – Stammkunde</option><option value="trust">Keine Anzahlung – Vertrauensbasis</option><option value="exception">Keine Anzahlung – Ausnahme</option><option value="colleague_guarantees">Keine Anzahlung – Kollegin bürgt</option><option value="spontaneous">Keine Anzahlung – Spontaner Termin</option></select></label>
           <label className="space-y-1"><span className="eyebrow block">Gesamtpreis (€)</span><input autoFocus required inputMode="decimal" value={total} onChange={(e) => setTotal(e.target.value)} placeholder="z. B. 450" className="input-luxe" /></label>
-          <label className="space-y-1"><span className="eyebrow block">Anzahlung erhalten (€)</span><input required={!depositExemptionReason} disabled={Boolean(depositExemptionReason)} inputMode="decimal" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="z. B. 150" className="input-luxe disabled:opacity-40" /></label>
-          <label className="space-y-1"><span className="eyebrow block">Zahlungsart Anzahlung</span><select disabled={Boolean(depositExemptionReason)} value={depositMethod} onChange={(e) => setDepositMethod(e.target.value)} className="input-luxe disabled:opacity-40">{PAYMENT_METHODS.map((v) => <option key={v}>{v}</option>)}</select></label>
-          <label className="space-y-1"><span className="eyebrow block">Anzahlung eingegangen am</span><input required={!depositExemptionReason} disabled={Boolean(depositExemptionReason)} type="date" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} className="input-luxe disabled:opacity-40" /></label>
-          <div className="space-y-1"><span className="eyebrow block">Restzahlung (€)</span><div className="input-luxe opacity-80">{rest.toLocaleString("de-DE")} €</div></div>
-          <label className="space-y-1"><span className="eyebrow block">Zahlungsart Rest / vor Ort</span><select disabled={rest <= 0} value={restMethod} onChange={(e) => setRestMethod(e.target.value)} className="input-luxe disabled:opacity-40">{PAYMENT_METHODS.map((v) => <option key={v}>{v}</option>)}</select></label>
+          <label className="space-y-1"><span className="eyebrow block">Anzahlung Betrag (€)</span><input required={!depositExemptionReason} disabled={Boolean(depositExemptionReason)} inputMode="decimal" value={deposit} onChange={(e) => setDeposit(e.target.value)} placeholder="z. B. 150" className="input-luxe disabled:opacity-40" /></label>
+          <label className="space-y-1"><span className="eyebrow block">Anzahlungsmethode</span><select disabled={Boolean(depositExemptionReason)} value={depositMethod} onChange={(e) => setDepositMethod(e.target.value)} className="input-luxe disabled:opacity-40">{PAYMENT_METHODS.map((v) => <option key={v}>{v}</option>)}</select></label>
+          <label className="space-y-1"><span className="eyebrow block">Anzahlung erhalten am</span><input required={!depositExemptionReason} disabled={Boolean(depositExemptionReason)} type="date" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} className="input-luxe disabled:opacity-40" /></label>
+          <div className="space-y-1"><span className="eyebrow block">Vor Ort Betrag (€)</span><div className="input-luxe opacity-80">{rest.toLocaleString("de-DE")} €</div></div>
+          <label className="space-y-1"><span className="eyebrow block">Vor Ort Zahlungsmethode</span><select disabled={rest <= 0} value={restMethod} onChange={(e) => setRestMethod(e.target.value)} className="input-luxe disabled:opacity-40">{PAYMENT_METHODS.map((v) => <option key={v}>{v}</option>)}</select></label><label className="space-y-1"><span className="eyebrow block">Vor Ort erhalten am</span><input disabled={rest <= 0} type="date" value={onsitePaidAt} onChange={(e) => setOnsitePaidAt(e.target.value)} className="input-luxe disabled:opacity-40" /></label>
         </div>
-        <div className="grid grid-cols-2 gap-3 border border-champagne/25 bg-champagne/[0.05] p-4 text-sm"><div><span className="text-vanilla/50 block">Anzahlung</span><strong>{depositExemptionReason ? "0" : depositValue.toLocaleString("de-DE")} € · {depositExemptionReason ? "entfällt" : depositMethod}</strong></div><div><span className="text-vanilla/50 block">Restzahlung</span><strong>{rest.toLocaleString("de-DE")} €{rest > 0 ? ` · ${restMethod}` : ""}</strong></div></div>
+        <div className="grid grid-cols-2 gap-3 border border-champagne/25 bg-champagne/[0.05] p-4 text-sm"><div><span className="text-vanilla/50 block">Anzahlung</span><strong>{depositExemptionReason ? "0" : depositValue.toLocaleString("de-DE")} € · {depositExemptionReason ? "entfällt" : depositMethod}</strong></div><div><span className="text-vanilla/50 block">Vor Ort</span><strong>{rest.toLocaleString("de-DE")} €{rest > 0 ? ` · ${restMethod}` : ""}</strong></div></div>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <div className="flex flex-col-reverse sm:flex-row justify-end gap-2"><button type="button" onClick={onClose} className="btn-outline-gold">Abbrechen</button><button disabled={pending} className="btn-gold"><CheckCircle2 size={14} />{pending ? "Wird gespeichert…" : "Termin fixieren"}</button></div>
       </form>

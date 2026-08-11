@@ -171,7 +171,7 @@ function useFaqs(): { q: string; a: ReactNode }[] {
         a: (
           <>
             <p className="mb-4">
-              A small attention is warmly welcome — I especially enjoy Kinderschokolade, Coca-Cola Zero in a glass and Pleaser high heels in size 39. For something bigger I recommend my favourite fetish shop in Munich: <strong className="text-vanilla/90">My Holy Desire</strong>. There Ella advises you discreetly and with style. If you can't be there in person, the accompanying online shop has a suitable selection.
+              A small attention is warmly welcome — I especially enjoy Kinderschokolade, Coca-Cola Zero in a glass and Pleaser high heels in size 39. For something bigger I recommend my favourite fetish shop in Munich: <a href="https://myholydesire.com" target="_blank" rel="noopener noreferrer" className="text-champagne hover:underline">My Holy Desire</a>. There Ella advises you discreetly and with style. If you can't be there in person, the accompanying online shop has a suitable selection.
             </p>
             <p>
               A well-chosen gift can have a wonderful effect.
@@ -316,7 +316,7 @@ function useFaqs(): { q: string; a: ReactNode }[] {
       a: (
         <>
           <p className="mb-4">
-            Eine kleine Aufmerksamkeit ist herzlich willkommen – besonders freue ich mich über Kinderschokolade, Coca-Cola Zero im Glas und Pleaser-High-Heels in Größe 39. Für etwas Größeres empfehle ich dir meinen Lieblingsfetischladen in München: <strong className="text-vanilla/90">My Holy Desire</strong>. Dort berät dich Ella diskret und mit Stil. Wer nicht vor Ort sein kann, findet im zugehörigen Onlineshop eine passende Auswahl.
+            Eine kleine Aufmerksamkeit ist herzlich willkommen – besonders freue ich mich über Kinderschokolade, Coca-Cola Zero im Glas und Pleaser-High-Heels in Größe 39. Für etwas Größeres empfehle ich dir meinen Lieblingsfetischladen in München: <a href="https://myholydesire.com" target="_blank" rel="noopener noreferrer" className="text-champagne hover:underline">My Holy Desire</a>. Dort berät dich Ella diskret und mit Stil. Wer nicht vor Ort sein kann, findet im zugehörigen Onlineshop eine passende Auswahl.
           </p>
           <p>
             Ein gut gewähltes Geschenk kann eine wunderbare Wirkung entfalten.

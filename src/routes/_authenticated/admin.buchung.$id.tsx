@@ -40,6 +40,7 @@ import {
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { DEFAULT_STUDIOS, listStudios } from "@/lib/studio.functions";
+import { updateBookingOnsitePayment } from "@/lib/rest-payment.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/buchung/$id")({
   head: () => ({
@@ -92,6 +93,7 @@ function BookingDetailPage() {
   const listStudiosFn = useServerFn(listStudios);
   const saveBookingType = useServerFn(updateBookingType);
   const savePayment = useServerFn(updateBookingPayment);
+  const updateOnsitePaymentFn = useServerFn(updateBookingOnsitePayment);
   const markDepositPaidFn = useServerFn(markDepositPaid);
   const updateDepositPaidDateFn = useServerFn(updateDepositPaidDate);
   const sendPaymentReminderFn = useServerFn(sendPaymentReminder);
@@ -142,6 +144,8 @@ const [overrideDate, setOverrideDate] = useState("");
   const [anzahlungInput, setAnzahlungInput] = useState<string>("");
   const [anzahlungMethod, setAnzahlungMethod] = useState<string>("");
   const [barInput, setBarInput] = useState<string>("");
+  const [restPaymentMethod, setRestPaymentMethod] = useState<string>("Bar");
+  const [barPaidDate, setBarPaidDate] = useState<string>("");
   const [shortSessionPrice, setShortSessionPrice] = useState<string>("");
   const [depositExemptionReason, setDepositExemptionReason] = useState<string>("");
   const [anzahlungPaidDate, setAnzahlungPaidDate] = useState<string>("");
@@ -189,6 +193,8 @@ const [overrideDate, setOverrideDate] = useState("");
   anzahlung_paid_at: string | null;
   deposit_exemption_reason: string | null;
   bar: number | string | null;
+  restzahlung_method: string | null;
+  cash_received_at: string | null;
   availability_slots?: {
     location?: string | null;
     location_address?: string | null;
@@ -229,6 +235,8 @@ setDuoPartner(b.availability_slots?.duo_partner ?? "");
     : "",
 );
       setBarInput(b.bar != null ? String(b.bar) : "0");
+      setRestPaymentMethod(b.restzahlung_method ?? "Bar");
+      setBarPaidDate(b.cash_received_at ? String(b.cash_received_at).slice(0, 10) : "");
       setStudioName(b.studio_override?.trim() || b.availability_slots?.location || "");
       setStudioAddress(b.studio_address_override?.trim() || b.availability_slots?.location_address || "");
     }
@@ -299,10 +307,11 @@ setDuoPartner(b.availability_slots?.duo_partner ?? "");
 });
 
   const paymentMut = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       const a = Number((anzahlungInput || "0").replace(",", ".")) || 0;
       const b = Number((barInput || "0").replace(",", ".")) || 0;
-      return savePayment({ data: { id, anzahlung: depositExemptionReason ? 0 : a, bar: b, anzahlung_method: depositExemptionReason ? null : anzahlungMethod.trim() || null, deposit_exemption_reason: depositExemptionReason || null } });
+      await savePayment({ data: { id, anzahlung: depositExemptionReason ? 0 : a, bar: b, anzahlung_method: depositExemptionReason ? null : anzahlungMethod.trim() || null, deposit_exemption_reason: depositExemptionReason || null } });
+      await updateOnsitePaymentFn({ data: { id, amount: b, method: b > 0 ? restPaymentMethod.trim() || null : null, paid_at: b > 0 ? barPaidDate || null : null } });
     },
     onSuccess: () => {
       setPaymentSaved(true);
@@ -583,7 +592,8 @@ const depositDateMut = useMutation({
       !depositExemptionReason && anzahlungPaidDate
         ? `Anzahlung erhalten am: ${format(new Date(`${anzahlungPaidDate}T12:00:00`), "dd.MM.yyyy", { locale: de })}`
         : null,
-      `Restbetrag bar vor Ort: ${cashValue.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`,
+      `Vor Ort Betrag: ${cashValue.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €${restPaymentMethod.trim() ? ` per ${restPaymentMethod.trim()}` : ""}`,
+      barPaidDate ? `Vor Ort erhalten am: ${format(new Date(`${barPaidDate}T12:00:00`), "dd.MM.yyyy", { locale: de })}` : null,
       "",
       "Ich freue mich auf unseren Termin.",
       "",
@@ -1548,7 +1558,7 @@ const depositDateMut = useMutation({
                 ))}
               </div>
               <p className="mt-2 text-[0.6rem] text-vanilla/40">
-                Setzt automatisch 0 € Anzahlung und den gewählten Betrag als Barzahlung vor Ort.
+                Setzt automatisch 0 € Anzahlung und den gewählten Betrag als Zahlung vor Ort.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -1579,7 +1589,7 @@ const depositDateMut = useMutation({
               </div>
               <div>
                 <label className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 block mb-1">
-                  Anzahlung (€)
+                  Anzahlung Betrag (€)
                 </label>
                 <input
                   type="text"
@@ -1593,7 +1603,7 @@ const depositDateMut = useMutation({
               </div>
               <div>
                 <label className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 block mb-1">
-                  Bar vor Ort (€)
+                  Vor Ort Betrag (€)
                 </label>
                 <input
                   type="text"
@@ -1603,11 +1613,11 @@ const depositDateMut = useMutation({
                   placeholder="0"
                   className="input-luxe w-full"
                 />
-              </div>
+              </div><div><label className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 block mb-1">Vor Ort Zahlungsmethode</label><select value={restPaymentMethod} onChange={(e) => setRestPaymentMethod(e.target.value)} className="input-luxe w-full"><option>Bar</option><option>PayPal</option><option>Überweisung</option><option>Karte</option><option>Sonstige</option></select></div><div><label className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 block mb-1">Vor Ort erhalten am</label><input type="date" value={barPaidDate} onChange={(e) => setBarPaidDate(e.target.value)} className="input-luxe w-full" /></div>
             </div>
             <div className="mt-3">
               <label className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 block mb-1">
-                Zahlungsart der Anzahlung
+                Anzahlungsmethode
               </label>
               {depositExemptionReason ? (
                 <div className="border border-green-700/40 bg-green-700/10 px-3 py-3 text-sm text-green-200">
@@ -1645,7 +1655,7 @@ const depositDateMut = useMutation({
   <p className="mt-4 text-[0.65rem] text-vanilla/40 leading-relaxed">
     Standard-Rechnung: {total.toLocaleString("de-DE")} € gesamt
     ({deposit!.toLocaleString("de-DE")} € Anzahlung +{" "}
-    {rest!.toLocaleString("de-DE")} € Rest bar) —
+    {rest!.toLocaleString("de-DE")} € Vor Ort) —
     überschreibe die Felder oben bei Sondervereinbarungen.
   </p>
 ) : (
@@ -1656,7 +1666,7 @@ const depositDateMut = useMutation({
 
 <div className="mt-4">
   <label className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 block mb-1">
-    Anzahlung eingegangen am
+    Anzahlung erhalten am
   </label>
   {depositExemptionReason ? (
     <div className="border border-green-700/40 bg-green-700/10 px-3 py-3 text-sm text-green-200">

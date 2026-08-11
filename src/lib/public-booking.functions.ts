@@ -5,6 +5,46 @@ import type { Database } from "@/integrations/supabase/types";
 
 const STEP_MINUTES = 15;
 
+function getBerlinOffsetMinutes(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Berlin",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const value = (type: string) => Number(parts.find((part) => part.type === type)?.value ?? 0);
+  const asUtc = Date.UTC(value("year"), value("month") - 1, value("day"), value("hour"), value("minute"), value("second"));
+  return (asUtc - date.getTime()) / 60_000;
+}
+
+function berlinMidnightToUtc(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const wallMidnight = Date.UTC(year, month - 1, day, 0, 0, 0, 0);
+  const offsetMinutes = getBerlinOffsetMinutes(new Date(wallMidnight));
+  return new Date(wallMidnight - offsetMinutes * 60_000);
+}
+
+function getBerlinCalendarDayBounds(value: string | Date) {
+  const dateKey = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Europe/Berlin",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(value));
+  const dayStart = berlinMidnightToUtc(dateKey);
+  const nextWallDate = new Date(Date.UTC(
+    Number(dateKey.slice(0, 4)),
+    Number(dateKey.slice(5, 7)) - 1,
+    Number(dateKey.slice(8, 10)) + 1,
+  ));
+  const nextKey = nextWallDate.toISOString().slice(0, 10);
+  return { dayStart, dayEnd: berlinMidnightToUtc(nextKey) };
+}
+
 type BusyRange = { starts_at: string; ends_at: string };
 
 async function repairKnownManualOvernightBooking() {
@@ -235,14 +275,11 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const dayStart = new Date(slot.starts_at);
-    dayStart.setUTCHours(0, 0, 0, 0);
-    const dayEnd = new Date(dayStart);
-    dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+    const { dayStart, dayEnd } = getBerlinCalendarDayBounds(slot.starts_at);
 
     const { data: daySlots } = await supabaseAdmin
       .from("availability_slots")
-      .select("id, starts_at, ends_at, buffer_minutes, status, is_hidden")
+      .select("id, starts_at, ends_at, buffer_minutes, status, is_hidden, is_duo, duo_partner")
       .in("status", ["open", "held", "booked"])
       .lt("starts_at", dayEnd.toISOString())
       .gt("ends_at", dayStart.toISOString())
@@ -254,22 +291,56 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
     // former slot boundaries into artificial grey gaps beside real bookings.
     const visibleDaySlots = slotsForDay.filter((s) => !s.is_hidden);
     const timelineSlots = visibleDaySlots.length ? visibleDaySlots : slotsForDay;
-    const daySlotIds = slotsForDay.map((s) => s.id);
+    // The Terminplan is the source of truth for public occupancy. Read every
+    // confirmed/reserved appointment by its real start and duration instead of
+    // relying on the original availability slot, which may later be merged,
+    // moved or deleted. The lookback also captures appointments crossing midnight.
+    const bookingLookback = new Date(dayStart.getTime() - 48 * 60 * 60_000);
 
     const { data: bookings } = await supabaseAdmin
       .from("bookings")
       .select("slot_id, requested_start, duration_minutes, status, updated_at")
-      .in("slot_id", daySlotIds)
-      // A plain inquiry is not a reservation. Only a confirmed booking or a
-      // booking explicitly waiting for its deposit blocks the public timeline.
+      .gte("requested_start", bookingLookback.toISOString())
+      .lt("requested_start", dayEnd.toISOString())
       .in("status", ["waiting_deposit", "confirmed"])
       .not("requested_start", "is", null)
       .not("duration_minutes", "is", null);
 
-    const activeBookings = (bookings ?? []).filter((b) => isActiveBlockingBooking(b));
+    const activeBookings = (bookings ?? []).filter((b) => {
+      if (!isActiveBlockingBooking(b) || !b.requested_start || !b.duration_minutes) return false;
+      const appointmentStart = new Date(b.requested_start).getTime();
+      const appointmentEnd = appointmentStart + b.duration_minutes * 60_000;
+      return appointmentStart < dayEnd.getTime() && appointmentEnd > dayStart.getTime();
+    });
+    // Build the slot lookup before loading metadata for hidden manual slots.
+    // The day-wide query also returns external appointments whose source slot
+    // is hidden and therefore not part of slotsForDay.
+    const slotById = new Map(slotsForDay.map((s) => [s.id, s]));
+    const activeBookingSlotIds = [...new Set(
+      activeBookings.flatMap((activeBooking) =>
+        activeBooking.slot_id ? [activeBooking.slot_id] : [],
+      ),
+    )];
+
+    if (activeBookingSlotIds.length) {
+      const { data: activeBookingSlots, error: activeBookingSlotsError } = await supabaseAdmin
+        .from("availability_slots")
+        .select("id, is_duo, duo_partner, buffer_minutes")
+        .in("id", activeBookingSlotIds);
+      if (activeBookingSlotsError) throw activeBookingSlotsError;
+      for (const activeSlot of activeBookingSlots ?? []) {
+        slotById.set(activeSlot.id, activeSlot);
+      }
+    }
+
     const bufferBySlotId = new Map(
       slotsForDay.map((s) => [s.id, s.buffer_minutes ?? 30]),
     );
+    for (const [slotId, activeSlot] of slotById) {
+      if (!bufferBySlotId.has(slotId) && activeSlot.buffer_minutes != null) {
+        bufferBySlotId.set(slotId, activeSlot.buffer_minutes);
+      }
+    }
 
     const busyFromBookings = activeBookings.flatMap((b) => {
       if (!b.requested_start || !b.duration_minutes) return [];
@@ -277,7 +348,15 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
       return [{
         start: b.requested_start,
         end: new Date(s + b.duration_minutes * 60_000).toISOString(),
-        kind: b.status === "confirmed" ? "booked" as const : "reserved" as const,
+        kind:
+          b.status === "confirmed"
+            ? (() => {
+                const bookingSlot = b.slot_id ? slotById.get(b.slot_id) : null;
+                return bookingSlot && !bookingSlot.is_duo && bookingSlot.duo_partner
+                  ? "single_only" as const
+                  : "booked" as const;
+              })()
+            : "reserved" as const,
         buffer_minutes: b.slot_id ? (bufferBySlotId.get(b.slot_id) ?? 30) : 30,
       }];
     });
@@ -338,10 +417,7 @@ export const proposeBookingTime = createServerFn({ method: "POST" })
     const dur = data.duration_minutes * 60_000;
     const stepMs = STEP_MINUTES * 60_000;
 
-    const dayStart = new Date(slot.starts_at);
-    dayStart.setUTCHours(0, 0, 0, 0);
-    const dayEnd = new Date(dayStart);
-    dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+    const { dayStart, dayEnd } = getBerlinCalendarDayBounds(slot.starts_at);
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 

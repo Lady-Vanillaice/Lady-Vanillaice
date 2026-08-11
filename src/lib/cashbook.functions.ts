@@ -65,7 +65,7 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
     await ensureAdmin(context.supabase, context.userId);
     const db = context.supabase as any;
     const [manualRes, bookingRes] = await Promise.all([
-      db.from("cash_book_entries").select("id, studio, datum, kunde, anzahlung, anzahlung_method, anzahlung_datum, deposit_exemption_reason, bar, restzahlung_method, restzahlung_datum, gesamt, notiz, created_at"),
+      db.from("cash_book_entries").select("id, studio, datum, kunde, anzahlung, anzahlung_method, bar, gesamt, notiz, created_at"),
       db.from("bookings")
         .select("id, guest_name, duration, duration_minutes, status, anzahlung, anzahlung_method, anzahlung_paid, anzahlung_paid_at, deposit_exemption_reason, deposit_guarantor, bar, restzahlung_method, completed_at, cash_received_at, fully_paid, admin_note, created_at, requested_start, studio_override, studio_address_override, availability_slots(starts_at, ends_at, location, location_address, is_duo, is_content_shoot)")
         .in("status", ["confirmed", "cancelled", "rescheduling"]),
@@ -108,7 +108,11 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
       const slot = (Array.isArray(b.availability_slots) ? b.availability_slots[0] : b.availability_slots) as {
         starts_at?: string; ends_at?: string; location?: string; location_address?: string | null; is_duo?: boolean; is_content_shoot?: boolean;
       } | null;
-      const termin = dateOnly(b.requested_start ?? slot?.starts_at) ?? dateOnly(b.created_at)!;
+      const appointmentStart = b.requested_start ?? slot?.starts_at ?? null;
+      const appointmentEnd = appointmentStart && Number(b.duration_minutes ?? 0) > 0
+        ? new Date(new Date(appointmentStart).getTime() + Number(b.duration_minutes) * 60_000).toISOString()
+        : slot?.ends_at ?? null;
+      const termin = dateOnly(appointmentStart) ?? dateOnly(b.created_at)!;
       const plannedDeposit = Number(b.anzahlung ?? 0);
       const plannedCash = Number(b.bar ?? 0);
       const depositDate = dateOnly(b.anzahlung_paid_at);
@@ -118,7 +122,7 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
       const common = {
         source: "booking" as const, entry_type: "income" as const, expense_category: null,
         expense_amount: 0, payment_method: null, booking_id: b.id, termin_datum: termin,
-        termin_start: b.requested_start ?? slot?.starts_at ?? null, termin_ende: slot?.ends_at ?? null,
+        termin_start: appointmentStart, termin_ende: appointmentEnd,
         studio: b.studio_override?.trim() || slot?.location || "—",
         studio_address: b.studio_address_override?.trim() || slot?.location_address || null,
         kunde: b.guest_name, art, dauer: durationLabel(b.duration_minutes, b.duration),
@@ -169,11 +173,7 @@ export const createCashBookEntry = createServerFn({ method: "POST" })
       studio: data.studio, datum: data.datum, kunde: data.kunde,
       anzahlung: data.deposit_exemption_reason ? 0 : data.anzahlung,
       anzahlung_method: data.deposit_exemption_reason ? null : data.anzahlung_method?.trim() || null,
-      anzahlung_datum: data.deposit_exemption_reason ? null : data.anzahlung_datum ?? null,
-      deposit_exemption_reason: data.deposit_exemption_reason ?? null,
       bar: data.bar,
-      restzahlung_method: data.bar > 0 ? data.restzahlung_method?.trim() || null : null,
-      restzahlung_datum: data.bar > 0 ? data.restzahlung_datum ?? null : null,
       notiz: data.notiz ?? null,
       created_by: context.userId,
     }).select("id").single();
@@ -192,11 +192,7 @@ export const updateCashBookEntry = createServerFn({ method: "POST" })
       kunde: data.kunde.trim(),
       anzahlung: data.deposit_exemption_reason ? 0 : data.anzahlung,
       anzahlung_method: data.deposit_exemption_reason ? null : data.anzahlung_method?.trim() || null,
-      anzahlung_datum: data.deposit_exemption_reason ? null : data.anzahlung_datum ?? null,
-      deposit_exemption_reason: data.deposit_exemption_reason ?? null,
       bar: data.bar,
-      restzahlung_method: data.bar > 0 ? data.restzahlung_method?.trim() || null : null,
-      restzahlung_datum: data.bar > 0 ? data.restzahlung_datum ?? null : null,
       notiz: data.notiz?.trim() || null,
     }).eq("id", data.id);
     if (error) throw new Error(error.message);

@@ -248,3 +248,21 @@ form.bg-card.border.border-champagne\/15.p-5.space-y-3 > label:first-of-type > s
     order: -1;
   }
 }
+
+
+/* Stable mobile order for public calendar booking and its three information boxes. */
+@media (max-width: 1023px) {
+  .public-calendar-layout {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .public-booking-stack {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .public-booking-card {
+    order: -1;
+  }
+}
