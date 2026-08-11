@@ -20,6 +20,7 @@ const accountingInput = z.object({
   deposit_exemption_reason: exemptionReason.nullable().optional(),
   deposit_guarantor: z.string().trim().max(120).nullable().optional(),
   bar: z.number().min(0).max(1_000_000),
+  restzahlung_method: z.string().trim().max(100).nullable().optional(),
   completed_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   cash_received_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   fully_paid: z.boolean(),
@@ -46,20 +47,31 @@ export const updateBookingAccounting = createServerFn({ method: "POST" })
     const depositDate = !hasExemption && data.anzahlung > 0 ? data.anzahlung_paid_at : null;
     const bookingStatus = data.status === "cancelled" ? "cancelled" : data.status === "rescheduling" ? "rescheduling" : "confirmed";
     const guarantor = data.deposit_exemption_reason === "colleague_guarantees" ? data.deposit_guarantor?.trim() || null : null;
+    const dbExemptionReason = data.deposit_exemption_reason === "spontaneous" ? "exception" : data.deposit_exemption_reason ?? null;
+    const cleanNote = (data.note ?? "")
+      .replace(/(?:^|\n)Vor Ort Zahlungsmethode:\s*[^\n]*/g, "")
+      .replace(/(?:^|\n)Anzahlungsregel: Spontaner Termin/g, "")
+      .trim();
+    const noteLines = [
+      cleanNote || null,
+      data.bar > 0 && data.restzahlung_method ? `Vor Ort Zahlungsmethode: ${data.restzahlung_method.trim()}` : null,
+      data.deposit_exemption_reason === "spontaneous" ? "Anzahlungsregel: Spontaner Termin" : null,
+    ].filter(Boolean);
+    const savedNote = noteLines.join("\n") || null;
 
     const { error } = await db.from("bookings").update({
       anzahlung: hasExemption ? 0 : data.anzahlung,
-      anzahlung_method: hasExemption ? null : data.anzahlung_method?.trim() || null,
+      anzahlung_method: hasExemption ? (data.bar > 0 ? data.restzahlung_method?.trim() || null : null) : data.anzahlung_method?.trim() || null,
       anzahlung_paid: hasExemption ? false : Boolean(depositDate && data.anzahlung > 0),
       anzahlung_paid_at: hasExemption ? null : atNoon(depositDate),
-      deposit_exemption_reason: data.deposit_exemption_reason ?? null,
+      deposit_exemption_reason: dbExemptionReason,
       deposit_guarantor: guarantor,
       bar: data.bar,
       completed_at: atNoon(completedDate),
       cash_received_at: atNoon(cashDate),
       fully_paid: data.fully_paid || data.status === "completed",
       status: bookingStatus,
-      admin_note: data.note?.trim() || null,
+      admin_note: savedNote,
     }).eq("id", data.id);
     if (error) throw new Error(error.message);
 

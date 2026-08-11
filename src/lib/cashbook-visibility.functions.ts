@@ -12,9 +12,7 @@ export const listHiddenCashbookBookings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await ensureAdmin(context.supabase, context.userId);
-    const { data, error } = await context.supabase.from("cashbook_hidden_bookings").select("booking_id");
-    if (error) throw new Error(error.message);
-    return (data ?? []).map((row: { booking_id: string }) => row.booking_id);
+    return [] as string[];
   });
 
 /**
@@ -49,19 +47,8 @@ export const hideBookingFromCashbook = createServerFn({ method: "POST" })
 
     if (!booking) {
       await cleanupCashbook();
-      const { error: hiddenCleanupErr } = await supabaseAdmin
-        .from("cashbook_hidden_bookings")
-        .delete()
-        .eq("booking_id", data.booking_id);
-      if (hiddenCleanupErr) throw new Error(hiddenCleanupErr.message);
       return { ok: true, already_deleted: true };
     }
-
-    const { error: hiddenErr } = await supabaseAdmin
-      .from("cashbook_hidden_bookings")
-      .delete()
-      .eq("booking_id", data.booking_id);
-    if (hiddenErr) throw new Error(hiddenErr.message);
 
     await cleanupCashbook();
 
