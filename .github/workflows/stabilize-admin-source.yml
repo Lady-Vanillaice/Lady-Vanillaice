@@ -1,0 +1,45 @@
+name: Stabilize admin source
+
+on:
+  push:
+    branches:
+      - fix/direct-admin-stabilization
+
+permissions:
+  contents: write
+
+jobs:
+  stabilize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/direct-admin-stabilization
+          fetch-depth: 0
+      - name: Materialize current admin patches into source
+        run: npm run prebuild
+      - name: Stop payment and cashbook source rewriting during builds
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const path = 'package.json';
+          const pkg = JSON.parse(readFileSync(path, 'utf8'));
+          for (const key of ['prebuild', 'prebuild:dev']) {
+            pkg.scripts[key] = pkg.scripts[key]
+              .replace(' && node scripts/ensure-manual-payment-selector.mjs', '')
+              .replace(' && node scripts/short-session-payment-options.mjs', '');
+          }
+          writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');
+          NODE
+      - name: Commit materialized source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src package.json
+          if git diff --cached --quiet; then
+            echo "No source changes to commit"
+          else
+            git commit -m "Materialize admin payment and cashbook logic in source"
+            git push origin HEAD:fix/direct-admin-stabilization
+          fi
