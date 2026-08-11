@@ -89,6 +89,7 @@ function KassenbuchPage() {
   const [expenseStudio, setExpenseStudio] = useState(""); const [expenseDate, setExpenseDate] = useState(today());
   const [expenseAmount, setExpenseAmount] = useState(""); const [expenseMethod, setExpenseMethod] = useState(""); const [expenseNote, setExpenseNote] = useState("");
   const [travelLogPending, setTravelLogPending] = useState(false);
+  const [cashDay, setCashDay] = useState(today());
   const hiddenBookingSet = useMemo(() => new Set(hiddenBookingIds), [hiddenBookingIds]);
 
   const restMethodFor = (e: CashBookEntry) => {
@@ -119,6 +120,13 @@ function KassenbuchPage() {
   const balance = totals.gesamt - totalExpenses;
   const totalNet = totals.gesamt / 1.19;
   const totalVat = totals.gesamt - totalNet;
+  const dailyCash = data.filter(e => e.entry_type === "income")
+    .filter(e => !(e.source === "booking" && e.booking_id && hiddenBookingSet.has(e.booking_id)))
+    .reduce((sum, e) => {
+      const depositCash = e.anzahlung_datum === cashDay && e.anzahlung > 0 && e.anzahlung_method?.trim().toLowerCase() === "bar" ? e.anzahlung : 0;
+      const onsiteCash = e.bar_datum === cashDay && e.bar > 0 && restMethodFor(e)?.trim().toLowerCase() === "bar" ? e.bar : 0;
+      return sum + depositCash + onsiteCash;
+    }, 0);
   const studios = [...new Set(data.map(e => e.studio))].sort();
   const methods = [...new Set(data.flatMap(e => [e.anzahlung_method, e.restzahlung_method, e.payment_method, restMethodFor(e)]).filter(Boolean) as string[])].sort();
   const depositText = (e: CashBookEntry) => e.deposit_exemption_reason ? exemptionLabel[e.deposit_exemption_reason] : e.anzahlung_method ?? "—";
@@ -304,6 +312,10 @@ function KassenbuchPage() {
       <Link to="/admin" className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-vanilla/60 hover:text-champagne"><ArrowLeft size={14} /> Zurück zum Admin</Link>
       {error && <div className="border border-bordeaux bg-bordeaux/10 p-4 text-bordeaux">Kassenbuchdaten konnten nicht geladen werden: {(error as Error).message}</div>}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3"><Stat label="Anzahlungen" value={eur(totals.anzahlung)} /><Stat label="Vor Ort" value={eur(totals.bar)} /><Stat label="Ausgaben" value={eur(totalExpenses)} /><Stat label="Saldo" value={eur(balance)} gold /><Stat label="Erledigte Termine" value={String(completedAppointments)} /></div>
+      <div className="bg-card border border-champagne/30 p-4 flex flex-col sm:flex-row sm:items-end gap-4">
+        <div className="sm:w-64"><Field label="Tag für Bareinzahlung"><input type="date" value={cashDay} onChange={e => setCashDay(e.target.value)} className="luxe-input" /></Field></div>
+        <div className="flex-1 border border-champagne/20 px-4 py-3 min-h-[54px] flex items-center justify-between gap-4"><span className="eyebrow">Bar erhalten an diesem Tag</span><strong className="text-xl text-champagne whitespace-nowrap">{eur(dailyCash)}</strong></div>
+      </div>
       <div className="bg-card border border-champagne/20 p-4 grid sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 items-end">
         <Field label="Monat"><input type="month" value={month} onChange={e => setMonth(e.target.value)} className="luxe-input" /></Field>
         <Field label="Studio"><select value={studioFilter} onChange={e => setStudioFilter(e.target.value)} className="luxe-input"><option value="">Alle</option>{studios.map(v => <option key={v}>{v}</option>)}</select></Field>
