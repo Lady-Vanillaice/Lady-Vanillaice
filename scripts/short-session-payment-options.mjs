@@ -49,6 +49,9 @@ if (!text.includes('setOnsiteMethod("Bar")')) text = text.replace('      setShor
 if (text !== before) { writeFileSync(path, text); console.log("Short-session payment form simplified."); }
 else console.log("Short-session payment form already simplified.");
 
-// Only the safe remove patch runs here. The larger cashbook payment rewrite is
-// disabled until it can be moved out of prebuild without generating invalid TSX.
+// Safe final patches. These run after all legacy rewrites so every admin surface
+// uses the same Anzahlung / Vor-Ort payment model.
 await import("./add-cashbook-remove-only.mjs");
+await import("./unify-payment-external.mjs");
+await import("./unify-payment-bookings.mjs");
+await import("./unify-payment-cashbook.mjs");

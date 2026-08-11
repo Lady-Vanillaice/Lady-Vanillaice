@@ -29,6 +29,7 @@ export type CashBookEntry = {
   deposit_guarantor: string | null;
   bar: number;
   restbetrag_vorgemerkt: number;
+  restzahlung_method: string | null;
   bar_datum: string | null;
   durchgefuehrt_datum: string | null;
   gesamt: number;
@@ -64,9 +65,9 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
     await ensureAdmin(context.supabase, context.userId);
     const db = context.supabase as any;
     const [manualRes, bookingRes] = await Promise.all([
-      db.from("cash_book_entries").select("id, studio, datum, kunde, anzahlung, anzahlung_method, bar, gesamt, notiz, created_at"),
+      db.from("cash_book_entries").select("id, studio, datum, kunde, anzahlung, anzahlung_method, anzahlung_datum, deposit_exemption_reason, bar, restzahlung_method, restzahlung_datum, gesamt, notiz, created_at"),
       db.from("bookings")
-        .select("id, guest_name, duration, duration_minutes, status, anzahlung, anzahlung_method, anzahlung_paid, anzahlung_paid_at, deposit_exemption_reason, deposit_guarantor, bar, completed_at, cash_received_at, fully_paid, admin_note, created_at, requested_start, studio_override, studio_address_override, availability_slots(starts_at, ends_at, location, location_address, is_duo, is_content_shoot)")
+        .select("id, guest_name, duration, duration_minutes, status, anzahlung, anzahlung_method, anzahlung_paid, anzahlung_paid_at, deposit_exemption_reason, deposit_guarantor, bar, restzahlung_method, completed_at, cash_received_at, fully_paid, admin_note, created_at, requested_start, studio_override, studio_address_override, availability_slots(starts_at, ends_at, location, location_address, is_duo, is_content_shoot)")
         .in("status", ["confirmed", "cancelled", "rescheduling"]),
     ]);
     if (manualRes.error) throw new Error(manualRes.error.message);
@@ -74,6 +75,8 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
 
     const manual: CashBookEntry[] = (manualRes.data ?? []).map((e: any) => {
       const isStudioRent = e.kunde === STUDIO_RENT_LABEL;
+      const depositDate = !isStudioRent ? dateOnly(e.anzahlung_datum) : null;
+      const onsiteDate = !isStudioRent ? dateOnly(e.restzahlung_datum) : null;
       return {
         id: e.id, source: "manual", entry_type: isStudioRent ? "expense" : "income",
         expense_category: isStudioRent ? "studio_rent" : null,
@@ -83,18 +86,21 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
         studio: e.studio, studio_address: null, kunde: e.kunde,
         art: isStudioRent ? STUDIO_RENT_LABEL : e.studio === "Custom Content" ? "Custom Content" : "Manuell",
         dauer: e.notiz || null,
-        anzahlung: isStudioRent ? 0 : Number(e.anzahlung),
+        anzahlung: isStudioRent || !depositDate ? 0 : Number(e.anzahlung),
         anzahlung_vorgemerkt: isStudioRent ? 0 : Number(e.anzahlung),
         anzahlung_method: isStudioRent ? null : e.anzahlung_method ?? null,
-        anzahlung_datum: !isStudioRent && Number(e.anzahlung) > 0 ? e.datum : null,
-        deposit_exemption_reason: null, deposit_guarantor: null,
-        bar: isStudioRent ? 0 : Number(e.bar),
+        anzahlung_datum: depositDate,
+        deposit_exemption_reason: isStudioRent ? null : e.deposit_exemption_reason ?? null,
+        deposit_guarantor: null,
+        bar: isStudioRent || !onsiteDate ? 0 : Number(e.bar),
         restbetrag_vorgemerkt: isStudioRent ? 0 : Number(e.bar),
-        bar_datum: !isStudioRent && Number(e.bar) > 0 ? e.datum : null,
-        durchgefuehrt_datum: !isStudioRent && Number(e.bar) > 0 ? e.datum : null,
-        gesamt: isStudioRent ? 0 : Number(e.gesamt), status: "completed",
+        restzahlung_method: isStudioRent ? null : e.restzahlung_method ?? null,
+        bar_datum: onsiteDate,
+        durchgefuehrt_datum: onsiteDate,
+        gesamt: isStudioRent ? 0 : (depositDate ? Number(e.anzahlung) : 0) + (onsiteDate ? Number(e.bar) : 0),
+        status: "completed",
         notiz: e.notiz, created_at: e.created_at,
-        payment_kind: "manual", payment_date: e.datum,
+        payment_kind: "manual", payment_date: onsiteDate ?? depositDate ?? e.datum,
       };
     });
 
@@ -119,7 +125,8 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
         anzahlung_vorgemerkt: plannedDeposit,
         anzahlung_method: b.anzahlung_method ?? null, anzahlung_datum: depositDate,
         deposit_exemption_reason: b.deposit_exemption_reason ?? null, deposit_guarantor: b.deposit_guarantor ?? null,
-        restbetrag_vorgemerkt: plannedCash, bar_datum: cashDate, durchgefuehrt_datum: dateOnly(b.completed_at),
+        restbetrag_vorgemerkt: plannedCash, restzahlung_method: b.restzahlung_method ?? null,
+        bar_datum: cashDate, durchgefuehrt_datum: dateOnly(b.completed_at),
         status, notiz: b.admin_note ?? null, created_at: b.created_at,
       };
       const receivedDeposit = b.anzahlung_paid && depositDate ? plannedDeposit : 0;
@@ -137,13 +144,19 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
     });
   });
 
+const paymentDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Datum ungültig").nullable().optional();
+const paymentMethod = z.string().max(100).nullable().optional();
 const entrySchema = z.object({
   studio: z.string().min(1, "Studio fehlt").max(200),
   datum: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Datum ungültig"),
   kunde: z.string().min(1, "Kunde fehlt").max(200),
   anzahlung: z.number().min(0).max(1_000_000),
-  anzahlung_method: z.string().max(100).nullable().optional(),
+  anzahlung_method: paymentMethod,
+  anzahlung_datum: paymentDate,
+  deposit_exemption_reason: z.enum(["regular_customer", "trust", "exception", "colleague_guarantees", "spontaneous"]).nullable().optional(),
   bar: z.number().min(0).max(1_000_000),
+  restzahlung_method: paymentMethod,
+  restzahlung_datum: paymentDate,
   notiz: z.string().max(2000).optional().nullable(),
 });
 
@@ -153,8 +166,15 @@ export const createCashBookEntry = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await ensureAdmin(context.supabase, context.userId);
     const { data: row, error } = await context.supabase.from("cash_book_entries").insert({
-      studio: data.studio, datum: data.datum, kunde: data.kunde, anzahlung: data.anzahlung,
-      anzahlung_method: data.anzahlung_method?.trim() || null, bar: data.bar, notiz: data.notiz ?? null,
+      studio: data.studio, datum: data.datum, kunde: data.kunde,
+      anzahlung: data.deposit_exemption_reason ? 0 : data.anzahlung,
+      anzahlung_method: data.deposit_exemption_reason ? null : data.anzahlung_method?.trim() || null,
+      anzahlung_datum: data.deposit_exemption_reason ? null : data.anzahlung_datum ?? null,
+      deposit_exemption_reason: data.deposit_exemption_reason ?? null,
+      bar: data.bar,
+      restzahlung_method: data.bar > 0 ? data.restzahlung_method?.trim() || null : null,
+      restzahlung_datum: data.bar > 0 ? data.restzahlung_datum ?? null : null,
+      notiz: data.notiz ?? null,
       created_by: context.userId,
     }).select("id").single();
     if (error) throw new Error(error.message);
@@ -170,9 +190,13 @@ export const updateCashBookEntry = createServerFn({ method: "POST" })
       studio: data.studio.trim(),
       datum: data.datum,
       kunde: data.kunde.trim(),
-      anzahlung: data.anzahlung,
-      anzahlung_method: data.anzahlung_method?.trim() || null,
+      anzahlung: data.deposit_exemption_reason ? 0 : data.anzahlung,
+      anzahlung_method: data.deposit_exemption_reason ? null : data.anzahlung_method?.trim() || null,
+      anzahlung_datum: data.deposit_exemption_reason ? null : data.anzahlung_datum ?? null,
+      deposit_exemption_reason: data.deposit_exemption_reason ?? null,
       bar: data.bar,
+      restzahlung_method: data.bar > 0 ? data.restzahlung_method?.trim() || null : null,
+      restzahlung_datum: data.bar > 0 ? data.restzahlung_datum ?? null : null,
       notiz: data.notiz?.trim() || null,
     }).eq("id", data.id);
     if (error) throw new Error(error.message);
@@ -193,14 +217,9 @@ export const createStudioRentExpense = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await ensureAdmin(context.supabase, context.userId);
     const { data: row, error } = await context.supabase.from("cash_book_entries").insert({
-      studio: data.studio.trim(),
-      datum: data.datum,
-      kunde: STUDIO_RENT_LABEL,
-      anzahlung: 0,
-      anzahlung_method: data.zahlungsart.trim(),
-      bar: data.betrag,
-      notiz: data.notiz?.trim() || null,
-      created_by: context.userId,
+      studio: data.studio.trim(), datum: data.datum, kunde: STUDIO_RENT_LABEL,
+      anzahlung: 0, anzahlung_method: data.zahlungsart.trim(), bar: data.betrag,
+      notiz: data.notiz?.trim() || null, created_by: context.userId,
     }).select("id").single();
     if (error) throw new Error(error.message);
     return row;
