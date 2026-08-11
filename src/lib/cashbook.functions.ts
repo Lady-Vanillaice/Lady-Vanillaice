@@ -48,6 +48,28 @@ async function ensureAdmin(supabase: any, userId: string) {
 
 const dateOnly = (value: string | null | undefined) => value ? String(value).slice(0, 10) : null;
 
+type ManualPaymentMeta = {
+  deposit_date?: string | null;
+  deposit_exemption_reason?: DepositExemptionReason | null;
+  onsite_method?: string | null;
+  onsite_date?: string | null;
+};
+const CASHBOOK_META_RE = /\n?\[\[LVI_PAYMENT:([^\]]+)\]\]/;
+function unpackCashbookNote(value: string | null | undefined) {
+  const raw = value ?? "";
+  const match = raw.match(CASHBOOK_META_RE);
+  let meta: ManualPaymentMeta = {};
+  if (match?.[1]) {
+    try { meta = JSON.parse(decodeURIComponent(match[1])) as ManualPaymentMeta; } catch { meta = {}; }
+  }
+  return { note: raw.replace(CASHBOOK_META_RE, "").trim() || null, meta };
+}
+function packCashbookNote(note: string | null | undefined, meta: ManualPaymentMeta) {
+  const clean = (note ?? "").replace(CASHBOOK_META_RE, "").trim();
+  const marker = `[[LVI_PAYMENT:${encodeURIComponent(JSON.stringify(meta))}]]`;
+  return [clean || null, marker].filter(Boolean).join("\n");
+}
+
 function durationLabel(minutes: number | null | undefined, fallback: string | null | undefined) {
   if (minutes && minutes > 0) {
     const hours = minutes / 60;
@@ -75,8 +97,10 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
 
     const manual: CashBookEntry[] = (manualRes.data ?? []).map((e: any) => {
       const isStudioRent = e.kunde === STUDIO_RENT_LABEL;
-      const depositDate = !isStudioRent ? dateOnly(e.anzahlung_datum) : null;
-      const onsiteDate = !isStudioRent ? dateOnly(e.restzahlung_datum) : null;
+      const parsedNote = unpackCashbookNote(e.notiz);
+      const meta = parsedNote.meta;
+      const depositDate = !isStudioRent ? dateOnly(meta.deposit_date) ?? (Number(e.anzahlung) > 0 ? dateOnly(e.datum) : null) : null;
+      const onsiteDate = !isStudioRent ? dateOnly(meta.onsite_date) ?? (Number(e.bar) > 0 ? dateOnly(e.datum) : null) : null;
       return {
         id: e.id, source: "manual", entry_type: isStudioRent ? "expense" : "income",
         expense_category: isStudioRent ? "studio_rent" : null,
@@ -85,21 +109,21 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
         booking_id: null, termin_datum: e.datum, termin_start: null, termin_ende: null,
         studio: e.studio, studio_address: null, kunde: e.kunde,
         art: isStudioRent ? STUDIO_RENT_LABEL : e.studio === "Custom Content" ? "Custom Content" : "Manuell",
-        dauer: e.notiz || null,
+        dauer: parsedNote.note || null,
         anzahlung: isStudioRent || !depositDate ? 0 : Number(e.anzahlung),
         anzahlung_vorgemerkt: isStudioRent ? 0 : Number(e.anzahlung),
         anzahlung_method: isStudioRent ? null : e.anzahlung_method ?? null,
         anzahlung_datum: depositDate,
-        deposit_exemption_reason: isStudioRent ? null : e.deposit_exemption_reason ?? null,
+        deposit_exemption_reason: isStudioRent ? null : meta.deposit_exemption_reason ?? null,
         deposit_guarantor: null,
         bar: isStudioRent || !onsiteDate ? 0 : Number(e.bar),
         restbetrag_vorgemerkt: isStudioRent ? 0 : Number(e.bar),
-        restzahlung_method: isStudioRent ? null : e.restzahlung_method ?? null,
+        restzahlung_method: isStudioRent ? null : meta.onsite_method ?? (Number(e.bar) > 0 ? "Bar" : null),
         bar_datum: onsiteDate,
         durchgefuehrt_datum: onsiteDate,
         gesamt: isStudioRent ? 0 : (depositDate ? Number(e.anzahlung) : 0) + (onsiteDate ? Number(e.bar) : 0),
         status: "completed",
-        notiz: e.notiz, created_at: e.created_at,
+        notiz: parsedNote.note, created_at: e.created_at,
         payment_kind: "manual", payment_date: onsiteDate ?? depositDate ?? e.datum,
       };
     });
@@ -174,7 +198,7 @@ export const createCashBookEntry = createServerFn({ method: "POST" })
       anzahlung: data.deposit_exemption_reason ? 0 : data.anzahlung,
       anzahlung_method: data.deposit_exemption_reason ? null : data.anzahlung_method?.trim() || null,
       bar: data.bar,
-      notiz: data.notiz ?? null,
+      notiz: packCashbookNote(data.notiz, { deposit_date: data.deposit_exemption_reason ? null : data.anzahlung_datum ?? null, deposit_exemption_reason: data.deposit_exemption_reason ?? null, onsite_method: data.bar > 0 ? data.restzahlung_method?.trim() || null : null, onsite_date: data.bar > 0 ? data.restzahlung_datum ?? null : null }),
       created_by: context.userId,
     }).select("id").single();
     if (error) throw new Error(error.message);
@@ -193,7 +217,7 @@ export const updateCashBookEntry = createServerFn({ method: "POST" })
       anzahlung: data.deposit_exemption_reason ? 0 : data.anzahlung,
       anzahlung_method: data.deposit_exemption_reason ? null : data.anzahlung_method?.trim() || null,
       bar: data.bar,
-      notiz: data.notiz?.trim() || null,
+      notiz: packCashbookNote(data.notiz, { deposit_date: data.deposit_exemption_reason ? null : data.anzahlung_datum ?? null, deposit_exemption_reason: data.deposit_exemption_reason ?? null, onsite_method: data.bar > 0 ? data.restzahlung_method?.trim() || null : null, onsite_date: data.bar > 0 ? data.restzahlung_datum ?? null : null }),
     }).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
