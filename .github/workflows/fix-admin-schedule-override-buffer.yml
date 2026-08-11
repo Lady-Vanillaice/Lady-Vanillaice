@@ -1,0 +1,68 @@
+name: Apply admin schedule override fix
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-admin-schedule-override-buffer.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/admin-schedule-override-buffer
+
+      - name: Allow admin override inside booking buffer
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/lib/booking.functions.ts')
+          text = path.read_text()
+          old = '''      const bufferMs = (containingSlot?.buffer_minutes ?? currentSlot?.buffer_minutes ?? 30) * 60_000;
+      const conflicts = (blockers ?? []).some((blocked) => {
+        if (!isBlockingBooking(blocked)) return false;
+        if (!blocked.requested_start || !blocked.duration_minutes) return false;
+        const blockedStart = new Date(blocked.requested_start).getTime() - bufferMs;
+        const blockedEnd = new Date(blocked.requested_start).getTime() + blocked.duration_minutes * 60_000 + bufferMs;
+        return requestedStart.getTime() < blockedEnd && requestedEnd.getTime() > blockedStart;
+      });
+
+      if (conflicts) {
+        throw new Error("Diese Uhrzeit überschneidet sich mit einem anderen Termin oder der Pause dazwischen. Bitte wähle eine andere Uhrzeit.");
+      }
+'''
+          new = '''      // Bei einer expliziten Admin-Ueberschreibung darf die normale Pause / der
+      // Buchungspuffer bewusst unterschritten werden. Eine echte zeitliche
+      // Ueberschneidung mit einem anderen aktiven Termin bleibt aber gesperrt.
+      const conflicts = (blockers ?? []).some((blocked) => {
+        if (!isBlockingBooking(blocked)) return false;
+        if (!blocked.requested_start || !blocked.duration_minutes) return false;
+        const blockedStart = new Date(blocked.requested_start).getTime();
+        const blockedEnd = blockedStart + blocked.duration_minutes * 60_000;
+        return requestedStart.getTime() < blockedEnd && requestedEnd.getTime() > blockedStart;
+      });
+
+      if (conflicts) {
+        throw new Error("Diese Uhrzeit überschneidet sich mit einem anderen Termin. Bitte wähle eine andere Uhrzeit.");
+      }
+'''
+          if old not in text:
+              raise SystemExit('Expected schedule conflict block not found; refusing to edit.')
+          path.write_text(text.replace(old, new, 1))
+          Path('.github/workflows/fix-admin-schedule-override-buffer.yml').unlink()
+          PY
+
+      - name: Commit fix
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/lib/booking.functions.ts .github/workflows/fix-admin-schedule-override-buffer.yml
+          git commit -m 'fix: let admins override booking buffer'
+          git push origin HEAD:fix/admin-schedule-override-buffer
