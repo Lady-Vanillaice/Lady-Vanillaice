@@ -1229,6 +1229,8 @@ const manualBookingInput = z.object({
   deposit_method: z.string().trim().min(1).max(100).nullable(),
   deposit_paid_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
   deposit_exemption_reason: z.enum(["regular_customer", "trust", "exception", "colleague_guarantees", "spontaneous"]).nullable(),
+  onsite_method: z.string().trim().min(1).max(100).nullable(),
+  onsite_paid_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
 });
 
 export const createManualBooking = createServerFn({ method: "POST" })
@@ -1282,6 +1284,7 @@ export const createManualBooking = createServerFn({ method: "POST" })
       data.taboos ? `Tabus & Grenzen:\n${data.taboos}` : null,
       data.health_notes ? `Gesundheitliche Hinweise:\n${data.health_notes}` : null,
       data.internal_note ? `Weitere Notiz:\n${data.internal_note}` : null,
+      data.onsite_method ? `Vor Ort Zahlungsmethode: ${data.onsite_method}` : null,
     ].filter(Boolean).join("\n\n") || null;
 
     // First check only real blocked/reserved/booked slots. Open availability
@@ -1420,12 +1423,13 @@ export const createManualBooking = createServerFn({ method: "POST" })
         status: "confirmed",
         admin_note: combinedInternalNote,
         anzahlung: data.deposit_exemption_reason ? 0 : data.deposit_amount,
-        anzahlung_method: data.deposit_exemption_reason ? null : data.deposit_method,
+        anzahlung_method: data.deposit_exemption_reason ? data.onsite_method : data.deposit_method,
         anzahlung_paid: !data.deposit_exemption_reason && data.deposit_amount > 0,
         anzahlung_paid_at: !data.deposit_exemption_reason && data.deposit_amount > 0 && data.deposit_paid_at ? `${data.deposit_paid_at}T12:00:00.000Z` : null,
         deposit_exemption_reason: data.deposit_exemption_reason,
         bar: data.total_amount - (data.deposit_exemption_reason ? 0 : data.deposit_amount),
-        fully_paid: !data.deposit_exemption_reason && data.total_amount === data.deposit_amount,
+        cash_received_at: data.onsite_paid_at ? `${data.onsite_paid_at}T12:00:00.000Z` : null,
+        fully_paid: Boolean(data.onsite_paid_at) || (!data.deposit_exemption_reason && data.total_amount === data.deposit_amount),
       });
     if (bookingErr) {
       // Roll back the slot to avoid orphan blocked windows.
