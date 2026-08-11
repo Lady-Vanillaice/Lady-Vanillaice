@@ -1,0 +1,94 @@
+name: Fix cashbook delete and edit
+
+on:
+  push:
+    branches:
+      - fix/cashbook-delete-edit
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/cashbook-delete-edit
+          fetch-depth: 0
+      - name: Apply direct source fixes
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+
+          {
+            const path = 'src/lib/cashbook-visibility.functions.ts';
+            let text = readFileSync(path, 'utf8');
+            text = text.replace(
+              /export const listHiddenCashbookBookings = createServerFn\(\{ method: "GET" \}\)[\s\S]*?\n\s*\}\);/,
+              `export const listHiddenCashbookBookings = createServerFn({ method: "GET" })\n  .middleware([requireSupabaseAuth])\n  .handler(async ({ context }) => {\n    await ensureAdmin(context.supabase, context.userId);\n    return [] as string[];\n  });`
+            );
+            text = text.replace(/\n\s*const \{ error: hiddenCleanupErr \} = await supabaseAdmin[\s\S]*?if \(hiddenCleanupErr\) throw new Error\(hiddenCleanupErr\.message\);/g, '');
+            text = text.replace(/\n\s*const \{ error: hiddenErr \} = await supabaseAdmin[\s\S]*?if \(hiddenErr\) throw new Error\(hiddenErr\.message\);/g, '');
+            if (text.includes('.from("cashbook_hidden_bookings")')) throw new Error('Hidden-bookings table dependency still present.');
+            writeFileSync(path, text);
+          }
+
+          {
+            const path = 'src/lib/accounting.functions.ts';
+            let text = readFileSync(path, 'utf8');
+            text = text.replace(
+              '  bar: z.number().min(0).max(1_000_000),\n',
+              '  bar: z.number().min(0).max(1_000_000),\n  restzahlung_method: z.string().trim().max(100).nullable().optional(),\n'
+            );
+            text = text.replace(
+              '    const guarantor = data.deposit_exemption_reason === "colleague_guarantees" ? data.deposit_guarantor?.trim() || null : null;\n',
+              '    const guarantor = data.deposit_exemption_reason === "colleague_guarantees" ? data.deposit_guarantor?.trim() || null : null;\n    const dbExemptionReason = data.deposit_exemption_reason === "spontaneous" ? "exception" : data.deposit_exemption_reason ?? null;\n    const cleanNote = (data.note ?? "")\n      .replace(/(?:^|\\n)Vor Ort Zahlungsmethode:\\s*[^\\n]*/g, "")\n      .replace(/(?:^|\\n)Anzahlungsregel: Spontaner Termin/g, "")\n      .trim();\n    const noteLines = [\n      cleanNote || null,\n      data.bar > 0 && data.restzahlung_method ? `Vor Ort Zahlungsmethode: ${data.restzahlung_method.trim()}` : null,\n      data.deposit_exemption_reason === "spontaneous" ? "Anzahlungsregel: Spontaner Termin" : null,\n    ].filter(Boolean);\n    const savedNote = noteLines.join("\\n") || null;\n'
+            );
+            text = text.replace(
+              '      anzahlung_method: hasExemption ? null : data.anzahlung_method?.trim() || null,',
+              '      anzahlung_method: hasExemption ? (data.bar > 0 ? data.restzahlung_method?.trim() || null : null) : data.anzahlung_method?.trim() || null,'
+            );
+            text = text.replace('      deposit_exemption_reason: data.deposit_exemption_reason ?? null,', '      deposit_exemption_reason: dbExemptionReason,');
+            text = text.replace('      admin_note: data.note?.trim() || null,', '      admin_note: savedNote,');
+            if (!text.includes('restzahlung_method: z.string()') || !text.includes('savedNote') || !text.includes('dbExemptionReason')) throw new Error('Accounting payment patch incomplete.');
+            writeFileSync(path, text);
+          }
+
+          {
+            const path = 'src/lib/cashbook.functions.ts';
+            let text = readFileSync(path, 'utf8');
+            text = text.replace(
+              '      const onsiteMethodFromNote = typeof b.admin_note === "string" ? b.admin_note.match(/(?:^|\\n)Vor Ort Zahlungsmethode:\\s*([^\\n]+)/)?.[1]?.trim() ?? null : null;\n',
+              '      const onsiteMethodFromNote = typeof b.admin_note === "string" ? b.admin_note.match(/(?:^|\\n)Vor Ort Zahlungsmethode:\\s*([^\\n]+)/)?.[1]?.trim() ?? null : null;\n      const exemptionFromNote = typeof b.admin_note === "string" && /(?:^|\\n)Anzahlungsregel: Spontaner Termin(?:\\n|$)/.test(b.admin_note) ? "spontaneous" : b.deposit_exemption_reason ?? null;\n'
+            );
+            text = text.replace('        deposit_exemption_reason: b.deposit_exemption_reason ?? null, deposit_guarantor: b.deposit_guarantor ?? null,', '        deposit_exemption_reason: exemptionFromNote, deposit_guarantor: b.deposit_guarantor ?? null,');
+            if (!text.includes('exemptionFromNote')) throw new Error('Cashbook spontaneous marker patch incomplete.');
+            writeFileSync(path, text);
+          }
+
+          {
+            const path = 'src/routes/_authenticated/admin.kassenbuch.tsx';
+            let text = readFileSync(path, 'utf8');
+            text = text.replace('import { listBookingRestPaymentMethods, updateBookingRestPaymentMethod } from "@/lib/rest-payment.functions";', 'import { listBookingRestPaymentMethods } from "@/lib/rest-payment.functions";');
+            text = text.replace('  const updateRestPayment = useServerFn(updateBookingRestPaymentMethod);\n', '');
+            text = text.replace(
+              '{editing?.source === "booking" && <AccountingDialog entry={editing} restMethod={restMethodFor(editing)} onClose={() => setEditing(null)} onSave={async payload => { const { restzahlung_method, ...accountingPayload } = payload; await saveAccounting({ data: accountingPayload }); if (editing.booking_id) await updateRestPayment({ data: { id: editing.booking_id, restzahlung_method } }); await Promise.all([qc.invalidateQueries({ queryKey: ["cashbook"] }), qc.invalidateQueries({ queryKey: ["booking-rest-payment-methods"] })]); setEditing(null); }} />}',
+              '{editing?.source === "booking" && <AccountingDialog entry={editing} restMethod={restMethodFor(editing)} onClose={() => setEditing(null)} onSave={async payload => { await saveAccounting({ data: payload }); await Promise.all([qc.invalidateQueries({ queryKey: ["cashbook"] }), qc.invalidateQueries({ queryKey: ["booking-rest-payment-methods"] })]); setEditing(null); }} />}'
+            );
+            text = text.replace(
+              'if (e.target.checked) { setStatus("completed"); setBarDate(v => v || (Number(bar) > 0 ? today() : "")); }',
+              'if (e.target.checked) { setStatus("completed"); setBar(v => (Number(v.replace(",", ".")) > 0 ? v : String(entry.restbetrag_vorgemerkt))); setBarDate(v => v || today()); }'
+            );
+            if (text.includes('updateBookingRestPaymentMethod') || text.includes('await updateRestPayment(')) throw new Error('Separate rest-payment save still present.');
+            writeFileSync(path, text);
+          }
+          NODE
+      - name: Commit direct source fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src
+          git commit -m "Fix cashbook delete and payment editing"
+          git push origin HEAD:fix/cashbook-delete-edit
