@@ -17,8 +17,6 @@ jobs:
         with:
           ref: fix/direct-admin-stabilization
           fetch-depth: 0
-      - name: Keep legacy non-payment prebuilds
-        run: npm run prebuild
       - name: Finalize direct external payment form
         run: |
           node --input-type=module <<'NODE'
