@@ -1,0 +1,45 @@
+name: Fix production rest payment compatibility
+
+on:
+  push:
+    branches:
+      - fix/prod-restzahlung-compat
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/prod-restzahlung-compat
+          fetch-depth: 0
+      - name: Remove missing restzahlung_method dependency from cashbook
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const path = 'src/lib/cashbook.functions.ts';
+          let text = readFileSync(path, 'utf8');
+          const before = text;
+          text = text.replace(
+            'id, guest_name, duration, duration_minutes, status, anzahlung, anzahlung_method, anzahlung_paid, anzahlung_paid_at, deposit_exemption_reason, deposit_guarantor, bar, restzahlung_method, completed_at, cash_received_at, fully_paid, admin_note, created_at, requested_start, studio_override, studio_address_override, availability_slots(starts_at, ends_at, location, location_address, is_duo, is_content_shoot)',
+            'id, guest_name, duration, duration_minutes, status, anzahlung, anzahlung_method, anzahlung_paid, anzahlung_paid_at, deposit_exemption_reason, deposit_guarantor, bar, completed_at, cash_received_at, fully_paid, admin_note, created_at, requested_start, studio_override, studio_address_override, availability_slots(starts_at, ends_at, location, location_address, is_duo, is_content_shoot)'
+          );
+          text = text.replace(
+            'restbetrag_vorgemerkt: plannedCash, restzahlung_method: b.restzahlung_method ?? null,',
+            'restbetrag_vorgemerkt: plannedCash, restzahlung_method: b.deposit_exemption_reason || plannedDeposit === 0 ? b.anzahlung_method ?? null : null,'
+          );
+          if (text === before) throw new Error('Cashbook compatibility patch did not change the source.');
+          if (text.includes('bar, restzahlung_method, completed_at')) throw new Error('Missing production column is still queried.');
+          writeFileSync(path, text);
+          NODE
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/cashbook.functions.ts
+          git commit -m "Stop querying missing booking rest payment column"
+          git push origin HEAD:fix/prod-restzahlung-compat
