@@ -1,4 +1,4 @@
-name: Fix travel log times and duplicates
+name: Fix travel log and daily cash
 
 on:
   push:
@@ -17,7 +17,9 @@ jobs:
           ref: fix/travel-log-times-and-dedup
           fetch-depth: 0
       - name: Patch source directly
-        run: python .github/patch_travel_log.py
+        run: |
+          python .github/patch_travel_log.py
+          python .github/patch_daily_cash.py
       - name: Commit source change
         run: |
           git config user.name "github-actions[bot]"
@@ -27,5 +29,5 @@ jobs:
             echo "No changes needed"
             exit 0
           fi
-          git commit -m "Improve travel log times and daily grouping"
+          git commit -m "Improve travel log and add daily cash total"
           git push origin HEAD:fix/travel-log-times-and-dedup
