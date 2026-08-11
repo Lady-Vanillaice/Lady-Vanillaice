@@ -33,6 +33,7 @@ type BusyRange = {
 };
 
 export type CalendarExportMode =
+  | { type: "day"; dayKey: string }
   | { type: "month"; monthKey: string }
   | { type: "year"; year: string }
   | { type: "all" };
@@ -257,8 +258,9 @@ async function loadData(mode: CalendarExportMode) {
   const allSlots = (slotRows ?? []) as SlotRow[];
   const slots = allSlots.filter((slot) => {
     const parts = dateParts(slot.starts_at);
+    if (mode.type === "day") return parts.dayKey === mode.dayKey;
     if (mode.type === "month") return parts.monthKey === mode.monthKey;
-    if (mode.type === "year") return parts.year === mode.year;
+    if (mode.type === "year") return parts.year === String(mode.year);
     return true;
   });
   if (slots.length === 0) throw new Error("Für diese Auswahl gibt es keine offenen Termine.");
