@@ -17,9 +17,68 @@ jobs:
         with:
           ref: fix/direct-admin-stabilization
           fetch-depth: 0
-      - name: Materialize current admin patches into source
+      - name: Keep legacy non-payment prebuilds
         run: npm run prebuild
-      - name: Stop payment and cashbook source rewriting during builds
+      - name: Finalize direct external payment form
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const path = 'src/components/admin/admin-shared.tsx';
+          let text = readFileSync(path, 'utf8');
+
+          text = text.replace(
+            '<div><label className="eyebrow block mb-1">Anzahlung Betrag (€)</label><input required={!depositExemptionReason} disabled={Boolean(depositExemptionReason)} inputMode="decimal" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} placeholder="z. B. 150" className="input-luxe !py-2 disabled:opacity-40" /></div>',
+            '<div className={depositExemptionReason === "spontaneous" ? "hidden" : ""}><label className="eyebrow block mb-1">Anzahlung Betrag (€)</label><input required={!depositExemptionReason} disabled={Boolean(depositExemptionReason)} inputMode="decimal" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} placeholder="z. B. 150" className="input-luxe !py-2 disabled:opacity-40" /></div><div className={depositExemptionReason === "spontaneous" ? "hidden" : ""}><label className="eyebrow block mb-1">Anzahlungsmethode</label><select disabled={Boolean(depositExemptionReason)} value={depositMethod} onChange={(e) => setDepositMethod(e.target.value)} className="input-luxe !py-2 disabled:opacity-40"><option>Überweisung</option><option>PayPal</option><option>Bar</option><option>Karte</option><option>Sonstige</option></select></div>'
+          );
+
+          text = text.replace(
+            '<div><label className="eyebrow block mb-1">Anzahlung erhalten am</label><input required={!depositExemptionReason} disabled={Boolean(depositExemptionReason)} type="date" value={depositPaidAt} onChange={(e) => setDepositPaidAt(e.target.value)} className="input-luxe !py-2 disabled:opacity-40" /></div>\n        </div>\n        <div className="flex items-center justify-between border-t border-champagne/20 pt-3"><span className="text-sm text-vanilla/65">Vor Ort Betrag</span><strong className="font-display text-2xl text-champagne">{Math.max(0, (Number(totalAmount.replace(",", ".")) || 0) - (Number(depositAmount.replace(",", ".")) || 0)).toLocaleString("de-DE")} €</strong></div>',
+            '<div className={depositExemptionReason === "spontaneous" ? "hidden" : ""}><label className="eyebrow block mb-1">Anzahlung erhalten am</label><input required={!depositExemptionReason} disabled={Boolean(depositExemptionReason)} type="date" value={depositPaidAt} onChange={(e) => setDepositPaidAt(e.target.value)} className="input-luxe !py-2 disabled:opacity-40" /></div><div><label className="eyebrow block mb-1">Vor Ort Betrag (€)</label><div className="input-luxe !py-2 opacity-80">{Math.max(0, (Number(totalAmount.replace(",", ".")) || 0) - (depositExemptionReason ? 0 : (Number(depositAmount.replace(",", ".")) || 0))).toLocaleString("de-DE")} €</div></div><div><label className="eyebrow block mb-1">Vor Ort erhalten am</label><input type="date" value={onsitePaidAt} onChange={(e) => setOnsitePaidAt(e.target.value)} className="input-luxe !py-2" /></div><div><label className="eyebrow block mb-1">Vor Ort Zahlungsmethode</label><select value={onsiteMethod} onChange={(e) => setOnsiteMethod(e.target.value)} className="input-luxe !py-2"><option>Bar</option><option>PayPal</option><option>Überweisung</option><option>Karte</option><option>Sonstige</option></select></div>\n        </div>'
+          );
+
+          if (!text.includes('Anzahlungsmethode') || !text.includes('Vor Ort Zahlungsmethode') || !text.includes('Vor Ort erhalten am')) {
+            throw new Error('Die direkten Zahlungsfelder konnten nicht vollständig eingebaut werden.');
+          }
+          writeFileSync(path, text);
+          NODE
+      - name: Persist manual cashbook payment details without new DB columns
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          const path = 'src/lib/cashbook.functions.ts';
+          let text = readFileSync(path, 'utf8');
+
+          if (!text.includes('type ManualPaymentMeta =')) {
+            text = text.replace(
+              'const dateOnly = (value: string | null | undefined) => value ? String(value).slice(0, 10) : null;\n',
+              `const dateOnly = (value: string | null | undefined) => value ? String(value).slice(0, 10) : null;\n\ntype ManualPaymentMeta = {\n  deposit_date?: string | null;\n  deposit_exemption_reason?: DepositExemptionReason | null;\n  onsite_method?: string | null;\n  onsite_date?: string | null;\n};\nconst CASHBOOK_META_RE = /\\n?\\[\\[LVI_PAYMENT:([^\\]]+)\\]\\]/;\nfunction unpackCashbookNote(value: string | null | undefined) {\n  const raw = value ?? \"\";\n  const match = raw.match(CASHBOOK_META_RE);\n  let meta: ManualPaymentMeta = {};\n  if (match?.[1]) {\n    try { meta = JSON.parse(decodeURIComponent(match[1])) as ManualPaymentMeta; } catch { meta = {}; }\n  }\n  return { note: raw.replace(CASHBOOK_META_RE, \"\").trim() || null, meta };\n}\nfunction packCashbookNote(note: string | null | undefined, meta: ManualPaymentMeta) {\n  const clean = (note ?? \"\").replace(CASHBOOK_META_RE, \"\").trim();\n  const marker = \`[[LVI_PAYMENT:\${encodeURIComponent(JSON.stringify(meta))}]]\`;\n  return [clean || null, marker].filter(Boolean).join(\"\\n\");\n}\n`
+            );
+          }
+
+          text = text.replace(
+            '      const isStudioRent = e.kunde === STUDIO_RENT_LABEL;\n      const depositDate = !isStudioRent ? dateOnly(e.anzahlung_datum) : null;\n      const onsiteDate = !isStudioRent ? dateOnly(e.restzahlung_datum) : null;',
+            '      const isStudioRent = e.kunde === STUDIO_RENT_LABEL;\n      const parsedNote = unpackCashbookNote(e.notiz);\n      const meta = parsedNote.meta;\n      const depositDate = !isStudioRent ? dateOnly(meta.deposit_date) ?? (Number(e.anzahlung) > 0 ? dateOnly(e.datum) : null) : null;\n      const onsiteDate = !isStudioRent ? dateOnly(meta.onsite_date) ?? (Number(e.bar) > 0 ? dateOnly(e.datum) : null) : null;'
+          );
+          text = text.replace('        dauer: e.notiz || null,', '        dauer: parsedNote.note || null,');
+          text = text.replace('        deposit_exemption_reason: isStudioRent ? null : e.deposit_exemption_reason ?? null,', '        deposit_exemption_reason: isStudioRent ? null : meta.deposit_exemption_reason ?? null,');
+          text = text.replace('        restzahlung_method: isStudioRent ? null : e.restzahlung_method ?? null,', '        restzahlung_method: isStudioRent ? null : meta.onsite_method ?? (Number(e.bar) > 0 ? "Bar" : null),');
+          text = text.replace('        notiz: e.notiz, created_at: e.created_at,', '        notiz: parsedNote.note, created_at: e.created_at,');
+
+          text = text.replace(
+            '      notiz: data.notiz ?? null,\n      created_by: context.userId,',
+            '      notiz: packCashbookNote(data.notiz, { deposit_date: data.deposit_exemption_reason ? null : data.anzahlung_datum ?? null, deposit_exemption_reason: data.deposit_exemption_reason ?? null, onsite_method: data.bar > 0 ? data.restzahlung_method?.trim() || null : null, onsite_date: data.bar > 0 ? data.restzahlung_datum ?? null : null }),\n      created_by: context.userId,'
+          );
+          text = text.replace(
+            '      notiz: data.notiz?.trim() || null,\n    }).eq("id", data.id);',
+            '      notiz: packCashbookNote(data.notiz, { deposit_date: data.deposit_exemption_reason ? null : data.anzahlung_datum ?? null, deposit_exemption_reason: data.deposit_exemption_reason ?? null, onsite_method: data.bar > 0 ? data.restzahlung_method?.trim() || null : null, onsite_date: data.bar > 0 ? data.restzahlung_datum ?? null : null }),\n    }).eq("id", data.id);'
+          );
+
+          if (!text.includes('packCashbookNote(data.notiz') || !text.includes('meta.onsite_method')) {
+            throw new Error('Kassenbuch-Zahlungsdetails konnten nicht direkt stabilisiert werden.');
+          }
+          writeFileSync(path, text);
+          NODE
+      - name: Ensure payment patch scripts stay disabled
         run: |
           node --input-type=module <<'NODE'
           import { readFileSync, writeFileSync } from 'node:fs';
@@ -32,7 +91,7 @@ jobs:
           }
           writeFileSync(path, JSON.stringify(pkg, null, 2) + '\n');
           NODE
-      - name: Commit materialized source
+      - name: Commit direct source
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -40,6 +99,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "No source changes to commit"
           else
-            git commit -m "Materialize admin payment and cashbook logic in source"
+            git commit -m "Finalize direct admin payment and cashbook behavior"
             git push origin HEAD:fix/direct-admin-stabilization
           fi
