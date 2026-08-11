@@ -1,0 +1,66 @@
+name: Fix cashbook export studio address
+
+on:
+  push:
+    branches:
+      - fix/cashbook-export-studio-address
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/cashbook-export-studio-address
+          fetch-depth: 0
+      - name: Patch source directly
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/routes/_authenticated/admin.kassenbuch.tsx')
+          text = path.read_text()
+
+          old_rows = '''  const rows = () => receivedIncomeEntries.map(e => [paymentDateText(e), paymentLabel(e), eur(monthAmount(e)), paymentMethodText(e), e.kunde, dateLabel(e.termin_datum), appointmentTime(e), e.art, studioText(e), e.dauer ?? "—", statusLabel[e.status]]);'''
+          new_rows = '''  const rows = () => receivedIncomeEntries.map(e => {
+    const parts = studioParts(e);
+    return [paymentDateText(e), paymentLabel(e), eur(monthAmount(e)), paymentMethodText(e), e.kunde, dateLabel(e.termin_datum), appointmentTime(e), e.art, parts.studio, parts.address || "—", e.dauer ?? "—", statusLabel[e.status]];
+  });'''
+          if old_rows in text:
+              text = text.replace(old_rows, new_rows)
+
+          old_pdf = '''      startY: 92, head: [["Zahlungseingang", "Vorgang", "Betrag", "Zahlungsart", "Kunde", "Session am", "Uhrzeit", "Art", "Studio / Adresse", "Dauer", "Status"]], body: rows(),
+      foot: [["SUMME", "", eur(totals.gesamt), "", "", "", "", "", "", "", ""]], styles: { fontSize: 6, cellPadding: 3, overflow: "linebreak" }, headStyles: { fillColor: [15, 15, 15] }, footStyles: { fillColor: [239, 229, 207], textColor: 15 },'''
+          new_pdf = '''      startY: 92, head: [["Zahlungseingang", "Vorgang", "Betrag", "Zahlungsart", "Kunde", "Session am", "Uhrzeit", "Art", "Studio", "Adresse", "Dauer", "Status"]], body: rows(),
+      foot: [["SUMME", "", eur(totals.gesamt), "", "", "", "", "", "", "", "", ""]], styles: { fontSize: 6, cellPadding: 3, overflow: "linebreak" }, headStyles: { fillColor: [15, 15, 15] }, footStyles: { fillColor: [239, 229, 207], textColor: 15 },'''
+          if old_pdf in text:
+              text = text.replace(old_pdf, new_pdf)
+
+          old_csv = '''    const raw = receivedIncomeEntries.map(e => [e.payment_date ?? "", paymentLabel(e), e.gesamt.toFixed(2).replace(".", ","), paymentMethodText(e), e.kunde, e.termin_datum, appointmentTime(e), e.art, e.studio, e.studio_address ?? "", e.dauer ?? "", statusLabel[e.status]]);'''
+          new_csv = '''    const raw = receivedIncomeEntries.map(e => {
+      const parts = studioParts(e);
+      return [e.payment_date ?? "", paymentLabel(e), e.gesamt.toFixed(2).replace(".", ","), paymentMethodText(e), e.kunde, e.termin_datum, appointmentTime(e), e.art, parts.studio, parts.address, e.dauer ?? "", statusLabel[e.status]];
+    });'''
+          if old_csv in text:
+              text = text.replace(old_csv, new_csv)
+
+          old_excel = '''    const table = [["Zahlungseingang", "Vorgang", "Betrag", "Zahlungsart", "Kunde", "Session am", "Uhrzeit", "Art", "Studio / Adresse", "Dauer", "Status"], ...rows()].map(r => `<tr>${r.map(v => `<td>${String(v).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll("\\n", "<br>")}</td>`).join("")}</tr>`).join("");'''
+          new_excel = '''    const table = [["Zahlungseingang", "Vorgang", "Betrag", "Zahlungsart", "Kunde", "Session am", "Uhrzeit", "Art", "Studio", "Adresse", "Dauer", "Status"], ...rows()].map(r => `<tr>${r.map(v => `<td>${String(v).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll("\\n", "<br>")}</td>`).join("")}</tr>`).join("");'''
+          if old_excel in text:
+              text = text.replace(old_excel, new_excel)
+
+          path.write_text(text)
+          PY
+      - name: Commit source change
+        run: |
+          if git diff --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routes/_authenticated/admin.kassenbuch.tsx
+          git commit -m "Separate studio and address in cashbook exports"
+          git push origin HEAD:fix/cashbook-export-studio-address
