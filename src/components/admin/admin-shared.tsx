@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import {
   Plus,
   CalendarPlus,
@@ -15,7 +14,6 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import type { CustomerRow } from "@/lib/customers.functions";
 import { DEFAULT_STUDIOS, type StudioOption } from "@/lib/studio.functions";
-import { updateBookingOnsitePaymentBySlot } from "@/lib/rest-payment.functions";
 
 const ADMIN_TIME_ZONE = "Europe/Berlin";
 
@@ -368,7 +366,7 @@ export function NewSlotForm({
         buffer_minutes: buffer,
         is_hidden: isHidden,
       };
-      const created = await onCreate({
+      await onCreate({
         starts_at: starts_at.toISOString(),
         ends_at: ends_at.toISOString(),
         ...sharedValues,
@@ -553,6 +551,8 @@ export type ManualBookingValues = {
   deposit_method: string | null;
   deposit_paid_at: string | null;
   deposit_exemption_reason: "regular_customer" | "trust" | "exception" | "colleague_guarantees" | "spontaneous" | null;
+  onsite_method: string | null;
+  onsite_paid_at: string | null;
 };
 
 export function ManualBookingForm({
@@ -566,7 +566,6 @@ export function ManualBookingForm({
   customers?: CustomerRow[];
   studios?: StudioOption[];
 }) {
-  const updateOnsitePaymentBySlotFn = useServerFn(updateBookingOnsitePaymentBySlot);
   const [date, setDate] = useState("");
   const [start, setStart] = useState("18:00");
   const [end, setEnd] = useState("19:00");
@@ -716,14 +715,9 @@ export function ManualBookingForm({
         deposit_method: depositMethod.trim(),
         deposit_paid_at: depositExemptionReason ? null : depositPaidAt,
         deposit_exemption_reason: depositExemptionReason,
+        onsite_method: onsiteMethod.trim() || null,
+        onsite_paid_at: onsitePaidAt || null,
       });
-
-      if (created && typeof created === "object" && "slot_id" in created) {
-        const slotId = (created as { slot_id?: unknown }).slot_id;
-        if (typeof slotId === "string") {
-          await updateOnsitePaymentBySlotFn({ data: { slot_id: slotId, amount: Math.max(0, total - (depositExemptionReason ? 0 : deposit)), method: onsiteMethod.trim() || null, paid_at: onsitePaidAt || null } });
-        }
-      }
 
       setOk(true);
       setDate("");

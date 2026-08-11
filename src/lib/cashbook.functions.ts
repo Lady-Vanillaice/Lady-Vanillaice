@@ -141,6 +141,7 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
       const plannedCash = Number(b.bar ?? 0);
       const depositDate = dateOnly(b.anzahlung_paid_at);
       const cashDate = dateOnly(b.cash_received_at) ?? (b.fully_paid ? dateOnly(b.completed_at) : null);
+      const onsiteMethodFromNote = typeof b.admin_note === "string" ? b.admin_note.match(/(?:^|\n)Vor Ort Zahlungsmethode:\s*([^\n]+)/)?.[1]?.trim() ?? null : null;
       const status: CashBookEntry["status"] = b.status === "cancelled" ? "cancelled" : b.status === "rescheduling" ? "rescheduling" : b.fully_paid || b.completed_at ? "completed" : "open";
       const art = slot?.is_duo ? (slot?.is_content_shoot ? "Duo + Content" : "Duo") : (slot?.is_content_shoot ? "Single + Content" : "Single");
       const common = {
@@ -153,7 +154,7 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
         anzahlung_vorgemerkt: plannedDeposit,
         anzahlung_method: b.anzahlung_method ?? null, anzahlung_datum: depositDate,
         deposit_exemption_reason: b.deposit_exemption_reason ?? null, deposit_guarantor: b.deposit_guarantor ?? null,
-        restbetrag_vorgemerkt: plannedCash, restzahlung_method: b.deposit_exemption_reason || plannedDeposit === 0 ? b.anzahlung_method ?? null : null,
+        restbetrag_vorgemerkt: plannedCash, restzahlung_method: onsiteMethodFromNote ?? (b.deposit_exemption_reason || plannedDeposit === 0 ? b.anzahlung_method ?? null : plannedCash > 0 ? "Bar" : null),
         bar_datum: cashDate, durchgefuehrt_datum: dateOnly(b.completed_at),
         status, notiz: b.admin_note ?? null, created_at: b.created_at,
       };
