@@ -2,7 +2,8 @@ name: Patch parallel content and session
 
 on:
   push:
-    branches: [fix/parallel-content-and-session]
+    branches:
+      - fix/parallel-content-and-session
 
 permissions:
   contents: write
@@ -15,57 +16,16 @@ jobs:
         with:
           ref: fix/parallel-content-and-session
           fetch-depth: 0
-      - name: Patch source directly
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('src/lib/booking.functions.ts')
-          text = path.read_text()
-          old = '''    const { data: blocking, error: blockingErr } = await supabaseAdmin
-      .from("availability_slots")
-      .select("id, starts_at, ends_at, status, location")
-      .neq("status", "open")
-      .lt("starts_at", endsAt.toISOString())
-      .gt("ends_at", startsAt.toISOString());
-    if (blockingErr) throw new Error(blockingErr.message);
-    if (blocking.length > 0) {
-      throw new Error(
-        "In diesem Zeitraum existiert bereits ein Termin. Bitte zuerst löschen oder andere Zeit wählen.",
-      );
-    }
-'''
-          new = '''    const { data: blocking, error: blockingErr } = await supabaseAdmin
-      .from("availability_slots")
-      .select("id, starts_at, ends_at, status, location, is_content_shoot")
-      .neq("status", "open")
-      .lt("starts_at", endsAt.toISOString())
-      .gt("ends_at", startsAt.toISOString());
-    if (blockingErr) throw new Error(blockingErr.message);
-
-    // A normal customer session and a content appointment may run in parallel.
-    // Two normal sessions or two content appointments still block each other.
-    const newIsContentAppointment = data.booking_type === "content" || data.booking_type === "custom_content";
-    const incompatibleBlocking = (blocking ?? []).filter(
-      (slot) => Boolean(slot.is_content_shoot) === newIsContentAppointment,
-    );
-    if (incompatibleBlocking.length > 0) {
-      throw new Error(
-        newIsContentAppointment
-          ? "In diesem Zeitraum existiert bereits ein anderer Content-Termin."
-          : "In diesem Zeitraum existiert bereits ein anderer normaler Termin.",
-      );
-    }
-'''
-          if old in text:
-              path.write_text(text.replace(old, new, 1))
-          elif 'newIsContentAppointment' not in text:
-              raise SystemExit('parallel booking anchor not found')
-          PY
+      - name: Patch source
+        run: python .github/patch_parallel_content.py
       - name: Commit source change
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/lib/booking.functions.ts
-          if git diff --cached --quiet; then exit 0; fi
+          if git diff --cached --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
           git commit -m "Allow content and session appointments in parallel"
           git push origin HEAD:fix/parallel-content-and-session
