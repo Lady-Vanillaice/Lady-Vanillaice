@@ -141,7 +141,10 @@ function KassenbuchPage() {
   const openBalance = (e: CashBookEntry) => Math.max(0, e.restbetrag_vorgemerkt - e.bar);
   const bookingAmountText = (e: CashBookEntry) => e.source === "booking" ? [`Anz. ${eur(e.anzahlung)}`, openBalance(e) > 0 ? `${eur(openBalance(e))} offen` : e.bar > 0 ? `Rest ${eur(e.bar)}` : null].filter(Boolean).join(" · ") : eur(e.gesamt);
   const monthAmount = (e: CashBookEntry) => (e.source === "manual" ? e.gesamt : (e.anzahlung_datum?.startsWith(month) ? e.anzahlung : 0) + (e.bar_datum?.startsWith(month) ? e.bar : 0));
-  const rows = () => receivedIncomeEntries.map(e => [paymentDateText(e), paymentLabel(e), eur(monthAmount(e)), paymentMethodText(e), e.kunde, dateLabel(e.termin_datum), appointmentTime(e), e.art, studioText(e), e.dauer ?? "—", statusLabel[e.status]]);
+  const rows = () => receivedIncomeEntries.map(e => {
+    const parts = studioParts(e);
+    return [paymentDateText(e), paymentLabel(e), eur(monthAmount(e)), paymentMethodText(e), e.kunde, dateLabel(e.termin_datum), appointmentTime(e), e.art, parts.studio, parts.address || "—", e.dauer ?? "—", statusLabel[e.status]];
+  });
 
   const createMut = useMutation({ mutationFn: () => create({ data: { studio, datum, kunde, anzahlung: manualDepositReason ? 0 : Number(anzahlung.replace(",", ".")) || 0, anzahlung_method: manualDepositReason ? null : anzahlungMethod || null, anzahlung_datum: manualDepositReason ? null : anzahlungDatum || null, deposit_exemption_reason: manualDepositReason || null, bar: Number(bar.replace(",", ".")) || 0, restzahlung_method: Number(bar.replace(",", ".")) > 0 ? manualRestMethod || null : null, restzahlung_datum: Number(bar.replace(",", ".")) > 0 ? manualRestDate || null : null, notiz: notiz || null } }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["cashbook"] }); setKunde(""); setAnzahlung("0"); setAnzahlungDatum(""); setManualDepositReason(""); setAnzahlungMethod("Überweisung"); setBar("0"); setManualRestMethod("Bar"); setManualRestDate(""); setNotiz(""); } });
   const expenseMut = useMutation({ mutationFn: () => createExpense({ data: { studio: expenseStudio, datum: expenseDate, betrag: Number(expenseAmount.replace(",", ".")), zahlungsart: expenseMethod, notiz: expenseNote || null } }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["cashbook"] }); setExpenseAmount(""); setExpenseMethod(""); setExpenseNote(""); } });
@@ -177,8 +180,8 @@ function KassenbuchPage() {
       body: receivedIncomeEntries.map(e => [`${paymentDateText(e)} · ${paymentLabel(e)}\n${e.kunde}\n${paymentMethodText(e)}`, `${dateLabel(e.termin_datum)} · ${appointmentTime(e)}\n${e.dauer ?? ""}`, `${studioText(e)}\n${e.art}`, eur(monthAmount(e))]),
       foot: [["SUMME", "", "", eur(totals.gesamt)]], styles: { fontSize: 7.5, cellPadding: 4, overflow: "linebreak" }, headStyles: { fillColor: [15, 15, 15] }, footStyles: { fillColor: [239, 229, 207], textColor: 15 },
     } : {
-      startY: 92, head: [["Zahlungseingang", "Vorgang", "Betrag", "Zahlungsart", "Kunde", "Session am", "Uhrzeit", "Art", "Studio / Adresse", "Dauer", "Status"]], body: rows(),
-      foot: [["SUMME", "", eur(totals.gesamt), "", "", "", "", "", "", "", ""]], styles: { fontSize: 6, cellPadding: 3, overflow: "linebreak" }, headStyles: { fillColor: [15, 15, 15] }, footStyles: { fillColor: [239, 229, 207], textColor: 15 },
+      startY: 92, head: [["Zahlungseingang", "Vorgang", "Betrag", "Zahlungsart", "Kunde", "Session am", "Uhrzeit", "Art", "Studio", "Adresse", "Dauer", "Status"]], body: rows(),
+      foot: [["SUMME", "", eur(totals.gesamt), "", "", "", "", "", "", "", "", ""]], styles: { fontSize: 6, cellPadding: 3, overflow: "linebreak" }, headStyles: { fillColor: [15, 15, 15] }, footStyles: { fillColor: [239, 229, 207], textColor: 15 },
     });
     const tableEndY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 92;
     let summaryY = tableEndY + 18;
@@ -192,7 +195,10 @@ function KassenbuchPage() {
   function exportCsv() {
     if (!canExport()) return;
     const head = ["Zahlungseingang", "Vorgang", "Betrag", "Zahlungsart", "Kunde", "Session am", "Uhrzeit von–bis", "Art", "Studio", "Adresse", "Dauer", "Status"];
-    const raw = receivedIncomeEntries.map(e => [e.payment_date ?? "", paymentLabel(e), e.gesamt.toFixed(2).replace(".", ","), paymentMethodText(e), e.kunde, e.termin_datum, appointmentTime(e), e.art, e.studio, e.studio_address ?? "", e.dauer ?? "", statusLabel[e.status]]);
+    const raw = receivedIncomeEntries.map(e => {
+      const parts = studioParts(e);
+      return [e.payment_date ?? "", paymentLabel(e), e.gesamt.toFixed(2).replace(".", ","), paymentMethodText(e), e.kunde, e.termin_datum, appointmentTime(e), e.art, parts.studio, parts.address, e.dauer ?? "", statusLabel[e.status]];
+    });
     const csv = [head, ...raw].map(r => r.map(v => `"${String(v).replaceAll('"', '""')}"`).join(";")).join("\n");
     download(`kassenbuch-${month}.csv`, `\uFEFF${csv}`, "text/csv;charset=utf-8");
   }
@@ -200,7 +206,7 @@ function KassenbuchPage() {
   function exportMonthPackage() { if (!exportPdf(false)) return; window.setTimeout(() => exportCsv(), 250); }
   function exportExcel() {
     if (!canExport()) return;
-    const table = [["Zahlungseingang", "Vorgang", "Betrag", "Zahlungsart", "Kunde", "Session am", "Uhrzeit", "Art", "Studio / Adresse", "Dauer", "Status"], ...rows()].map(r => `<tr>${r.map(v => `<td>${String(v).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll("\n", "<br>")}</td>`).join("")}</tr>`).join("");
+    const table = [["Zahlungseingang", "Vorgang", "Betrag", "Zahlungsart", "Kunde", "Session am", "Uhrzeit", "Art", "Studio", "Adresse", "Dauer", "Status"], ...rows()].map(r => `<tr>${r.map(v => `<td>${String(v).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll("\n", "<br>")}</td>`).join("")}</tr>`).join("");
     download(`kassenbuch-${month}.xls`, `\uFEFF<html><head><meta charset="utf-8"></head><body><table>${table}</table></body></html>`, "application/vnd.ms-excel");
   }
 
