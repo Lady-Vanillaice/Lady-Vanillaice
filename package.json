@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "prebuild": "node scripts/apply-duo-optional-timeline-colors.mjs",
-    "build": "vite build",
-    "prebuild:dev": "node scripts/apply-duo-optional-timeline-colors.mjs",
-    "build:dev": "vite build --mode development",
+    "prebuild": "node scripts/fix-duo-single-calendar.mjs",
+    "build": "node scripts/fix-duo-single-calendar.mjs && vite build",
+    "prebuild:dev": "node scripts/fix-duo-single-calendar.mjs",
+    "build:dev": "node scripts/fix-duo-single-calendar.mjs && vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write ."
