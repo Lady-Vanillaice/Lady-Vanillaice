@@ -3,47 +3,34 @@ import fs from "node:fs";
 const bookingPath = "src/lib/public-booking.functions.ts";
 let source = fs.readFileSync(bookingPath, "utf8");
 
-// listUpcomingSlots originally loads bookings only for currently-open slot ids.
-// Manual/hidden/previously-booked source slots can therefore disappear from the
-// public free-time calculation even though the real appointment still exists.
-source = source.replace(
-  '  const bookingsBySlot = new Map<string, BusyRange[]>();',
-  '  const bookingsBySlot = new Map<string, BusyRange[]>();\n  const dayWideBookings: Array<{ dayKey: string; range: BusyRange }> = [];',
-);
-
+// Load appointments by their real requested time, not only by currently-open
+// availability slot ids. This includes bookings whose original slot is hidden,
+// held, booked, moved or otherwise no longer part of the open-slot list.
 source = source.replace(
   '      .in("slot_id", slotIds)\n      .in("status", ["pending", "waiting_deposit", "confirmed"])',
   '      .gte("requested_start", rangeStart.toISOString())\n      .lt("requested_start", rangeEnd.toISOString())\n      .in("status", ["pending", "waiting_deposit", "confirmed"])',
 );
 
-const oldMapInsert = `      const list = bookingsBySlot.get(b.slot_id) ?? [];\n      list.push(range);\n      bookingsBySlot.set(b.slot_id, list);`;
-const newMapInsert = `      const list = bookingsBySlot.get(b.slot_id) ?? [];\n      list.push(range);\n      bookingsBySlot.set(b.slot_id, list);\n      const bookingDayKey = new Intl.DateTimeFormat("sv-SE", {\n        timeZone: "Europe/Berlin",\n        year: "numeric",\n        month: "2-digit",\n        day: "2-digit",\n      }).format(new Date(b.requested_start));\n      dayWideBookings.push({ dayKey: bookingDayKey, range });`;
-if (!source.includes("dayWideBookings.push") && source.includes(oldMapInsert)) {
-  source = source.replace(oldMapInsert, newMapInsert);
-}
-
 const oldBusy = '    const busy = bookingsBySlot.get(slot.id) ?? [];';
-const newBusy = `    const berlinDayKey = (value: string) => new Intl.DateTimeFormat("sv-SE", {\n      timeZone: "Europe/Berlin",\n      year: "numeric",\n      month: "2-digit",\n      day: "2-digit",\n    }).format(new Date(value));\n    const slotDayKey = berlinDayKey(slot.starts_at);\n    // Use every real appointment on this Berlin calendar day, regardless of\n    // which availability-slot row it was originally attached to.\n    const busy = dayWideBookings\n      .filter((entry) => entry.dayKey === slotDayKey)\n      .map((entry) => entry.range);`;
+const newBusy = `    const berlinDayKey = (value: string) => new Intl.DateTimeFormat("sv-SE", {\n      timeZone: "Europe/Berlin",\n      year: "numeric",\n      month: "2-digit",\n      day: "2-digit",\n    }).format(new Date(value));\n    const slotDayKey = berlinDayKey(slot.starts_at);\n    // bookingsBySlot now contains every appointment in the requested date range.\n    // Flatten all source-slot buckets and keep only appointments on this Berlin day.\n    const busy = [...bookingsBySlot.values()]\n      .flat()\n      .filter((range) => berlinDayKey(range.starts_at) === slotDayKey);`;
 if (source.includes(oldBusy)) {
   source = source.replace(oldBusy, newBusy);
 }
 
-if (!source.includes("dayWideBookings.push")) {
-  throw new Error("Day-wide booking collection patch could not be applied");
+if (!source.includes('gte("requested_start", rangeStart.toISOString())')) {
+  throw new Error("Day-wide booking query patch could not be applied");
 }
-if (!source.includes("const busy = dayWideBookings")) {
+if (!source.includes("const busy = [...bookingsBySlot.values()]")) {
   throw new Error("Day-wide booking lookup patch could not be applied");
 }
-// The preceding fix-duo-single-calendar script already derives free_windows and
-// day-level windows. Assert that those generated structures are present rather
-// than trying to duplicate them here.
+// fix-duo-single-calendar runs before this script and already creates the real
+// free_windows plus the day-level windows array used by the public card.
 if (!source.includes("free_windows: freeWindows")) {
   throw new Error("Real free-window calculation from duo patch is missing");
 }
 if (!source.includes("const freeDayWindows = daySlots.flatMap")) {
   throw new Error("Day free-window aggregation from duo patch is missing");
 }
-
 fs.writeFileSync(bookingPath, source);
 
 const calendarPath = "src/routes/kalender.tsx";
