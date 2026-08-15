@@ -2,11 +2,11 @@ import fs from "node:fs";
 
 // Keep the public booking timeline and the downloadable calendar image on the
 // same semantic color map:
-// gold   = single available
-// orange = duo available
-// violet = duo booked
-// wine   = single booked
-// grey   = reserved
+// gold     = single available
+// orange   = duo available
+// old rose = duo booked
+// wine     = single booked
+// grey     = reserved
 
 function replaceOnce(source, from, to) {
   return source.includes(from) ? source.replace(from, to) : source;
@@ -36,7 +36,12 @@ calendar = replaceOnce(
 calendar = replaceOnce(
   calendar,
   ': "bg-bordeaux/60 border-x border-bordeaux/70"',
+  ': duoDay\n                  ? "bg-[#b56f7e]/78 border-x border-[#8f5361]/90"\n                  : "bg-bordeaux/75 border-x border-bordeaux/90"',
+);
+calendar = replaceOnce(
+  calendar,
   ': duoDay\n                  ? "bg-violet-700/70 border-x border-violet-900/80"\n                  : "bg-bordeaux/75 border-x border-bordeaux/90"',
+  ': duoDay\n                  ? "bg-[#b56f7e]/78 border-x border-[#8f5361]/90"\n                  : "bg-bordeaux/75 border-x border-bordeaux/90"',
 );
 
 calendar = replaceOnce(
@@ -51,10 +56,12 @@ const legendIndex = calendar.indexOf(legendStart);
 if (legendIndex >= 0) {
   const legendClose = calendar.indexOf(legendEnd, legendIndex);
   if (legendClose >= 0) {
-    const replacement = `      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-vanilla/60">\n        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-champagne" /> {tr("nur Einzel verfügbar", "single only available")}</span>\n        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-orange-400" /> {tr("Duo verfügbar", "duo available")}</span>\n        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-violet-700" /> {tr("Duo belegt", "duo booked")}</span>\n        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-bordeaux" /> {tr("nur Einzel belegt", "single only booked")}</span>\n        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-vanilla/40" /> {tr("reserviert", "reserved")}</span>\n`;
+    const replacement = `      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-vanilla/60">\n        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-champagne" /> {tr("nur Einzel verfügbar", "single only available")}</span>\n        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-orange-400" /> {tr("Duo verfügbar", "duo available")}</span>\n        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-[#b56f7e]" /> {tr("Duo belegt", "duo booked")}</span>\n        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-bordeaux" /> {tr("nur Einzel belegt", "single only booked")}</span>\n        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-vanilla/40" /> {tr("reserviert", "reserved")}</span>\n`;
     calendar = calendar.slice(0, legendIndex) + replacement + calendar.slice(legendClose);
   }
 }
+calendar = calendar.replaceAll("bg-violet-700", "bg-[#b56f7e]");
+calendar = calendar.replaceAll("border-violet-900", "border-[#8f5361]");
 
 fs.writeFileSync(calendarPath, calendar);
 
@@ -75,7 +82,11 @@ image = replaceOnce(
 image = replaceOnce(
   image,
   '  available: "rgba(216,182,118,0.50)",\n  booked: "rgba(127,36,56,0.60)",\n  reserved: "rgba(244,234,216,0.35)",',
-  '  singleAvailable: "rgba(216,182,118,0.58)",\n  duoAvailable: "rgba(205,123,45,0.72)",\n  duoBooked: "rgba(103,58,142,0.72)",\n  singleBooked: "rgba(127,36,56,0.72)",\n  reserved: "rgba(244,234,216,0.35)",',
+  '  singleAvailable: "rgba(216,182,118,0.58)",\n  duoAvailable: "rgba(205,123,45,0.72)",\n  duoBooked: "rgba(181,111,126,0.78)",\n  singleBooked: "rgba(127,36,56,0.72)",\n  reserved: "rgba(244,234,216,0.35)",',
+);
+image = image.replace(
+  'duoBooked: "rgba(103,58,142,0.72)"',
+  'duoBooked: "rgba(181,111,126,0.78)"',
 );
 
 image = replaceOnce(
@@ -111,7 +122,8 @@ image = replaceOnce(
 
 assertContains(image, '"single_only"', "single-only booking kind");
 assertContains(image, 'COLORS.singleBooked', "single-booked wine color");
-assertContains(image, 'COLORS.duoBooked', "duo-booked violet color");
+assertContains(image, 'COLORS.duoBooked', "duo-booked old-rose color");
+assertContains(image, 'rgba(181,111,126,0.78)', "duo-booked old-rose value");
 assertContains(image, 'COLORS.duoAvailable', "duo-available orange color");
 assertContains(image, 'COLORS.singleAvailable', "single-available gold color");
 assertContains(image, 'COLORS.reserved', "reserved grey color");
