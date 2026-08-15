@@ -5,6 +5,8 @@ let source = fs.readFileSync(path, "utf8");
 
 const returnAnchor = "  return { slots, availabilityByDay };";
 const returnReplacement = `  const displaySlots: SlotRow[] = [];
+  const statusByDay = new Map<string, string>();
+
   for (const [dayKey, availability] of availabilityByDay.entries()) {
     const daySlots = slots.filter((slot) => dateParts(slot.starts_at).dayKey === dayKey);
     if (!daySlots.length) continue;
@@ -20,6 +22,8 @@ const returnReplacement = `  const displaySlots: SlotRow[] = [];
       }];
     }));
 
+    let totalFreeMinutes = 0;
+
     for (const slot of daySlots) {
       const slotStart = new Date(slot.starts_at).getTime();
       const slotEnd = new Date(slot.ends_at).getTime();
@@ -30,6 +34,7 @@ const returnReplacement = `  const displaySlots: SlotRow[] = [];
         if (block.start > cursor) {
           const freeEnd = Math.min(block.start, slotEnd);
           if (freeEnd - cursor >= 30 * 60_000) {
+            totalFreeMinutes += Math.round((freeEnd - cursor) / 60_000);
             displaySlots.push({
               ...slot,
               id: slot.id + "-export-free-" + displaySlots.length,
@@ -43,6 +48,7 @@ const returnReplacement = `  const displaySlots: SlotRow[] = [];
       }
 
       if (cursor < slotEnd && slotEnd - cursor >= 30 * 60_000) {
+        totalFreeMinutes += Math.round((slotEnd - cursor) / 60_000);
         displaySlots.push({
           ...slot,
           id: slot.id + "-export-free-" + displaySlots.length,
@@ -51,28 +57,78 @@ const returnReplacement = `  const displaySlots: SlotRow[] = [];
         });
       }
     }
+
+    const dayFreeSlots = displaySlots.filter((slot) => dateParts(slot.starts_at).dayKey === dayKey);
+    const status = dayFreeSlots.length === 0
+      ? "BELEGT"
+      : busy.length === 0
+      ? "VERFÜGBAR"
+      : totalFreeMinutes <= 180
+      ? "FAST AUSGEBUCHT"
+      : "TEILWEISE VERFÜGBAR";
+    statusByDay.set(dayKey, status);
   }
 
-  return { slots: displaySlots, availabilityByDay };`;
+  return { slots: displaySlots, availabilityByDay, statusByDay };`;
 
 if (source.includes(returnAnchor)) {
   source = source.replace(returnAnchor, returnReplacement);
 }
 
+source = source.replace(
+  "  const { slots, availabilityByDay } = await loadData(mode);",
+  "  const { slots, availabilityByDay, statusByDay } = await loadData(mode);",
+);
+source = source.replace("  const appointmentRowHeight = 150;", "  const appointmentRowHeight = 190;");
+source = source.replace(
+  "    (total, [, monthSlots]) => total + monthHeaderHeight + monthSlots.length * appointmentRowHeight,",
+  "    (total, [, monthSlots]) => total + monthHeaderHeight + new Set(monthSlots.map((slot) => dateParts(slot.starts_at).dayKey)).size * appointmentRowHeight,",
+);
+
+source = source.replace(
+  "    for (const slot of monthSlots) {",
+  `    for (const slot of monthSlots.filter((candidate, index, all) =>
+      all.findIndex((entry) => dateParts(entry.starts_at).dayKey === dateParts(candidate.starts_at).dayKey) === index
+    )) {
+      const dayKey = dateParts(slot.starts_at).dayKey;
+      const daySlots = monthSlots
+        .filter((entry) => dateParts(entry.starts_at).dayKey === dayKey)
+        .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());`,
+);
+
+source = source.replace(
+  `      ctx.fillStyle = COLORS.vanilla;
+      ctx.font = '34px Georgia, "Times New Roman", serif';
+      ctx.fillText(\`\${timeLabel(slot.starts_at)} – \${timeLabel(slot.ends_at)} Uhr\`, cardX + 30, y + 88);`,
+  `      ctx.fillStyle = COLORS.gold;
+      ctx.font = 'bold 17px Arial, sans-serif';
+      ctx.fillText(statusByDay.get(dayKey) ?? "VERFÜGBAR", cardX + 30, y + 68);
+
+      ctx.fillStyle = COLORS.vanilla;
+      ctx.font = '23px Georgia, "Times New Roman", serif';
+      daySlots.forEach((openSlot, index) => {
+        const availabilityType = openSlot.is_duo ? "Duo verfügbar" : "Nur Einzel verfügbar";
+        const line = timeLabel(openSlot.starts_at) + " – " + timeLabel(openSlot.ends_at) + " Uhr — " + availabilityType;
+        ctx.fillText(line, cardX + 30, y + 104 + index * 30);
+      });`,
+);
+
 const oldTag = `      const tag = [
         slot.is_duo ? \`DUO\${slot.duo_partner ? \` · \${slot.duo_partner}\` : ""}\` : "",
         slot.is_content_shoot ? "CONTENT" : "",
       ].filter(Boolean).join(" · ");`;
-const newTag = `      const tag = slot.is_duo ? "DUO VERFÜGBAR" : "NUR EINZEL VERFÜGBAR";`;
-if (source.includes(oldTag)) {
-  source = source.replace(oldTag, newTag);
-}
+const oldPatchedTag = `      const tag = slot.is_duo ? "DUO VERFÜGBAR" : "NUR EINZEL VERFÜGBAR";`;
+source = source.replace(oldTag, "      const tag = \"\";");
+source = source.replace(oldPatchedTag, "      const tag = \"\";");
 
-if (!source.includes("slots: displaySlots")) {
-  throw new Error("Export free-slot patch could not be applied");
+if (!source.includes("statusByDay")) {
+  throw new Error("Export day-status patch could not be applied");
 }
-if (!source.includes('slot.is_duo ? "DUO VERFÜGBAR" : "NUR EINZEL VERFÜGBAR"')) {
-  throw new Error("Export availability label patch could not be applied");
+if (!source.includes("const availabilityType = openSlot.is_duo")) {
+  throw new Error("Export grouped availability lines could not be applied");
+}
+if (!source.includes("new Set(monthSlots.map")) {
+  throw new Error("Export grouped day height patch could not be applied");
 }
 
 fs.writeFileSync(path, source);
