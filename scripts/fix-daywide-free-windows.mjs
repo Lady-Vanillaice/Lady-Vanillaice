@@ -35,12 +35,17 @@ fs.writeFileSync(bookingPath, source);
 
 const calendarPath = "src/routes/kalender.tsx";
 let calendar = fs.readFileSync(calendarPath, "utf8");
-const oldWindowLine = `{formatMunichTime(window.starts_at)} – {formatMunichTime(window.ends_at)}{lang === "en" ? "" : " Uhr"}`;
-const newWindowLine = `{formatMunichTime(window.starts_at)} – {formatMunichTime(window.ends_at)}{lang === "en" ? "" : " Uhr"}{" — "}{window.is_duo ? tr("Duo verfügbar", "Duo available") : tr("Nur Einzel verfügbar", "Single only available")}`;
-if (!calendar.includes("window.is_duo ? tr(\"Duo verfügbar\"")) {
-  calendar = calendar.replace(oldWindowLine, newWindowLine);
+const rawWindowLine = `{formatMunichTime(window.starts_at)} – {formatMunichTime(window.ends_at)}{lang === "en" ? "" : " Uhr"}`;
+const alwaysLabeledWindowLine = `{formatMunichTime(window.starts_at)} – {formatMunichTime(window.ends_at)}{lang === "en" ? "" : " Uhr"}{" — "}{window.is_duo ? tr("Duo verfügbar", "Duo available") : tr("Nur Einzel verfügbar", "Single only available")}`;
+const duoOnlyWindowLine = `{formatMunichTime(window.starts_at)} – {formatMunichTime(window.ends_at)}{lang === "en" ? "" : " Uhr"}{slot.is_duo ? <> {"— "}{window.is_duo ? tr("Duo verfügbar", "Duo available") : tr("Nur Einzel verfügbar", "Single only available")}</> : null}`;
+
+if (calendar.includes(alwaysLabeledWindowLine)) {
+  calendar = calendar.replace(alwaysLabeledWindowLine, duoOnlyWindowLine);
+} else if (calendar.includes(rawWindowLine)) {
+  calendar = calendar.replace(rawWindowLine, duoOnlyWindowLine);
 }
-if (!calendar.includes("window.is_duo ? tr(\"Duo verfügbar\"")) {
-  throw new Error("Public free-window label patch could not be applied");
+
+if (!calendar.includes("slot.is_duo ? <>")) {
+  throw new Error("Duo-only public free-window label patch could not be applied");
 }
 fs.writeFileSync(calendarPath, calendar);
