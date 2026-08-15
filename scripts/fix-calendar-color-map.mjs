@@ -8,25 +8,39 @@ import fs from "node:fs";
 // wine   = single booked
 // grey   = reserved
 
+function replaceOnce(source, from, to) {
+  return source.includes(from) ? source.replace(from, to) : source;
+}
+
+function assertContains(source, needle, label) {
+  if (!source.includes(needle)) {
+    throw new Error(`Calendar color patch incomplete: ${label}`);
+  }
+}
+
 const calendarPath = "src/routes/kalender.tsx";
 let calendar = fs.readFileSync(calendarPath, "utf8");
 
-calendar = calendar.replace(
+calendar = replaceOnce(
+  calendar,
   'title={`${duoDay ? tr("Nur Einzel verfügbar","Single only available") : tr("Frei","Free")} ${fmtHm(seg.s)} – ${fmtHm(seg.e)}`}',
   'title={`${duoDay ? tr("Duo verfügbar","Duo available") : tr("Nur Einzel verfügbar","Single only available")} ${fmtHm(seg.s)} – ${fmtHm(seg.e)}`}',
 );
 
-calendar = calendar.replace(
+calendar = replaceOnce(
+  calendar,
   '? "bg-orange-800/80 border-x border-orange-950/80"',
   '? "bg-bordeaux/75 border-x border-bordeaux/90"',
 );
 
-calendar = calendar.replace(
+calendar = replaceOnce(
+  calendar,
   ': "bg-bordeaux/60 border-x border-bordeaux/70"',
   ': duoDay\n                  ? "bg-violet-700/70 border-x border-violet-900/80"\n                  : "bg-bordeaux/75 border-x border-bordeaux/90"',
 );
 
-calendar = calendar.replace(
+calendar = replaceOnce(
+  calendar,
   'isSingleOnly ? tr("Nur Einzel belegt","Single only booked") : tr("Belegt","Booked")',
   'isSingleOnly ? tr("Nur Einzel belegt","Single only booked") : duoDay ? tr("Duo belegt","Duo booked") : tr("Nur Einzel belegt","Single only booked")',
 );
@@ -47,42 +61,60 @@ fs.writeFileSync(calendarPath, calendar);
 const exportPath = "src/lib/download-image.client/calendar-image-export.ts";
 let image = fs.readFileSync(exportPath, "utf8");
 
-image = image.replace(
+image = replaceOnce(
+  image,
   'kind?: "booked" | "reserved" | "unavailable";',
   'kind?: "booked" | "reserved" | "unavailable" | "single_only";',
 );
-image = image.replace(
+image = replaceOnce(
+  image,
   'kind: "booked" | "reserved" | "unavailable";',
   'kind: "booked" | "reserved" | "unavailable" | "single_only";',
 );
 
-image = image.replace(
+image = replaceOnce(
+  image,
   '  available: "rgba(216,182,118,0.50)",\n  booked: "rgba(127,36,56,0.60)",\n  reserved: "rgba(244,234,216,0.35)",',
   '  singleAvailable: "rgba(216,182,118,0.58)",\n  duoAvailable: "rgba(205,123,45,0.72)",\n  duoBooked: "rgba(103,58,142,0.72)",\n  singleBooked: "rgba(127,36,56,0.72)",\n  reserved: "rgba(244,234,216,0.35)",',
 );
 
-image = image.replace(
+image = replaceOnce(
+  image,
   '  width: number,\n) {',
   '  width: number,\n  duoDay: boolean,\n) {',
 );
-image = image.replace(
+image = replaceOnce(
+  image,
   '  ctx.fillStyle = COLORS.available;',
   '  ctx.fillStyle = duoDay ? COLORS.duoAvailable : COLORS.singleAvailable;',
 );
-image = image.replace(
+
+// Important: single_only must be checked before the generic booked/unavailable
+// fallback. Otherwise a confirmed single booking on a duo day is rendered grey.
+image = replaceOnce(
+  image,
   '    ctx.fillStyle = range.kind === "booked"\n      ? COLORS.booked\n      : range.kind === "reserved"\n      ? COLORS.reserved\n      : COLORS.unavailable;',
   '    ctx.fillStyle = range.kind === "reserved"\n      ? COLORS.reserved\n      : range.kind === "single_only"\n      ? COLORS.singleBooked\n      : range.kind === "booked"\n      ? (duoDay ? COLORS.duoBooked : COLORS.singleBooked)\n      : COLORS.unavailable;',
 );
 
-image = image.replace('  const legendHeight = 78;', '  const legendHeight = 112;');
+image = replaceOnce(image, '  const legendHeight = 78;', '  const legendHeight = 112;');
 
 const oldExportLegend = `  drawLegendItem(ctx, 90, y + 58, COLORS.available, "verfügbar");\n  drawLegendItem(ctx, 226, y + 58, COLORS.booked, "belegt");\n  drawLegendItem(ctx, 330, y + 58, COLORS.reserved, "reserviert");`;
 const newExportLegend = `  drawLegendItem(ctx, 90, y + 58, COLORS.singleAvailable, "nur Einzel verfügbar");\n  drawLegendItem(ctx, 325, y + 58, COLORS.duoAvailable, "Duo verfügbar");\n  drawLegendItem(ctx, 500, y + 58, COLORS.duoBooked, "Duo belegt");\n  drawLegendItem(ctx, 90, y + 92, COLORS.singleBooked, "nur Einzel belegt");\n  drawLegendItem(ctx, 325, y + 92, COLORS.reserved, "reserviert");`;
-image = image.replace(oldExportLegend, newExportLegend);
+image = replaceOnce(image, oldExportLegend, newExportLegend);
 
-image = image.replace(
+image = replaceOnce(
+  image,
   '    drawTimeline(ctx, availability, y + 12, width);',
   '    const duoDay = slots.some((slot) => dateParts(slot.starts_at).dayKey === dayKey && slot.is_duo);\n    drawTimeline(ctx, availability, y + 12, width, duoDay);',
 );
+
+assertContains(image, '"single_only"', "single-only booking kind");
+assertContains(image, 'COLORS.singleBooked', "single-booked wine color");
+assertContains(image, 'COLORS.duoBooked', "duo-booked violet color");
+assertContains(image, 'COLORS.duoAvailable', "duo-available orange color");
+assertContains(image, 'COLORS.singleAvailable', "single-available gold color");
+assertContains(image, 'COLORS.reserved', "reserved grey color");
+assertContains(image, 'drawTimeline(ctx, availability, y + 12, width, duoDay)', "duo-day export context");
 
 fs.writeFileSync(exportPath, image);
