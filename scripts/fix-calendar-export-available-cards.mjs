@@ -106,9 +106,12 @@ source = source.replace(
 
       ctx.fillStyle = COLORS.vanilla;
       ctx.font = '23px Georgia, "Times New Roman", serif';
+      const isDuoDay = daySlots.some((entry) => entry.is_duo);
       daySlots.forEach((openSlot, index) => {
-        const availabilityType = openSlot.is_duo ? "Duo verfügbar" : "Nur Einzel verfügbar";
-        const line = timeLabel(openSlot.starts_at) + " – " + timeLabel(openSlot.ends_at) + " Uhr — " + availabilityType;
+        const suffix = isDuoDay
+          ? " — " + (openSlot.is_duo ? "Duo verfügbar" : "Nur Einzel verfügbar")
+          : "";
+        const line = timeLabel(openSlot.starts_at) + " – " + timeLabel(openSlot.ends_at) + " Uhr" + suffix;
         ctx.fillText(line, cardX + 30, y + 104 + index * 30);
       });`,
 );
@@ -124,8 +127,8 @@ source = source.replace(oldPatchedTag, "      const tag = \"\";");
 if (!source.includes("statusByDay")) {
   throw new Error("Export day-status patch could not be applied");
 }
-if (!source.includes("const availabilityType = openSlot.is_duo")) {
-  throw new Error("Export grouped availability lines could not be applied");
+if (!source.includes("const isDuoDay = daySlots.some")) {
+  throw new Error("Export duo-day label condition could not be applied");
 }
 if (!source.includes("new Set(monthSlots.map")) {
   throw new Error("Export grouped day height patch could not be applied");
