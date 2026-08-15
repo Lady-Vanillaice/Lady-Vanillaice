@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "prebuild": "node scripts/fix-duo-single-calendar.mjs && node scripts/fix-calendar-color-map.mjs",
-    "build": "node scripts/fix-duo-single-calendar.mjs && node scripts/fix-calendar-color-map.mjs && vite build",
-    "prebuild:dev": "node scripts/fix-duo-single-calendar.mjs && node scripts/fix-calendar-color-map.mjs",
-    "build:dev": "node scripts/fix-duo-single-calendar.mjs && node scripts/fix-calendar-color-map.mjs && vite build --mode development",
+    "prebuild": "node scripts/fix-duo-single-calendar.mjs && node scripts/fix-daywide-free-windows.mjs && node scripts/fix-calendar-color-map.mjs",
+    "build": "node scripts/fix-duo-single-calendar.mjs && node scripts/fix-daywide-free-windows.mjs && node scripts/fix-calendar-color-map.mjs && vite build",
+    "prebuild:dev": "node scripts/fix-duo-single-calendar.mjs && node scripts/fix-daywide-free-windows.mjs && node scripts/fix-calendar-color-map.mjs",
+    "build:dev": "node scripts/fix-duo-single-calendar.mjs && node scripts/fix-daywide-free-windows.mjs && node scripts/fix-calendar-color-map.mjs && vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write ."
