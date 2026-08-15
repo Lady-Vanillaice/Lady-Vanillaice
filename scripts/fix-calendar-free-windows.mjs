@@ -6,6 +6,10 @@ const startMarker = 'export const listUpcomingSlots = createServerFn({ method: "
 const start = source.indexOf(startMarker);
 if (start < 0) throw new Error("listUpcomingSlots start marker not found");
 
+const endMarker = '\n\n/**\n * Customer enters earliest start + latest end (HH:mm) + duration.';
+const end = source.indexOf(endMarker, start);
+if (end < 0) throw new Error("listUpcomingSlots end marker not found");
+
 const replacement = `export const listUpcomingSlots = createServerFn({ method: "GET" }).handler(async () => {
   const supabase = publicClient();
   const nowIso = new Date().toISOString();
@@ -73,7 +77,6 @@ const replacement = `export const listUpcomingSlots = createServerFn({ method: "
     const bookingDay = dayKey(booking.requested_start);
     busyByDay.set(bookingDay, [...(busyByDay.get(bookingDay) ?? []), { s, e }]);
 
-    // Also account for bookings crossing midnight into the following Berlin day.
     const endDay = dayKey(new Date(e - 1).toISOString());
     if (endDay !== bookingDay) {
       busyByDay.set(endDay, [...(busyByDay.get(endDay) ?? []), { s, e }]);
@@ -128,7 +131,7 @@ const replacement = `export const listUpcomingSlots = createServerFn({ method: "
         return range.s >= s && range.s < e;
       }) ?? representative;
       return {
-        id: \\`\${sourceSlot.id}-free-\${index}\\`,
+        id: sourceSlot.id + "-free-" + index,
         starts_at: new Date(range.s).toISOString(),
         ends_at: new Date(range.e).toISOString(),
         location: sourceSlot.location,
@@ -160,5 +163,5 @@ const replacement = `export const listUpcomingSlots = createServerFn({ method: "
   return results;
 });`;
 
-source = source.slice(0, start) + replacement + "\n";
+source = source.slice(0, start) + replacement + source.slice(end);
 fs.writeFileSync(path, source);
