@@ -3,50 +3,45 @@ import fs from "node:fs";
 const bookingPath = "src/lib/public-booking.functions.ts";
 let source = fs.readFileSync(bookingPath, "utf8");
 
-const oldBusy = '    const busy = bookingsBySlot.get(slot.id) ?? [];';
-const newBusy = `    // A calendar day may consist of several open slot rows. A booking attached
-    // to any one of those rows blocks that real time for the whole displayed day.
-    // Otherwise the public card can falsely show a large free range from a sibling slot.
-    const berlinDayKey = (value: string) => new Intl.DateTimeFormat("sv-SE", {
-      timeZone: "Europe/Berlin",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(new Date(value));
-    const slotDayKey = berlinDayKey(slot.starts_at);
-    const sameDayOpenSlotIds = slots
-      .filter((candidate) => berlinDayKey(candidate.starts_at) === slotDayKey)
-      .map((candidate) => candidate.id);
-    const busy = sameDayOpenSlotIds.flatMap((slotId) => bookingsBySlot.get(slotId) ?? []);`;
+// listUpcomingSlots originally loads bookings only for currently-open slot ids.
+// Manual/hidden/previously-booked source slots can therefore disappear from the
+// public free-time calculation even though the real appointment still exists.
+source = source.replace(
+  '  const bookingsBySlot = new Map<string, BusyRange[]>();',
+  '  const bookingsBySlot = new Map<string, BusyRange[]>();\n  const dayWideBookings: Array<{ dayKey: string; range: BusyRange }> = [];',
+);
 
+source = source.replace(
+  '      .in("slot_id", slotIds)\n      .in("status", ["pending", "waiting_deposit", "confirmed"])',
+  '      .gte("requested_start", rangeStart.toISOString())\n      .lt("requested_start", rangeEnd.toISOString())\n      .in("status", ["pending", "waiting_deposit", "confirmed"])',
+);
+
+const oldMapInsert = `      const list = bookingsBySlot.get(b.slot_id) ?? [];\n      list.push(range);\n      bookingsBySlot.set(b.slot_id, list);`;
+const newMapInsert = `      const list = bookingsBySlot.get(b.slot_id) ?? [];\n      list.push(range);\n      bookingsBySlot.set(b.slot_id, list);\n      const bookingDayKey = new Intl.DateTimeFormat("sv-SE", {\n        timeZone: "Europe/Berlin",\n        year: "numeric",\n        month: "2-digit",\n        day: "2-digit",\n      }).format(new Date(b.requested_start));\n      dayWideBookings.push({ dayKey: bookingDayKey, range });`;
+if (!source.includes("dayWideBookings.push") && source.includes(oldMapInsert)) {
+  source = source.replace(oldMapInsert, newMapInsert);
+}
+
+const oldBusy = '    const busy = bookingsBySlot.get(slot.id) ?? [];';
+const newBusy = `    const berlinDayKey = (value: string) => new Intl.DateTimeFormat("sv-SE", {\n      timeZone: "Europe/Berlin",\n      year: "numeric",\n      month: "2-digit",\n      day: "2-digit",\n    }).format(new Date(value));\n    const slotDayKey = berlinDayKey(slot.starts_at);\n    // Use every real appointment on this Berlin calendar day, regardless of\n    // which availability-slot row it was originally attached to.\n    const busy = dayWideBookings\n      .filter((entry) => entry.dayKey === slotDayKey)\n      .map((entry) => entry.range);`;
 if (source.includes(oldBusy)) {
   source = source.replace(oldBusy, newBusy);
 }
 
-const oldFreeCheck = `    let hasFree = false;\n    for (let t = winStart; t + MIN_DURATION_MS <= winEnd; t += STEP_MS) {\n      if (t < nowMs) continue;\n      const reqEnd = t + MIN_DURATION_MS;\n      const conflict = busyRanges.some((b) => t < b.e && reqEnd > b.s);\n      if (!conflict) {\n        hasFree = true;\n        break;\n      }\n    }\n\n    return { ...slot, is_fully_booked: !hasFree, has_booking: hasBooking, is_reserved: false, reserved_until: null as string | null };`;
-
-const newFreeCheck = `    // Derive the actual remaining gaps. These are the only times shown in the\n    // public \"Teilweise verfügbar\" list.\n    const mergedBusy: Array<{ s: number; e: number }> = [];\n    for (const range of [...busyRanges].sort((a, b) => a.s - b.s)) {\n      const s = Math.max(range.s, winStart);\n      const e = Math.min(range.e, winEnd);\n      if (e <= s) continue;\n      const previous = mergedBusy[mergedBusy.length - 1];\n      if (previous && s <= previous.e) previous.e = Math.max(previous.e, e);\n      else mergedBusy.push({ s, e });\n    }\n\n    const free_windows: Array<typeof slot & { is_fully_booked: boolean }> = [];\n    let cursor = Math.ceil(Math.max(winStart, nowMs) / STEP_MS) * STEP_MS;\n    const addFreeWindow = (start: number, end: number) => {\n      if (end - start < STEP_MS) return;\n      free_windows.push({\n        ...slot,\n        id: slot.id + \"-free-\" + free_windows.length,\n        starts_at: new Date(start).toISOString(),\n        ends_at: new Date(end).toISOString(),\n        is_fully_booked: end - start < MIN_DURATION_MS,\n      });\n    };\n\n    for (const range of mergedBusy) {\n      if (range.e <= cursor) continue;\n      if (range.s > cursor) addFreeWindow(cursor, Math.min(range.s, winEnd));\n      cursor = Math.max(cursor, range.e);\n      if (cursor >= winEnd) break;\n    }\n    if (cursor < winEnd) addFreeWindow(cursor, winEnd);\n\n    const hasFree = free_windows.some(\n      (window) => new Date(window.ends_at).getTime() - new Date(window.starts_at).getTime() >= MIN_DURATION_MS,\n    );\n\n    return {\n      ...slot,\n      free_windows,\n      is_fully_booked: !hasFree,\n      has_booking: hasBooking,\n      is_reserved: false,\n      reserved_until: null as string | null,\n    };`;
-
-if (!source.includes("free_windows,") && source.includes(oldFreeCheck)) {
-  source = source.replace(oldFreeCheck, newFreeCheck);
+if (!source.includes("dayWideBookings.push")) {
+  throw new Error("Day-wide booking collection patch could not be applied");
 }
-
-const oldDayWindows = `    const starts = daySlots.map((s) => new Date(s.starts_at).getTime());\n    const ends = daySlots.map((s) => new Date(s.ends_at).getTime());\n    const duoSlot = daySlots.find((s) => s.is_duo);\n    return {\n      ...slot,\n      starts_at: new Date(Math.min(...starts)).toISOString(),\n      ends_at: new Date(Math.max(...ends)).toISOString(),\n      windows: daySlots.map((s) => ({`;
-
-const newDayWindows = `    const freeDayWindows = daySlots.flatMap((s) => s.free_windows ?? []);\n    const visibleWindows = freeDayWindows.length ? freeDayWindows : daySlots;\n    const starts = visibleWindows.map((s) => new Date(s.starts_at).getTime());\n    const ends = visibleWindows.map((s) => new Date(s.ends_at).getTime());\n    const duoSlot = daySlots.find((s) => s.is_duo);\n    return {\n      ...slot,\n      starts_at: new Date(Math.min(...starts)).toISOString(),\n      ends_at: new Date(Math.max(...ends)).toISOString(),\n      windows: freeDayWindows.map((s) => ({`;
-
-if (!source.includes("const freeDayWindows = daySlots.flatMap") && source.includes(oldDayWindows)) {
-  source = source.replace(oldDayWindows, newDayWindows);
+if (!source.includes("const busy = dayWideBookings")) {
+  throw new Error("Day-wide booking lookup patch could not be applied");
 }
-
-if (!source.includes("sameDayOpenSlotIds.flatMap")) {
-  throw new Error("Day-wide booking aggregation patch could not be applied");
-}
-if (!source.includes("free_windows,")) {
-  throw new Error("Real free-window calculation patch could not be applied");
+// The preceding fix-duo-single-calendar script already derives free_windows and
+// day-level windows. Assert that those generated structures are present rather
+// than trying to duplicate them here.
+if (!source.includes("free_windows: freeWindows")) {
+  throw new Error("Real free-window calculation from duo patch is missing");
 }
 if (!source.includes("const freeDayWindows = daySlots.flatMap")) {
-  throw new Error("Public day-window aggregation patch could not be applied");
+  throw new Error("Day free-window aggregation from duo patch is missing");
 }
 
 fs.writeFileSync(bookingPath, source);
