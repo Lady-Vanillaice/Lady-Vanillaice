@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "prebuild": "node scripts/fix-duo-single-calendar.mjs && node scripts/fix-daywide-free-windows.mjs && node scripts/fix-calendar-color-map.mjs",
-    "build": "node scripts/fix-duo-single-calendar.mjs && node scripts/fix-daywide-free-windows.mjs && node scripts/fix-calendar-color-map.mjs && vite build",
-    "prebuild:dev": "node scripts/fix-duo-single-calendar.mjs && node scripts/fix-daywide-free-windows.mjs && node scripts/fix-calendar-color-map.mjs",
-    "build:dev": "node scripts/fix-duo-single-calendar.mjs && node scripts/fix-daywide-free-windows.mjs && node scripts/fix-calendar-color-map.mjs && vite build --mode development",
+    "prebuild": "node scripts/fix-duo-single-calendar.mjs && node scripts/fix-daywide-free-windows.mjs && node scripts/fix-calendar-color-map.mjs && node scripts/fix-calendar-export-available-cards.mjs",
+    "build": "node scripts/fix-duo-single-calendar.mjs && node scripts/fix-daywide-free-windows.mjs && node scripts/fix-calendar-color-map.mjs && node scripts/fix-calendar-export-available-cards.mjs && vite build",
+    "prebuild:dev": "node scripts/fix-duo-single-calendar.mjs && node scripts/fix-daywide-free-windows.mjs && node scripts/fix-calendar-color-map.mjs && node scripts/fix-calendar-export-available-cards.mjs",
+    "build:dev": "node scripts/fix-duo-single-calendar.mjs && node scripts/fix-daywide-free-windows.mjs && node scripts/fix-calendar-color-map.mjs && node scripts/fix-calendar-export-available-cards.mjs && vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write ."
@@ -88,7 +88,7 @@
     "eslint": "^9.32.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.6",
-    "eslint-plugin-react-hooks": "^6.1.1",
+    "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
     "nitro": "3.0.260603-beta",
