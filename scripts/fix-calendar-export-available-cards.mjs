@@ -85,67 +85,47 @@ source = source.replace(
   "    (total, [, monthSlots]) => total + monthHeaderHeight + new Set(monthSlots.map((slot) => dateParts(slot.starts_at).dayKey)).size * appointmentRowHeight,",
 );
 
-const loopStart = '    for (const slot of monthSlots) {';
-const loopEndMarker = '    }\n  }\n\n  ctx.textAlign = "center";';
-const loopStartIndex = source.indexOf(loopStart);
-const loopEndIndex = source.indexOf(loopEndMarker, loopStartIndex);
-
-if (loopStartIndex >= 0 && loopEndIndex >= 0) {
-  const replacement = `    const dayGroups = new Map<string, SlotRow[]>();
-    for (const slot of monthSlots) {
+source = source.replace(
+  "    for (const slot of monthSlots) {",
+  `    for (const slot of monthSlots.filter((candidate, index, all) =>
+      all.findIndex((entry) => dateParts(entry.starts_at).dayKey === dateParts(candidate.starts_at).dayKey) === index
+    )) {
       const dayKey = dateParts(slot.starts_at).dayKey;
-      dayGroups.set(dayKey, [...(dayGroups.get(dayKey) ?? []), slot]);
-    }
+      const daySlots = monthSlots
+        .filter((entry) => dateParts(entry.starts_at).dayKey === dayKey)
+        .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());`,
+);
 
-    for (const [dayKey, daySlots] of [...dayGroups.entries()].sort(([a], [b]) => a.localeCompare(b))) {
-      const firstSlot = daySlots[0];
-      const cardX = outer + 28;
-      const cardWidth = width - cardX * 2;
-      ctx.fillStyle = COLORS.card;
-      ctx.fillRect(cardX, y, cardWidth, appointmentRowHeight - 18);
-      ctx.strokeStyle = "rgba(216,182,118,0.35)";
-      ctx.strokeRect(cardX, y, cardWidth, appointmentRowHeight - 18);
-
-      ctx.textAlign = "left";
-      ctx.fillStyle = COLORS.gold;
-      ctx.font = 'bold 25px Arial, sans-serif';
-      ctx.fillText(dateLabel(firstSlot.starts_at), cardX + 30, y + 38);
-
-      ctx.fillStyle = COLORS.gold;
+source = source.replace(
+  `      ctx.fillStyle = COLORS.vanilla;
+      ctx.font = '34px Georgia, "Times New Roman", serif';
+      ctx.fillText(\`\${timeLabel(slot.starts_at)} – \${timeLabel(slot.ends_at)} Uhr\`, cardX + 30, y + 88);`,
+  `      ctx.fillStyle = COLORS.gold;
       ctx.font = 'bold 17px Arial, sans-serif';
-      ctx.fillText(statusByDay.get(dayKey) ?? "VERFÜGBAR", cardX + 30, y + 66);
+      ctx.fillText(statusByDay.get(dayKey) ?? "VERFÜGBAR", cardX + 30, y + 68);
 
       ctx.fillStyle = COLORS.vanilla;
       ctx.font = '23px Georgia, "Times New Roman", serif';
-      daySlots
-        .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())
-        .forEach((slot, index) => {
-          const availabilityType = slot.is_duo ? "Duo verfügbar" : "Nur Einzel verfügbar";
-          ctx.fillText(
-            \`\${timeLabel(slot.starts_at)} – \${timeLabel(slot.ends_at)} Uhr — \${availabilityType}\`,
-            cardX + 30,
-            y + 102 + index * 30,
-          );
-        });
+      daySlots.forEach((openSlot, index) => {
+        const availabilityType = openSlot.is_duo ? "Duo verfügbar" : "Nur Einzel verfügbar";
+        const line = timeLabel(openSlot.starts_at) + " – " + timeLabel(openSlot.ends_at) + " Uhr — " + availabilityType;
+        ctx.fillText(line, cardX + 30, y + 104 + index * 30);
+      });`,
+);
 
-      const details = studioDetails(firstSlot.location);
-      ctx.textAlign = "right";
-      ctx.fillStyle = COLORS.vanilla;
-      ctx.font = '20px Arial, sans-serif';
-      ctx.fillText(details.studio, cardX + cardWidth - 30, y + 38);
-      y += appointmentRowHeight;
-    }
-  }
-
-  ctx.textAlign = "center";`;
-  source = source.slice(0, loopStartIndex) + replacement + source.slice(loopEndIndex + loopEndMarker.length);
-}
+const oldTag = `      const tag = [
+        slot.is_duo ? \`DUO\${slot.duo_partner ? \` · \${slot.duo_partner}\` : ""}\` : "",
+        slot.is_content_shoot ? "CONTENT" : "",
+      ].filter(Boolean).join(" · ");`;
+const oldPatchedTag = `      const tag = slot.is_duo ? "DUO VERFÜGBAR" : "NUR EINZEL VERFÜGBAR";`;
+source = source.replace(oldTag, "      const tag = \"\";");
+source = source.replace(oldPatchedTag, "      const tag = \"\";");
 
 if (!source.includes("statusByDay")) {
   throw new Error("Export day-status patch could not be applied");
 }
-if (!source.includes('availabilityType = slot.is_duo ? "Duo verfügbar" : "Nur Einzel verfügbar"')) {
-  throw new Error("Export grouped availability labels could not be applied");
+if (!source.includes("const availabilityType = openSlot.is_duo")) {
+  throw new Error("Export grouped availability lines could not be applied");
 }
 if (!source.includes("new Set(monthSlots.map")) {
   throw new Error("Export grouped day height patch could not be applied");
