@@ -23,7 +23,7 @@ function Preise() {
   const tiers = [
     {
       duration: tr("30 Minuten", "30 minutes"),
-      price: tr("ab 150 €", "from € 150"),
+      price: tr("ab 200 €", "from € 200"),
       desc: tr(
         "Ein kurzer, fokussierter Einstieg — ideal für ein klar umrissenes Anliegen.",
         "A short, focused entry — ideal for a clearly defined wish."
