@@ -3,14 +3,31 @@ import fs from "node:fs";
 const path = "src/routes/_authenticated/admin.kassenbuch.tsx";
 let source = fs.readFileSync(path, "utf8");
 
-const before = '  const activeIncomeEntries = incomeEntries.filter(e => e.status !== "completed");';
-const after = '  const activeIncomeEntries = incomeEntries.filter(e => e.status === "open");';
+const replacements = [
+  {
+    before: '  const activeIncomeEntries = incomeEntries.filter(e => e.status !== "completed");',
+    after: '  const activeIncomeEntries = incomeEntries.filter(e => e.status === "open");',
+    label: "open pending entries",
+  },
+  {
+    before: '  const completedIncomeEntries = incomeEntries.filter(e => e.status === "completed");',
+    after: '  const completedIncomeEntries = incomeEntries.filter(e => e.status === "completed" || e.status === "cancelled");',
+    label: "past and cancelled entries",
+  },
+  {
+    before: '            Vergangene Termine ({completedIncomeEntries.length})',
+    after: '            Vergangene / stornierte Termine ({completedIncomeEntries.length})',
+    label: "archive heading",
+  },
+];
 
-if (source.includes(before)) {
-  source = source.replace(before, after);
-} else if (!source.includes(after)) {
-  throw new Error("Cashbook open-only patch could not be applied");
+for (const { before, after, label } of replacements) {
+  if (source.includes(before)) {
+    source = source.replace(before, after);
+  } else if (!source.includes(after)) {
+    throw new Error(`Cashbook patch could not apply ${label}`);
+  }
 }
 
 fs.writeFileSync(path, source);
-console.log("Cashbook pending list now shows only open entries.");
+console.log("Cashbook pending list shows only open entries; completed and cancelled entries are grouped under past/cancelled appointments.");
