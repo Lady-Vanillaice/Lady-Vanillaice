@@ -11,12 +11,12 @@ const replacements = [
   },
   {
     before: '  const completedIncomeEntries = incomeEntries.filter(e => e.status === "completed");',
-    after: '  const completedIncomeEntries = incomeEntries.filter(e => e.status !== "open");',
-    label: "non-open archive entries",
+    after: '  const completedIncomeEntries = incomeEntries.filter(e => e.status === "completed" || e.status === "cancelled");',
+    label: "past and cancelled entries",
   },
   {
     before: '            Vergangene Termine ({completedIncomeEntries.length})',
-    after: '            Nicht offene Termine ({completedIncomeEntries.length})',
+    after: '            Vergangene / stornierte Termine ({completedIncomeEntries.length})',
     label: "archive heading",
   },
 ];
@@ -30,4 +30,4 @@ for (const { before, after, label } of replacements) {
 }
 
 fs.writeFileSync(path, source);
-console.log("Cashbook shows only open entries in the pending list and keeps all non-open entries in the archive.");
+console.log("Cashbook pending list shows only open entries; completed and cancelled entries are grouped under past/cancelled appointments.");
