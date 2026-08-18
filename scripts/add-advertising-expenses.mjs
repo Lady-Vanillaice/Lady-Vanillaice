@@ -19,7 +19,7 @@ backend = replaceOnce(
 backend = replaceOnce(
   backend,
   '      const isStudioRent = e.kunde === STUDIO_RENT_LABEL;',
-  '      const isStudioRent = e.kunde === STUDIO_RENT_LABEL;\n      const isAdvertising = e.kunde === ADVERTISING_LABEL;\n      const expenseCategory = isStudioRent ? "studio_rent" : isAdvertising ? "advertising" : null;\n      const isExpense = Boolean(expenseCategory);',
+  '      const isStudioRent = e.kunde === STUDIO_RENT_LABEL;\n      const isAdvertising = e.kunde === ADVERTISING_LABEL || e.studio.trim().toLowerCase() === "ladies.de";\n      const expenseCategory = isAdvertising ? "advertising" : isStudioRent ? "studio_rent" : null;\n      const isExpense = Boolean(expenseCategory);',
   "expense detection",
 );
 for (const [before, after, label] of [
@@ -29,7 +29,7 @@ for (const [before, after, label] of [
   ['        expense_category: isStudioRent ? "studio_rent" : null,', '        expense_category: expenseCategory,', "expense category"],
   ['        expense_amount: isStudioRent ? Number(e.bar) : 0,', '        expense_amount: isExpense ? Number(e.bar) : 0,', "expense amount"],
   ['        payment_method: isStudioRent ? e.anzahlung_method ?? null : null,', '        payment_method: isExpense ? e.anzahlung_method ?? null : null,', "expense payment method"],
-  ['        art: isStudioRent ? STUDIO_RENT_LABEL : e.studio === "Custom Content" ? "Custom Content" : "Manuell",', '        art: isStudioRent ? STUDIO_RENT_LABEL : isAdvertising ? ADVERTISING_LABEL : e.studio === "Custom Content" ? "Custom Content" : "Manuell",', "expense label"],
+  ['        art: isStudioRent ? STUDIO_RENT_LABEL : e.studio === "Custom Content" ? "Custom Content" : "Manuell",', '        art: isAdvertising ? ADVERTISING_LABEL : isStudioRent ? STUDIO_RENT_LABEL : e.studio === "Custom Content" ? "Custom Content" : "Manuell",', "expense label"],
   ['        anzahlung: isStudioRent || !depositDate ? 0 : Number(e.anzahlung),', '        anzahlung: isExpense || !depositDate ? 0 : Number(e.anzahlung),', "deposit amount"],
   ['        anzahlung_vorgemerkt: isStudioRent ? 0 : Number(e.anzahlung),', '        anzahlung_vorgemerkt: isExpense ? 0 : Number(e.anzahlung),', "planned deposit"],
   ['        anzahlung_method: isStudioRent ? null : e.anzahlung_method ?? null,', '        anzahlung_method: isExpense ? null : e.anzahlung_method ?? null,', "deposit method"],
@@ -91,7 +91,7 @@ ui = replaceOnce(
 ui = replaceOnce(
   ui,
   '<td className="p-3">Studiomiete</td>',
-  '<td className="p-3">{e.art}</td>',
+  '<td className="p-3">{e.expense_category === "advertising" ? "Werbung" : e.art}</td>',
   "expense table category",
 );
 fs.writeFileSync(uiPath, ui);
