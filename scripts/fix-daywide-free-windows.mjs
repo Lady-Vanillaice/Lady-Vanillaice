@@ -6,10 +6,21 @@ let source = fs.readFileSync(bookingPath, "utf8");
 // Load appointments by their real requested time, not only by currently-open
 // availability slot ids. This includes bookings whose original slot is hidden,
 // held, booked, moved or otherwise no longer part of the open-slot list.
-source = source.replace(
-  '      .in("slot_id", slotIds)\n      .in("status", ["pending", "waiting_deposit", "confirmed"])',
-  '      .gte("requested_start", rangeStart.toISOString())\n      .lt("requested_start", rangeEnd.toISOString())\n      .in("status", ["pending", "waiting_deposit", "confirmed"])',
-);
+// IMPORTANT: this repository has more than one `.in("slot_id", slotIds)` query.
+// Patch the LAST occurrence only — that is the listUpcomingSlots range query.
+// Patching the first occurrence would hit proposeBookingTime, where rangeStart/
+// rangeEnd do not exist and would crash the public booking flow at runtime.
+const slotQueryNeedle =
+  '      .in("slot_id", slotIds)\n      .in("status", ["pending", "waiting_deposit", "confirmed"])';
+const rangeQueryReplacement =
+  '      .gte("requested_start", rangeStart.toISOString())\n      .lt("requested_start", rangeEnd.toISOString())\n      .in("status", ["pending", "waiting_deposit", "confirmed"])';
+const slotQueryIndex = source.lastIndexOf(slotQueryNeedle);
+if (slotQueryIndex >= 0) {
+  source =
+    source.slice(0, slotQueryIndex) +
+    rangeQueryReplacement +
+    source.slice(slotQueryIndex + slotQueryNeedle.length);
+}
 
 const oldBusy = '    const busy = bookingsBySlot.get(slot.id) ?? [];';
 const newBusy = `    const berlinDayKey = (value: string) => new Intl.DateTimeFormat("sv-SE", {\n      timeZone: "Europe/Berlin",\n      year: "numeric",\n      month: "2-digit",\n      day: "2-digit",\n    }).format(new Date(value));\n    const slotDayKey = berlinDayKey(slot.starts_at);\n    // bookingsBySlot now contains every appointment in the requested date range.\n    // Flatten all source-slot buckets and keep only appointments on this Berlin day.\n    const busy = [...bookingsBySlot.values()]\n      .flat()\n      .filter((range) => berlinDayKey(range.starts_at) === slotDayKey);`;
@@ -22,6 +33,20 @@ if (!source.includes('gte("requested_start", rangeStart.toISOString())')) {
 }
 if (!source.includes("const busy = [...bookingsBySlot.values()]")) {
   throw new Error("Day-wide booking lookup patch could not be applied");
+}
+// Safety check: proposeBookingTime must still use slotIds/daySlots and must not
+// contain the rangeStart/rangeEnd identifiers from listUpcomingSlots.
+const proposalStart = source.indexOf("export const proposeBookingTime");
+const submitStart = source.indexOf("export const submitBooking", proposalStart);
+const proposalSection = proposalStart >= 0 && submitStart > proposalStart
+  ? source.slice(proposalStart, submitStart)
+  : "";
+if (
+  !proposalSection.includes('.in("slot_id", slotIds)') ||
+  proposalSection.includes("rangeStart.toISOString()") ||
+  proposalSection.includes("rangeEnd.toISOString()")
+) {
+  throw new Error("Booking proposal query was accidentally modified");
 }
 // fix-duo-single-calendar runs before this script and already creates the real
 // free_windows plus the day-level windows array used by the public card.
