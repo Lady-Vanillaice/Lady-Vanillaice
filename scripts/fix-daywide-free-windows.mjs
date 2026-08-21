@@ -7,15 +7,24 @@ let source = fs.readFileSync(bookingPath, "utf8");
 // availability slot ids. This includes bookings whose original slot is hidden,
 // held, booked, moved or otherwise no longer part of the open-slot list.
 // IMPORTANT: this repository has more than one `.in("slot_id", slotIds)` query.
-// Patch the LAST occurrence only — that is the listUpcomingSlots range query.
-// Patching the first occurrence would hit proposeBookingTime, where rangeStart/
-// rangeEnd do not exist and would crash the public booking flow at runtime.
+// Patch only the query inside listUpcomingSlots, and only if it has not already
+// been converted. The script is run more than once during a normal npm build.
 const slotQueryNeedle =
   '      .in("slot_id", slotIds)\n      .in("status", ["pending", "waiting_deposit", "confirmed"])';
 const rangeQueryReplacement =
   '      .gte("requested_start", rangeStart.toISOString())\n      .lt("requested_start", rangeEnd.toISOString())\n      .in("status", ["pending", "waiting_deposit", "confirmed"])';
-const slotQueryIndex = source.lastIndexOf(slotQueryNeedle);
-if (slotQueryIndex >= 0) {
+
+if (!source.includes(rangeQueryReplacement)) {
+  const upcomingStart = source.indexOf("export const listUpcomingSlots");
+  if (upcomingStart < 0) {
+    throw new Error("listUpcomingSlots patch target was not found");
+  }
+  const upcomingSection = source.slice(upcomingStart);
+  const relativeQueryIndex = upcomingSection.indexOf(slotQueryNeedle);
+  if (relativeQueryIndex < 0) {
+    throw new Error("Day-wide booking query patch target was not found inside listUpcomingSlots");
+  }
+  const slotQueryIndex = upcomingStart + relativeQueryIndex;
   source =
     source.slice(0, slotQueryIndex) +
     rangeQueryReplacement +
