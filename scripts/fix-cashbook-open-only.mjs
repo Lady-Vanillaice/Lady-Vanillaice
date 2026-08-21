@@ -31,3 +31,5 @@ for (const { before, after, label } of replacements) {
 
 fs.writeFileSync(path, source);
 console.log("Cashbook pending list shows only open entries; completed and cancelled entries are grouped under past/cancelled appointments.");
+
+await import("./automate-booking-communication.mjs");

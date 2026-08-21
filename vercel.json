@@ -9,5 +9,11 @@
         { "key": "Vercel-CDN-Cache-Control", "value": "no-store" }
       ]
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/booking-emails",
+      "schedule": "0 * * * *"
+    }
   ]
 }
