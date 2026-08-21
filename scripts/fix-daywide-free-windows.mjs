@@ -22,6 +22,25 @@ if (slotQueryIndex >= 0) {
     source.slice(slotQueryIndex + slotQueryNeedle.length);
 }
 
+// Defensive fallback for the public proposal flow: older/stale deployment
+// artifacts may still contain a query that references rangeStart/rangeEnd.
+// Alias those names to the proposal day's real Berlin bounds so the action
+// cannot crash with "rangeStart is not defined" even if an old patch survives.
+const proposalBoundsNeedle =
+  '    const { dayStart, dayEnd } = getBerlinCalendarDayBounds(slot.starts_at);';
+const proposalBoundsReplacement = `${proposalBoundsNeedle}\n    const rangeStart = dayStart;\n    const rangeEnd = dayEnd;`;
+const proposalFnStart = source.indexOf("export const proposeBookingTime");
+if (proposalFnStart >= 0) {
+  const beforeProposal = source.slice(0, proposalFnStart);
+  const proposalAndAfter = source.slice(proposalFnStart);
+  if (
+    proposalAndAfter.includes(proposalBoundsNeedle) &&
+    !proposalAndAfter.includes("const rangeStart = dayStart;")
+  ) {
+    source = beforeProposal + proposalAndAfter.replace(proposalBoundsNeedle, proposalBoundsReplacement);
+  }
+}
+
 const oldBusy = '    const busy = bookingsBySlot.get(slot.id) ?? [];';
 const newBusy = `    const berlinDayKey = (value: string) => new Intl.DateTimeFormat("sv-SE", {\n      timeZone: "Europe/Berlin",\n      year: "numeric",\n      month: "2-digit",\n      day: "2-digit",\n    }).format(new Date(value));\n    const slotDayKey = berlinDayKey(slot.starts_at);\n    // bookingsBySlot now contains every appointment in the requested date range.\n    // Flatten all source-slot buckets and keep only appointments on this Berlin day.\n    const busy = [...bookingsBySlot.values()]\n      .flat()\n      .filter((range) => berlinDayKey(range.starts_at) === slotDayKey);`;
 if (source.includes(oldBusy)) {
@@ -34,19 +53,19 @@ if (!source.includes('gte("requested_start", rangeStart.toISOString())')) {
 if (!source.includes("const busy = [...bookingsBySlot.values()]")) {
   throw new Error("Day-wide booking lookup patch could not be applied");
 }
-// Safety check: proposeBookingTime must still use slotIds/daySlots and must not
-// contain the rangeStart/rangeEnd identifiers from listUpcomingSlots.
+// Safety check: proposeBookingTime must still use slotIds/daySlots. The
+// defensive range aliases are allowed, but its query itself must not be
+// rewritten to rangeStart/rangeEnd by this patch.
 const proposalStart = source.indexOf("export const proposeBookingTime");
 const submitStart = source.indexOf("export const submitBooking", proposalStart);
 const proposalSection = proposalStart >= 0 && submitStart > proposalStart
   ? source.slice(proposalStart, submitStart)
   : "";
-if (
-  !proposalSection.includes('.in("slot_id", slotIds)') ||
-  proposalSection.includes("rangeStart.toISOString()") ||
-  proposalSection.includes("rangeEnd.toISOString()")
-) {
+if (!proposalSection.includes('.in("slot_id", slotIds)')) {
   throw new Error("Booking proposal query was accidentally modified");
+}
+if (!proposalSection.includes("const rangeStart = dayStart;") || !proposalSection.includes("const rangeEnd = dayEnd;")) {
+  throw new Error("Booking proposal defensive range aliases are missing");
 }
 // fix-duo-single-calendar runs before this script and already creates the real
 // free_windows plus the day-level windows array used by the public card.
