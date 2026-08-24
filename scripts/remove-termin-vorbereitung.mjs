@@ -24,3 +24,5 @@ if (source.includes("Termin-Vorbereitung") || source.includes("PREPARATION_ITEMS
 
 fs.writeFileSync(path, source);
 console.log("Termin-Vorbereitung checklist removed from Termin & Zahlung.");
+
+await import("./fix-customer-name-persistence.mjs");
