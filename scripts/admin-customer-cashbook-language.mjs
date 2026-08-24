@@ -61,8 +61,8 @@ patchFile("src/routes/_authenticated/admin.buchung.$id.tsx", [
 patchFile("src/routes/_authenticated/admin.kassenbuch.tsx", [
   {
     label: "completed appointments descending date time",
-    before: `  const completedIncomeEntries = incomeEntries.filter(e => e.status === "completed");`,
-    after: `  const completedIncomeEntries = incomeEntries\n    .filter(e => e.status === "completed")\n    .sort((a, b) => {\n      const aKey = \`${'${a.termin_datum}'}T${'${a.termin_start ?? "00:00:00"}'}\`;\n      const bKey = \`${'${b.termin_datum}'}T${'${b.termin_start ?? "00:00:00"}'}\`;\n      return bKey.localeCompare(aKey);\n    });`,
+    before: `  const completedIncomeEntries = incomeEntries.filter(e => e.status === "completed" || e.status === "cancelled");`,
+    after: `  const completedIncomeEntries = incomeEntries\n    .filter(e => e.status === "completed" || e.status === "cancelled")\n    .sort((a, b) => {\n      const aKey = \`${'${a.termin_datum}'}T${'${a.termin_start ?? "00:00:00"}'}\`;\n      const bKey = \`${'${b.termin_datum}'}T${'${b.termin_start ?? "00:00:00"}'}\`;\n      return bKey.localeCompare(aKey);\n    });`,
   },
 ]);
 
