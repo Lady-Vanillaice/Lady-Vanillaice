@@ -34,13 +34,13 @@ function ensureBookingUi() {
   }
 
   if (!source.includes('id="admin-schedule-editor"')) {
-    const heading = /<div className="luxe-card p-5 sm:p-6">\s*\n\s*<h2 className="font-serif text-xl text-champagne mb-5">Termin & Zahlung<\/h2>/m;
-    if (!heading.test(source)) {
-      throw new Error("[reschedule] UI patch failed: Termin & Zahlung card not found");
+    const scheduleCard = `          {/* TERMIN-ÜBERSCHREIBUNG */}\n          <div className="bg-card border border-champagne/15 p-6 mb-6">`;
+    if (!source.includes(scheduleCard)) {
+      throw new Error("[reschedule] UI patch failed: Termin überschreiben card not found");
     }
     source = source.replace(
-      heading,
-      '<div id="admin-schedule-editor" className="luxe-card p-5 sm:p-6 scroll-mt-28">\n            <h2 className="font-serif text-xl text-champagne mb-5">Termin & Zahlung</h2>',
+      scheduleCard,
+      `          {/* TERMIN-ÜBERSCHREIBUNG */}\n          <div id="admin-schedule-editor" className="bg-card border border-champagne/15 p-6 mb-6 scroll-mt-28">`,
     );
     console.log("[reschedule] applied: schedule editor anchor");
   } else {
