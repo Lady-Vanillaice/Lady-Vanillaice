@@ -85,4 +85,18 @@ apply(
   "make rescheduling save action explicit",
 );
 
-console.log("Existing bookings can now be moved reliably: Umplanen opens the schedule editor, the old slot is detached when necessary, the new date is displayed, and the existing booking returns to confirmed after saving.");
+apply(
+  "src/routes/_authenticated/admin.buchung.$id.tsx",
+  `                  {booking.duration && (\n                    <div className="text-vanilla/55 text-xs mt-2">\n                      Dauer-Wunsch: {booking.duration}\n                    </div>\n                  )}`,
+  `                  {booking.duration && (\n                    <div className="text-vanilla/55 text-xs mt-2">\n                      Dauer-Wunsch: {booking.duration}\n                    </div>\n                  )}\n                  <button\n                    type="button"\n                    onClick={() => {\n                      setActiveTab("schedule");\n                      window.setTimeout(() => {\n                        document.getElementById("admin-schedule-editor")?.scrollIntoView({ behavior: "smooth", block: "start" });\n                      }, 50);\n                    }}\n                    className="mt-4 text-[0.65rem] uppercase tracking-[0.2em] px-4 py-2 border border-champagne/50 text-champagne hover:bg-champagne/10"\n                  >\n                    Termin ändern\n                  </button>`,
+  "add a direct Termin ändern button to the overview appointment card",
+);
+
+apply(
+  "src/routes/_authenticated/admin.buchung.$id.tsx",
+  `<div className="luxe-card p-5 sm:p-6">\n            <h2 className="font-serif text-xl text-champagne mb-5">Termin & Zahlung</h2>`,
+  `<div id="admin-schedule-editor" className="luxe-card p-5 sm:p-6 scroll-mt-28">\n            <h2 className="font-serif text-xl text-champagne mb-5">Termin & Zahlung</h2>`,
+  "give the schedule editor a stable scroll target",
+);
+
+console.log("Existing bookings can now be moved reliably, and the overview card has a direct Termin ändern action that opens the schedule editor.");
