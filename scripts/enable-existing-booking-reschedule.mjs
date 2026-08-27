@@ -1,5 +1,6 @@
 import fs from "node:fs";
 
+// Reschedule UI is verified during every production build.
 function apply(path, before, after, label) {
   let source = fs.readFileSync(path, "utf8");
   if (source.includes(after)) {
