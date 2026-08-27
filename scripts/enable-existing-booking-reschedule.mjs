@@ -25,8 +25,8 @@ apply(
 apply(
   "src/lib/booking.schedule-override.functions.ts",
   `    await ensureAdmin(context.supabase, context.userId);\n    let resolvedSlotId: string | undefined;`,
-  `    await ensureAdmin(context.supabase, context.userId);\n    let resolvedSlotId: string | undefined;\n    let confirmAfterReschedule = false;`,
-  "track rescheduling status",
+  `    await ensureAdmin(context.supabase, context.userId);\n    let resolvedSlotId: string | null | undefined;\n    let confirmAfterReschedule = false;`,
+  "track rescheduling status and allow detaching old slot",
 );
 
 apply(
@@ -38,9 +38,16 @@ apply(
 
 apply(
   "src/lib/booking.schedule-override.functions.ts",
+  `      if (containingSlot && booking.slot_id !== containingSlot.id) {\n        resolvedSlotId = containingSlot.id;\n      }`,
+  `      if (containingSlot && booking.slot_id !== containingSlot.id) {\n        resolvedSlotId = containingSlot.id;\n      } else if (!containingSlot && currentSlot) {\n        const currentStart = new Date(currentSlot.starts_at).getTime();\n        const currentEnd = new Date(currentSlot.ends_at).getTime();\n        const stillInsideCurrent = requestedStart.getTime() >= currentStart && requestedEnd.getTime() <= currentEnd;\n        if (!stillInsideCurrent) resolvedSlotId = null;\n      }`,
+  "detach booking from old slot when moved to another day/time",
+);
+
+apply(
+  "src/lib/booking.schedule-override.functions.ts",
   `      .update({\n        requested_start: data.requested_start,\n        duration_minutes: data.duration_minutes,\n        ...(resolvedSlotId ? { slot_id: resolvedSlotId } : {}),\n      })`,
-  `      .update({\n        requested_start: data.requested_start,\n        duration_minutes: data.duration_minutes,\n        ...(resolvedSlotId ? { slot_id: resolvedSlotId } : {}),\n        ...(confirmAfterReschedule ? { status: "confirmed" } : {}),\n      })`,
-  "confirm booking after new reschedule date is saved",
+  `      .update({\n        requested_start: data.requested_start,\n        duration_minutes: data.duration_minutes,\n        ...(resolvedSlotId !== undefined ? { slot_id: resolvedSlotId } : {}),\n        ...(confirmAfterReschedule ? { status: "confirmed" } : {}),\n      })`,
+  "persist new schedule and confirm after rescheduling",
 );
 
 apply(
@@ -57,4 +64,25 @@ apply(
   "refresh Terminplan after status changes",
 );
 
-console.log("Existing bookings can now stay visible while being rescheduled and return to confirmed after saving the new date.");
+apply(
+  "src/routes/_authenticated/admin.buchung.$id.tsx",
+  `                  onClick={() => statusMut.mutate({ status: "rescheduling" })}`,
+  `                  onClick={() => {\n                    statusMut.mutate({ status: "rescheduling" });\n                    setActiveTab("schedule");\n                  }}`,
+  "open Termin & Zahlung immediately when Umplanen is clicked",
+);
+
+apply(
+  "src/routes/_authenticated/admin.buchung.$id.tsx",
+  `                    {format(new Date(slot.starts_at), "EEEE, dd.MM.yyyy", {`,
+  `                    {format(new Date(booking.requested_start ?? slot.starts_at), "EEEE, dd.MM.yyyy", {`,
+  "show overridden booking date instead of old slot date",
+);
+
+apply(
+  "src/routes/_authenticated/admin.buchung.$id.tsx",
+  `{scheduleMut.isPending ? "Speichere…" : "Termin speichern"}`,
+  `{scheduleMut.isPending ? "Speichere…" : booking.status === "rescheduling" ? "Neuen Termin speichern" : "Termin speichern"}`,
+  "make rescheduling save action explicit",
+);
+
+console.log("Existing bookings can now be moved reliably: Umplanen opens the schedule editor, the old slot is detached when necessary, the new date is displayed, and the existing booking returns to confirmed after saving.");
