@@ -30,109 +30,164 @@ export const updateBookingSchedule = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await ensureAdmin(context.supabase, context.userId);
-    let resolvedSlotId: string | undefined;
 
     if ((data.requested_start && !data.duration_minutes) || (!data.requested_start && data.duration_minutes)) {
       throw new Error("Bitte Datum, Uhrzeit und Dauer gemeinsam ausfüllen.");
     }
 
-    if (data.requested_start && data.duration_minutes) {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { data: booking, error: bookingErr } = await context.supabase
+    if (!data.requested_start || !data.duration_minutes) {
+      const { error } = await context.supabase
         .from("bookings")
-        .select("id, slot_id, status")
-        .eq("id", data.id)
-        .maybeSingle();
-      if (bookingErr) throw new Error(bookingErr.message);
-      if (!booking) throw new Error("Buchung nicht gefunden.");
+        .update({ requested_start: null, duration_minutes: null })
+        .eq("id", data.id);
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
 
-      const requestedStart = new Date(data.requested_start);
-      const requestedEnd = new Date(requestedStart.getTime() + data.duration_minutes * 60_000);
-      if (!Number.isFinite(requestedStart.getTime())) {
-        throw new Error("Bitte gib eine gültige Uhrzeit ein.");
-      }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: booking, error: bookingErr } = await context.supabase
+      .from("bookings")
+      .select("id, slot_id, status")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (bookingErr) throw new Error(bookingErr.message);
+    if (!booking) throw new Error("Buchung nicht gefunden.");
 
-      const dayStart = new Date(requestedStart);
-      dayStart.setUTCHours(0, 0, 0, 0);
-      const dayEnd = new Date(dayStart);
-      dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+    const requestedStart = new Date(data.requested_start);
+    if (!Number.isFinite(requestedStart.getTime())) {
+      throw new Error("Bitte gib ein gültiges Datum und eine gültige Uhrzeit ein.");
+    }
+    const requestedEnd = new Date(requestedStart.getTime() + data.duration_minutes * 60_000);
 
-      const { data: openDaySlots, error: slotErr } = await supabaseAdmin
+    const { data: blockers, error: blockersErr } = await supabaseAdmin
+      .from("bookings")
+      .select("id, requested_start, duration_minutes, status, updated_at")
+      .neq("id", data.id)
+      .in("status", ["pending", "waiting_deposit", "confirmed"])
+      .not("requested_start", "is", null)
+      .not("duration_minutes", "is", null);
+    if (blockersErr) throw new Error(blockersErr.message);
+
+    const conflicts = (blockers ?? []).some((blocked) => {
+      if (!isBlockingBooking(blocked)) return false;
+      if (!blocked.requested_start || !blocked.duration_minutes) return false;
+      const blockedStart = new Date(blocked.requested_start).getTime();
+      const blockedEnd = blockedStart + blocked.duration_minutes * 60_000;
+      return requestedStart.getTime() < blockedEnd && requestedEnd.getTime() > blockedStart;
+    });
+    if (conflicts) {
+      throw new Error("Diese Uhrzeit überschneidet sich mit einem anderen Termin. Bitte wähle eine andere Uhrzeit.");
+    }
+
+    let currentSlot: {
+      id: string;
+      starts_at: string;
+      ends_at: string;
+      location: string | null;
+      location_address: string | null;
+      is_duo: boolean | null;
+      is_content_shoot: boolean | null;
+      duo_partner: string | null;
+      is_hidden: boolean | null;
+    } | null = null;
+
+    if (booking.slot_id) {
+      const { data: slot, error: currentSlotErr } = await supabaseAdmin
         .from("availability_slots")
-        .select("id, starts_at, ends_at, status, is_hidden")
-        .eq("status", "open")
-        .eq("is_hidden", false)
-        .lt("starts_at", dayEnd.toISOString())
-        .gt("ends_at", dayStart.toISOString())
-        .order("starts_at", { ascending: true });
-      if (slotErr) throw new Error(slotErr.message);
+        .select("id, starts_at, ends_at, location, location_address, is_duo, is_content_shoot, duo_partner, is_hidden")
+        .eq("id", booking.slot_id)
+        .maybeSingle();
+      if (currentSlotErr) throw new Error(currentSlotErr.message);
+      currentSlot = slot;
+    }
 
-      let currentSlot: {
-        id: string;
-        starts_at: string;
-        ends_at: string;
-        status: string;
-        is_hidden: boolean;
-      } | null = null;
+    const dayStart = new Date(requestedStart);
+    dayStart.setUTCHours(0, 0, 0, 0);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
 
-      if (booking.slot_id) {
-        const { data: slot, error: currentSlotErr } = await supabaseAdmin
-          .from("availability_slots")
-          .select("id, starts_at, ends_at, status, is_hidden")
-          .eq("id", booking.slot_id)
-          .maybeSingle();
-        if (currentSlotErr) throw new Error(currentSlotErr.message);
-        currentSlot = slot;
+    const { data: openDaySlots, error: slotErr } = await supabaseAdmin
+      .from("availability_slots")
+      .select("id, starts_at, ends_at, location, location_address, is_duo, is_content_shoot, duo_partner, is_hidden")
+      .eq("status", "open")
+      .eq("is_hidden", false)
+      .lt("starts_at", dayEnd.toISOString())
+      .gt("ends_at", dayStart.toISOString())
+      .order("starts_at", { ascending: true });
+    if (slotErr) throw new Error(slotErr.message);
+
+    const containingSlot = (openDaySlots ?? []).find((slot) => {
+      const slotStart = new Date(slot.starts_at).getTime();
+      const slotEnd = new Date(slot.ends_at).getTime();
+      return requestedStart.getTime() >= slotStart && requestedEnd.getTime() <= slotEnd;
+    });
+
+    let nextSlotId: string | null = containingSlot?.id ?? null;
+
+    const stillInsideCurrent = currentSlot
+      ? requestedStart.getTime() >= new Date(currentSlot.starts_at).getTime() &&
+        requestedEnd.getTime() <= new Date(currentSlot.ends_at).getTime()
+      : false;
+
+    if (!nextSlotId && stillInsideCurrent && currentSlot) {
+      nextSlotId = currentSlot.id;
+    }
+
+    // Wenn der neue Admin-Termin außerhalb aller bestehenden Zeitfenster liegt,
+    // bekommt er einen eigenen versteckten Slot. Dadurch bleiben Datum, Uhrzeit,
+    // Studio und Terminplan konsistent, ohne einen zweiten Buchungsdatensatz anzulegen.
+    if (!nextSlotId) {
+      const { data: newSlot, error: createSlotErr } = await supabaseAdmin
+        .from("availability_slots")
+        .insert({
+          starts_at: requestedStart.toISOString(),
+          ends_at: requestedEnd.toISOString(),
+          status: "booked",
+          is_hidden: true,
+          location: currentSlot?.location ?? "Individueller Termin",
+          location_address: currentSlot?.location_address ?? null,
+          is_duo: currentSlot?.is_duo ?? false,
+          is_content_shoot: currentSlot?.is_content_shoot ?? false,
+          duo_partner: currentSlot?.duo_partner ?? null,
+        })
+        .select("id")
+        .single();
+      if (createSlotErr || !newSlot) {
+        throw new Error(createSlotErr?.message ?? "Neuer Termin-Slot konnte nicht angelegt werden.");
       }
+      nextSlotId = newSlot.id;
+    }
 
-      const daySlots = [...(openDaySlots ?? [])];
-      if (currentSlot && !daySlots.some((slot) => slot.id === currentSlot.id)) {
-        daySlots.push(currentSlot);
-      }
+    const { error: updateErr } = await context.supabase
+      .from("bookings")
+      .update({
+        requested_start: requestedStart.toISOString(),
+        duration_minutes: data.duration_minutes,
+        slot_id: nextSlotId,
+        ...(booking.status === "rescheduling" ? { status: "confirmed" } : {}),
+      })
+      .eq("id", data.id);
+    if (updateErr) throw new Error(updateErr.message);
 
-      const containingSlot = daySlots.find((slot) => {
-        const slotStart = new Date(slot.starts_at).getTime();
-        const slotEnd = new Date(slot.ends_at).getTime();
-        return requestedStart.getTime() >= slotStart && requestedEnd.getTime() <= slotEnd;
-      });
-
-      const { data: blockers, error: blockersErr } = await supabaseAdmin
+    // Den alten Slot wieder freigeben, wenn die Buchung ihn verlassen hat und
+    // kein anderer aktiver Termin mehr daran hängt. Versteckte Slots bleiben versteckt.
+    if (booking.slot_id && booking.slot_id !== nextSlotId) {
+      const { data: remaining, error: remainingErr } = await supabaseAdmin
         .from("bookings")
-        .select("id, requested_start, duration_minutes, status, updated_at")
+        .select("id, status, updated_at")
+        .eq("slot_id", booking.slot_id)
         .neq("id", data.id)
-        .in("status", ["pending", "waiting_deposit", "confirmed"])
-        .not("requested_start", "is", null)
-        .not("duration_minutes", "is", null);
-      if (blockersErr) throw new Error(blockersErr.message);
+        .in("status", ["pending", "waiting_deposit", "confirmed"]);
+      if (remainingErr) throw new Error(remainingErr.message);
 
-      // Admin-Ueberschreibungen duerfen die normale Pause / den Buchungspuffer
-      // bewusst unterschreiten. Nur eine echte Termin-Ueberschneidung bleibt
-      // gesperrt, damit keine Doppelbuchung entsteht.
-      const conflicts = (blockers ?? []).some((blocked) => {
-        if (!isBlockingBooking(blocked)) return false;
-        if (!blocked.requested_start || !blocked.duration_minutes) return false;
-        const blockedStart = new Date(blocked.requested_start).getTime();
-        const blockedEnd = blockedStart + blocked.duration_minutes * 60_000;
-        return requestedStart.getTime() < blockedEnd && requestedEnd.getTime() > blockedStart;
-      });
-
-      if (conflicts) {
-        throw new Error("Diese Uhrzeit überschneidet sich mit einem anderen Termin. Bitte wähle eine andere Uhrzeit.");
-      }
-
-      if (containingSlot && booking.slot_id !== containingSlot.id) {
-        resolvedSlotId = containingSlot.id;
+      const hasActiveRemaining = (remaining ?? []).some((other) => isBlockingBooking(other));
+      if (!hasActiveRemaining) {
+        await supabaseAdmin
+          .from("availability_slots")
+          .update({ status: "open" })
+          .eq("id", booking.slot_id);
       }
     }
 
-    const { error } = await context.supabase
-      .from("bookings")
-      .update({
-        requested_start: data.requested_start,
-        duration_minutes: data.duration_minutes,
-        ...(resolvedSlotId ? { slot_id: resolvedSlotId } : {}),
-      })
-      .eq("id", data.id);
-    if (error) throw new Error(error.message);
-    return { ok: true };
+    return { ok: true, slot_id: nextSlotId };
   });
