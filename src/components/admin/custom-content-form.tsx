@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CalendarPlus } from "lucide-react";
+import { CalendarPlus, CreditCard } from "lucide-react";
 import type { ManualBookingValues } from "@/components/admin/admin-shared";
 import { DEFAULT_STUDIOS, type StudioOption } from "@/lib/studio.functions";
 
@@ -63,6 +63,7 @@ export function CustomContentForm({
   const [videoMinutes, setVideoMinutes] = useState("");
   const [note, setNote] = useState("");
   const [totalAmount, setTotalAmount] = useState("");
+  const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("Überweisung");
   const [isPaid, setIsPaid] = useState(true);
   const [paidAt, setPaidAt] = useState(() => new Date().toISOString().slice(0, 10));
@@ -75,15 +76,20 @@ export function CustomContentForm({
     setSuccess(false);
 
     const total = Number(totalAmount.replace(",", "."));
+    const paid = isPaid ? Number((paymentAmount || totalAmount).replace(",", ".")) : 0;
     const parsedImageCount = imageCount.trim() ? Number(imageCount) : null;
     const parsedVideoMinutes = videoMinutes.trim() ? Number(videoMinutes) : null;
 
     if (!date || !guestName.trim() || !wish.trim()) {
-      setError("Bitte Datum, Kunde und den gewünschten Inhalt eintragen.");
+      setError("Bitte Produktionsdatum, Kunde und den gewünschten Inhalt eintragen.");
       return;
     }
     if (!Number.isFinite(total) || total <= 0) {
       setError("Bitte den vereinbarten Gesamtpreis eintragen.");
+      return;
+    }
+    if (isPaid && (!Number.isFinite(paid) || paid <= 0 || paid > total)) {
+      setError("Bitte den tatsächlich erhaltenen Betrag eintragen. Er darf den Gesamtpreis nicht überschreiten.");
       return;
     }
     if (
@@ -100,8 +106,8 @@ export function CustomContentForm({
       setError("Die Videolänge muss in positiven ganzen Minuten angegeben werden.");
       return;
     }
-    if (!paymentMethod.trim()) {
-      setError("Bitte eine Zahlungsart angeben.");
+    if (isPaid && !paymentMethod.trim()) {
+      setError("Bitte angeben, wie das Geld geschickt wurde.");
       return;
     }
     if (isPaid && !paidAt) {
@@ -125,17 +131,24 @@ export function CustomContentForm({
         guest_name: guestName.trim(),
         guest_contact: contact.trim() || null,
         source: "Custom Content",
-        internal_note: note.trim() || null,
+        internal_note: [
+          note.trim() || null,
+          isPaid
+            ? `Custom-Content-Zahlung: ${paid.toLocaleString("de-DE", { style: "currency", currency: "EUR" })} · ${paymentMethod.trim()} · ${paidAt}`
+            : "Custom-Content-Zahlung: noch offen",
+        ].filter(Boolean).join("\n\n") || null,
         preferences: contentDetails,
         taboos: null,
         health_notes: null,
         booking_type: "custom_content",
         duo_partner: null,
         total_amount: total,
-        deposit_amount: total,
-        deposit_method: paymentMethod.trim(),
+        deposit_amount: paid,
+        deposit_method: isPaid ? paymentMethod.trim() : paymentMethod.trim() || "Überweisung",
         deposit_paid_at: isPaid ? paidAt : null,
         deposit_exemption_reason: null,
+        onsite_method: null,
+        onsite_paid_at: null,
       });
 
       setSuccess(true);
@@ -147,6 +160,7 @@ export function CustomContentForm({
       setVideoMinutes("");
       setNote("");
       setTotalAmount("");
+      setPaymentAmount("");
       setIsPaid(true);
       setPaidAt(new Date().toISOString().slice(0, 10));
     } catch (err) {
@@ -155,117 +169,133 @@ export function CustomContentForm({
   }
 
   return (
-    <form onSubmit={submit} className="space-y-4">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div>
-          <label className="eyebrow block mb-1">Datum</label>
-          <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} className="input-luxe !py-2" />
+    <form onSubmit={submit} className="space-y-5">
+      <div className="border border-champagne/20 bg-anthracite/25 p-4 space-y-4">
+        <div className="eyebrow">Auftrag</div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label className="eyebrow block mb-1">Kunde / Pseudonym</label>
+            <input required value={guestName} onChange={(e) => setGuestName(e.target.value)} className="input-luxe !py-2" />
+          </div>
+          <div>
+            <label className="eyebrow block mb-1">Kontakt (optional)</label>
+            <input value={contact} onChange={(e) => setContact(e.target.value)} className="input-luxe !py-2" placeholder="E-Mail, Telegram oder Telefon" />
+          </div>
         </div>
+
         <div>
-          <label className="eyebrow block mb-1">Von</label>
-          <input type="time" required value={start} onChange={(e) => setStart(e.target.value)} className="input-luxe !py-2" />
+          <label className="eyebrow block mb-1">Was möchte der Kunde?</label>
+          <textarea required value={wish} onChange={(e) => setWish(e.target.value)} className="input-luxe min-h-28" placeholder="Inhalt, Outfit, Ablauf, besondere Wünsche …" />
         </div>
-        <div>
-          <label className="eyebrow block mb-1">Bis</label>
-          <input type="time" required value={end} onChange={(e) => setEnd(e.target.value)} className="input-luxe !py-2" />
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label className="eyebrow block mb-1">Anzahl Bilder (optional)</label>
+            <input type="number" min={1} step={1} value={imageCount} onChange={(e) => setImageCount(e.target.value)} className="input-luxe !py-2" placeholder="z. B. 10" />
+          </div>
+          <div>
+            <label className="eyebrow block mb-1">Video in Minuten (optional)</label>
+            <input type="number" min={1} step={1} value={videoMinutes} onChange={(e) => setVideoMinutes(e.target.value)} className="input-luxe !py-2" placeholder="z. B. 15" />
+          </div>
         </div>
       </div>
 
-      <div>
-        <label className="eyebrow block mb-1">Studio</label>
-        <select value={location} onChange={(e) => setLocation(e.target.value)} className="input-luxe !py-2">
-          {availableStudios.map((studio) => (
-            <option key={studio.id} value={`${studio.name}, ${studio.address}`}>
-              {studio.name} · {studio.address}
-            </option>
-          ))}
-        </select>
-      </div>
+      <div className="border border-champagne/30 bg-anthracite/35 p-4 space-y-4">
+        <div className="eyebrow flex items-center gap-2"><CreditCard size={14} /> Zahlung</div>
+        <p className="text-xs text-vanilla/55 leading-relaxed">
+          Hier siehst bzw. hinterlegst du genau, wie viel der Kunde geschickt hat, wann das Geld kam und über welchen Zahlungsweg.
+        </p>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label className="eyebrow block mb-1">Kunde / Pseudonym</label>
-          <input required value={guestName} onChange={(e) => setGuestName(e.target.value)} className="input-luxe !py-2" />
+          <label className="eyebrow block mb-1">Vereinbarter Gesamtpreis (€)</label>
+          <input inputMode="decimal" required value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} className="input-luxe !py-2" placeholder="z. B. 250" />
         </div>
-        <div>
-          <label className="eyebrow block mb-1">Kontakt (optional)</label>
-          <input value={contact} onChange={(e) => setContact(e.target.value)} className="input-luxe !py-2" placeholder="E-Mail, Telegram oder Telefon" />
-        </div>
-      </div>
 
-      <div>
-        <label className="eyebrow block mb-1">Was möchte der Kunde?</label>
-        <textarea required value={wish} onChange={(e) => setWish(e.target.value)} className="input-luxe min-h-28" placeholder="Inhalt, Outfit, Praktiken, Ablauf, besondere Wünsche …" />
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <label className="eyebrow block mb-1">Anzahl Bilder (optional)</label>
-          <input type="number" min={1} step={1} value={imageCount} onChange={(e) => setImageCount(e.target.value)} className="input-luxe !py-2" placeholder="z. B. 10" />
-        </div>
-        <div>
-          <label className="eyebrow block mb-1">Video in Minuten (optional)</label>
-          <input type="number" min={1} step={1} value={videoMinutes} onChange={(e) => setVideoMinutes(e.target.value)} className="input-luxe !py-2" placeholder="z. B. 15" />
-        </div>
-      </div>
-      <p className="text-xs text-vanilla/45">
-        Du kannst nur Bilder, nur Video, beides oder keines von beiden eintragen.
-      </p>
-
-      <div>
-        <label className="eyebrow block mb-1">Vereinbarter Gesamtpreis (€)</label>
-        <input inputMode="decimal" required value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} className="input-luxe !py-2" />
-      </div>
-
-      <div className="border border-champagne/20 bg-anthracite/30 p-3">
-        <div className="eyebrow mb-2">Zahlungsstatus</div>
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => setIsPaid(true)}
             className={`px-3 py-2 text-xs uppercase tracking-wider border ${isPaid ? "border-champagne bg-champagne/15 text-champagne" : "border-vanilla/20 text-vanilla/55"}`}
           >
-            Bereits bezahlt
+            Geld erhalten
           </button>
           <button
             type="button"
             onClick={() => setIsPaid(false)}
             className={`px-3 py-2 text-xs uppercase tracking-wider border ${!isPaid ? "border-amber-400/70 bg-amber-500/10 text-amber-200" : "border-vanilla/20 text-vanilla/55"}`}
           >
-            Noch nicht bezahlt
+            Zahlung offen
           </button>
         </div>
+
+        {isPaid ? (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div>
+              <label className="eyebrow block mb-1">Erhaltener Betrag (€)</label>
+              <input
+                inputMode="decimal"
+                required
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                className="input-luxe !py-2"
+                placeholder={totalAmount || "z. B. 250"}
+              />
+            </div>
+            <div>
+              <label className="eyebrow block mb-1">Wie bezahlt?</label>
+              <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="input-luxe !py-2">
+                <option value="Überweisung">Überweisung</option>
+                <option value="PayPal">PayPal</option>
+                <option value="Bar">Bar</option>
+                <option value="Kreditkarte">Kreditkarte</option>
+                <option value="Sonstiges">Sonstiges</option>
+              </select>
+            </div>
+            <div>
+              <label className="eyebrow block mb-1">Zahlungsdatum</label>
+              <input type="date" required value={paidAt} onChange={(e) => setPaidAt(e.target.value)} className="input-luxe !py-2" />
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-amber-200/80">
+            Der Auftrag wird mit offener Zahlung gespeichert. Sobald das Geld da ist, kannst du die Zahlung in den Buchungsdetails nachtragen.
+          </p>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="border border-champagne/30 bg-anthracite/35 p-4 space-y-4">
+        <div className="eyebrow flex items-center gap-2"><CalendarPlus size={14} /> Terminplan · Content produzieren</div>
+        <p className="text-xs text-vanilla/55 leading-relaxed">
+          Trage hier ein, wann du den Content tatsächlich machst. Dieser Zeitraum wird als <span className="text-champagne">Custom Content</span> in deinem Terminplan eingetragen.
+        </p>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div>
+            <label className="eyebrow block mb-1">Produktionsdatum</label>
+            <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} className="input-luxe !py-2" />
+          </div>
+          <div>
+            <label className="eyebrow block mb-1">Von</label>
+            <input type="time" required value={start} onChange={(e) => setStart(e.target.value)} className="input-luxe !py-2" />
+          </div>
+          <div>
+            <label className="eyebrow block mb-1">Bis</label>
+            <input type="time" required value={end} onChange={(e) => setEnd(e.target.value)} className="input-luxe !py-2" />
+          </div>
+        </div>
+
         <div>
-          <label className="eyebrow block mb-1">Zahlungsart</label>
-          <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="input-luxe !py-2">
-            <option value="Überweisung">Überweisung</option>
-            <option value="PayPal">PayPal</option>
-            <option value="Bar">Bar</option>
-            <option value="Kreditkarte">Kreditkarte</option>
-            <option value="Sonstiges">Sonstiges</option>
+          <label className="eyebrow block mb-1">Ort / Studio</label>
+          <select value={location} onChange={(e) => setLocation(e.target.value)} className="input-luxe !py-2">
+            {availableStudios.map((studio) => (
+              <option key={studio.id} value={`${studio.name}, ${studio.address}`}>
+                {studio.name} · {studio.address}
+              </option>
+            ))}
           </select>
         </div>
-        <div>
-          <label className="eyebrow block mb-1">Bezahlt am</label>
-          <input
-            type="date"
-            required={isPaid}
-            disabled={!isPaid}
-            value={isPaid ? paidAt : ""}
-            onChange={(e) => setPaidAt(e.target.value)}
-            className="input-luxe !py-2 disabled:opacity-40"
-          />
-        </div>
       </div>
-
-      {!isPaid && (
-        <p className="text-xs text-amber-200/80">
-          Der Auftrag wird gespeichert, aber noch nicht als Zahlung im Kassenbuch verbucht. Sobald das Geld da ist, kannst du ihn in den Buchungsdetails als bezahlt markieren.
-        </p>
-      )}
 
       <div>
         <label className="eyebrow block mb-1">Interne Notiz (optional)</label>
@@ -273,12 +303,12 @@ export function CustomContentForm({
       </div>
 
       <p className="text-xs text-vanilla/50">
-        Der Auftrag erscheint im Terminplan. Bezahlte Beträge werden direkt ins Kassenbuch übernommen; offene Zahlungen kannst du später in den Buchungsdetails als bezahlt markieren.
+        Zahlung und Produktionszeit werden gemeinsam am Custom-Content-Auftrag gespeichert. Der Produktionstermin erscheint direkt im Terminplan; erhaltene Beträge werden im Kassenbuch berücksichtigt.
       </p>
       {error && <p className="text-xs text-destructive">{error}</p>}
-      {success && <p className="text-xs text-green-300">Custom Content wurde eingetragen.</p>}
+      {success && <p className="text-xs text-green-300">Custom Content inklusive Zahlung und Produktionstermin wurde eingetragen.</p>}
       <button type="submit" disabled={pending} className="btn-gold w-full !py-3">
-        <CalendarPlus size={14} /> Custom Content speichern
+        <CalendarPlus size={14} /> Custom Content speichern & in Terminplan eintragen
       </button>
     </form>
   );
