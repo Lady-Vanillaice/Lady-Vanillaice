@@ -110,7 +110,7 @@ export function AdminWorkspaceBar() {
   const area = AREAS.find((item) => item.match(path));
 
   return (
-    <div className="relative z-30 border-b border-champagne/15 bg-black/90 backdrop-blur-md">
+    <div className="relative z-30 mt-20 sm:mt-24 lg:mt-0 border-b border-champagne/15 bg-black/90 backdrop-blur-md">
       <div className="container-luxe max-w-6xl py-3 sm:py-4">
         <div className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {TOP_LEVEL.map(({ to, label, Icon }) => {
@@ -119,7 +119,7 @@ export function AdminWorkspaceBar() {
               <Link
                 key={to}
                 to={to as any}
-                className={`shrink-0 inline-flex items-center gap-2 border px-3 py-2 text-[0.62rem] uppercase tracking-[0.15em] transition ${
+                className={`relative z-10 shrink-0 inline-flex min-h-11 items-center gap-2 border px-3 py-2 text-[0.62rem] uppercase tracking-[0.15em] transition ${
                   active
                     ? "border-champagne bg-champagne/12 text-champagne"
                     : "border-champagne/15 text-vanilla/55 hover:border-champagne/45 hover:text-vanilla"
@@ -144,7 +144,7 @@ export function AdminWorkspaceBar() {
                   <Link
                     key={to}
                     to={to as any}
-                    className={`shrink-0 inline-flex items-center gap-2 px-3 py-2 text-xs transition ${
+                    className={`relative z-10 shrink-0 inline-flex min-h-11 items-center gap-2 px-3 py-2 text-xs transition ${
                       exactActive ? "bg-champagne text-black" : "bg-card border border-champagne/20 text-vanilla/70 hover:border-champagne/55"
                     }`}
                   >
