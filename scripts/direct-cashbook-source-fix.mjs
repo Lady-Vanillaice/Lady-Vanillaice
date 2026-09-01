@@ -37,5 +37,4 @@ ui = ui.replace(
 writeFileSync(uiPath, ui);
 
 await import("./fix-custom-content-consistency.mjs");
-await import("./organize-cashbook-entry-ui.mjs");
 console.log("Direct cashbook source fix applied with all booking statuses preserved.");
