@@ -8,6 +8,7 @@ import {
   getMyAdminRequest,
 } from "@/lib/admin-access.functions";
 import { PageHeader } from "@/components/site/PageHeader";
+import { AdminWorkspaceBar } from "@/components/admin/AdminWorkspaceBar";
 import { ShieldAlert, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -103,7 +104,12 @@ function AdminLayout() {
     );
   }
 
-  return <Outlet />;
+  return (
+    <>
+      <AdminWorkspaceBar />
+      <Outlet />
+    </>
+  );
 }
 
 function AccessRequestForm({ onApproved }: { onApproved: () => void }) {
