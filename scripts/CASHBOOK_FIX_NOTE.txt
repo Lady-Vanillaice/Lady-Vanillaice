@@ -1,0 +1,1 @@
+Direct source repair and verification are intentionally run as the final cashbook steps before Vite so older transformation scripts cannot reintroduce the runtime error.
