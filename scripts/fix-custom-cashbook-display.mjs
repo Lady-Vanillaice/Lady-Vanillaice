@@ -53,3 +53,4 @@ patch(
 );
 
 console.log("Custom checkbox and cashbook display patched.");
+await import("./fix-custom-detail-payment-detection.mjs");
