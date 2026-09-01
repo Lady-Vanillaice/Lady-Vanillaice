@@ -32,4 +32,5 @@ ui = ui.replace(
 );
 writeFileSync(uiPath, ui);
 
+await import("./fix-custom-content-consistency.mjs");
 console.log("Direct cashbook source fix applied.");
