@@ -1,0 +1,10 @@
+import { readFileSync } from "node:fs";
+const backend = readFileSync("src/lib/cashbook.functions.ts", "utf8");
+const ui = readFileSync("src/routes/_authenticated/admin.kassenbuch.tsx", "utf8");
+const start = backend.indexOf('    const bookings: CashBookEntry[] = (bookingRes.data ?? []).map((b: any) => {');
+const end = backend.indexOf('    return [...manual, ...bookings]', start);
+if (start < 0 || end < 0) throw new Error("Cashbook booking mapper missing");
+const block = backend.slice(start, end);
+if (block.includes("isPureCustomContent") && !block.includes('const isPureCustomContent =')) throw new Error("isPureCustomContent still undefined in booking mapper");
+if (!ui.includes('matchesMonth || isUnfinishedBooking')) throw new Error("Open prior-month bookings are not preserved");
+console.log("Cashbook verification passed.");
