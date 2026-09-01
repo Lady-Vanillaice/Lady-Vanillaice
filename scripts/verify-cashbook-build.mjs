@@ -8,3 +8,4 @@ const block = backend.slice(start, end);
 if (block.includes("isPureCustomContent") && !block.includes('const isPureCustomContent =')) throw new Error("isPureCustomContent still undefined in booking mapper");
 if (!ui.includes('matchesMonth || isUnfinishedBooking')) throw new Error("Open prior-month bookings are not preserved");
 console.log("Cashbook verification passed.");
+await import("./cashbook-all-history-ui.mjs");
