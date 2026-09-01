@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ChevronDown, MinusCircle, Plus, PlusCircle } from "lucide-react";
+import { Building2, CalendarDays, ChevronDown, Megaphone, MinusCircle, PencilLine, Plus, PlusCircle, UserRound } from "lucide-react";
 import { createAdvertisingExpense, createCashBookEntry, createOtherExpense, createStudioRentExpense } from "@/lib/cashbook.functions";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -62,35 +62,101 @@ export function CashbookEntryOrganizer() {
     onSuccess: async () => { reset(); await qc.invalidateQueries({ queryKey: ["cashbook"] }); },
   });
 
-  return <div className="bg-card border border-champagne/25 p-3 md:p-4 space-y-3">
-    <div className="flex items-center justify-between gap-3"><div className="eyebrow text-champagne">Eintrag hinzufügen</div><span className="hidden sm:inline text-[11px] text-vanilla/45">Einnahme oder Ausgabe wählen</span></div>
-    <div className="grid grid-cols-2 gap-2">
-      <button type="button" onClick={() => { setMode(mode === "income" ? null : "income"); setIncomeKind(null); setExpenseKind(null); reset(); }} className={`flex items-center justify-between border px-3 py-2.5 text-sm ${mode === "income" ? "border-champagne bg-champagne/10 text-champagne" : "border-champagne/25"}`}><span className="flex items-center gap-2"><PlusCircle size={16}/><span>Einnahme</span></span><ChevronDown size={14}/></button>
-      <button type="button" onClick={() => { setMode(mode === "expense" ? null : "expense"); setIncomeKind(null); setExpenseKind(null); reset(); }} className={`flex items-center justify-between border px-3 py-2.5 text-sm ${mode === "expense" ? "border-bordeaux/70 bg-bordeaux/10 text-champagne" : "border-bordeaux/30"}`}><span className="flex items-center gap-2"><MinusCircle size={16}/><span>Ausgabe</span></span><ChevronDown size={14}/></button>
+  return <>
+    <div className="cashbook-organizer bg-card border border-champagne/25 p-3 md:p-4 space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="eyebrow text-champagne">Eintrag hinzufügen</div>
+        <ChevronDown size={15} className="text-vanilla/45" />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <button type="button" onClick={() => { setMode(mode === "income" ? null : "income"); setIncomeKind(null); setExpenseKind(null); reset(); }} className={`flex items-center justify-center gap-2 border px-3 py-2.5 text-sm uppercase tracking-[0.08em] ${mode === "income" ? "border-champagne bg-champagne/10 text-champagne" : "border-champagne/30 text-vanilla/80"}`}><PlusCircle size={16}/>Einnahmen</button>
+        <button type="button" onClick={() => { setMode(mode === "expense" ? null : "expense"); setIncomeKind(null); setExpenseKind(null); reset(); }} className={`flex items-center justify-center gap-2 border px-3 py-2.5 text-sm uppercase tracking-[0.08em] ${mode === "expense" ? "border-bordeaux/70 bg-bordeaux/10 text-champagne" : "border-bordeaux/35 text-vanilla/80"}`}><MinusCircle size={16}/>Ausgaben</button>
+      </div>
+
+      {mode === "income" && <div className="space-y-3 border-t border-champagne/15 pt-3">
+        <div className="grid grid-cols-3 gap-1.5">
+          <CategoryButton active={incomeKind === "external"} onClick={() => { setIncomeKind("external"); reset(); }} icon={<CalendarDays size={14}/>} label="Externer Termin" />
+          <CategoryButton active={incomeKind === "financial_slave"} onClick={() => { setIncomeKind("financial_slave"); reset(); }} icon={<UserRound size={14}/>} label="Zahlsklave" />
+          <CategoryButton active={incomeKind === "custom"} onClick={() => { setIncomeKind("custom"); reset(); }} icon={<PencilLine size={14}/>} label="Custom" />
+        </div>
+        {incomeKind && <EntryForm mode="income" title={title} date={date} setDate={setDate} name={name} setName={setName} place={place} setPlace={setPlace} value={value} setValue={setValue} method={method} setMethod={setMethod} note={note} setNote={setNote} showPlace={incomeKind === "external"} placeLabel="Studio / Ort" pending={mutation.isPending} error={mutation.error} onSubmit={() => mutation.mutate()} />}
+      </div>}
+
+      {mode === "expense" && <div className="space-y-3 border-t border-champagne/15 pt-3">
+        <div className="grid grid-cols-3 gap-1.5">
+          <CategoryButton active={expenseKind === "studio"} onClick={() => { setExpenseKind("studio"); reset(); }} icon={<Building2 size={14}/>} label="Studiomiete" expense />
+          <CategoryButton active={expenseKind === "advertising"} onClick={() => { setExpenseKind("advertising"); reset(); }} icon={<Megaphone size={14}/>} label="Werbung" expense />
+          <CategoryButton active={expenseKind === "other"} onClick={() => { setExpenseKind("other"); reset(); }} icon={<PencilLine size={14}/>} label="Sonstiges" expense />
+        </div>
+        {expenseKind && <EntryForm mode="expense" title={title} date={date} setDate={setDate} name={name} setName={setName} place={place} setPlace={setPlace} value={value} setValue={setValue} method={method} setMethod={setMethod} note={note} setNote={setNote} showPlace={expenseKind !== "other"} placeLabel={expenseKind === "studio" ? "Studio" : "Anbieter / Kanal"} showPurpose={expenseKind === "other"} purpose={purpose} setPurpose={setPurpose} pending={mutation.isPending} error={mutation.error} onSubmit={() => mutation.mutate()} />}
+      </div>}
     </div>
+    <style>{`
+      @media (max-width: 639px) {
+        .container-luxe > div:has(input[type="month"]) {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: .55rem !important;
+          padding: .75rem !important;
+        }
+        .container-luxe > div:has(input[type="month"]) > label { min-width: 0; }
+        .container-luxe > div:has(input[type="month"]) > label:last-of-type { grid-column: 1 / -1; }
+        .container-luxe > div:has(input[type="month"]) > div:last-child {
+          grid-column: 1 / -1;
+          display: grid !important;
+          grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+          gap: .4rem !important;
+        }
+        .container-luxe > div:has(input[type="month"]) > div:last-child > button:nth-child(1),
+        .container-luxe > div:has(input[type="month"]) > div:last-child > button:nth-child(2) { grid-column: span 6; }
+        .container-luxe > div:has(input[type="month"]) > div:last-child > button:nth-child(n+3) { grid-column: span 3; }
+        .container-luxe > div:has(input[type="month"]) .export-btn {
+          justify-content: center;
+          padding: .5rem .3rem !important;
+          font-size: .55rem !important;
+          line-height: 1.1;
+          white-space: nowrap;
+        }
+        .container-luxe > div:has(input[type="month"]) .export-btn svg { width: 13px; height: 13px; }
+        .container-luxe > div:has(input[type="month"]) .luxe-input {
+          min-height: 42px;
+          padding: .48rem .55rem !important;
+          font-size: .95rem;
+        }
+        .container-luxe > div:has(input[type="month"]) label > span {
+          font-size: 8px !important;
+          letter-spacing: .15em !important;
+        }
+        .cashbook-organizer .luxe-input {
+          min-height: 42px;
+          padding: .48rem .55rem !important;
+          font-size: .95rem;
+        }
+      }
+    `}</style>
+  </>;
+}
 
-    {mode === "income" && <div className="space-y-3 border-t border-champagne/15 pt-3">
-      <div className="grid grid-cols-3 gap-1.5">{([['external','Extern'],['financial_slave','Zahlsklave'],['custom','Custom']] as const).map(([key,label]) => <button key={key} type="button" onClick={() => { setIncomeKind(key); reset(); }} className={`border px-2 py-2 text-[10px] uppercase tracking-[0.08em] ${incomeKind === key ? "border-champagne bg-champagne/10 text-champagne" : "border-champagne/20 text-vanilla/65"}`}>{label}</button>)}</div>
-      {incomeKind && <EntryForm mode="income" title={title} date={date} setDate={setDate} name={name} setName={setName} place={place} setPlace={setPlace} value={value} setValue={setValue} method={method} setMethod={setMethod} note={note} setNote={setNote} showPlace={incomeKind === "external"} placeLabel="Studio / Ort" pending={mutation.isPending} error={mutation.error} onSubmit={() => mutation.mutate()} />}
-    </div>}
-
-    {mode === "expense" && <div className="space-y-3 border-t border-champagne/15 pt-3">
-      <div className="grid grid-cols-3 gap-1.5">{([['studio','Studio'],['advertising','Werbung'],['other','Sonstiges']] as const).map(([key,label]) => <button key={key} type="button" onClick={() => { setExpenseKind(key); reset(); }} className={`border px-2 py-2 text-[10px] uppercase tracking-[0.08em] ${expenseKind === key ? "border-bordeaux/70 bg-bordeaux/10 text-champagne" : "border-bordeaux/25 text-vanilla/65"}`}>{label}</button>)}</div>
-      {expenseKind && <EntryForm mode="expense" title={title} date={date} setDate={setDate} name={name} setName={setName} place={place} setPlace={setPlace} value={value} setValue={setValue} method={method} setMethod={setMethod} note={note} setNote={setNote} showPlace={expenseKind !== "other"} placeLabel={expenseKind === "studio" ? "Studio" : "Anbieter / Kanal"} showPurpose={expenseKind === "other"} purpose={purpose} setPurpose={setPurpose} pending={mutation.isPending} error={mutation.error} onSubmit={() => mutation.mutate()} />}
-    </div>}
-  </div>;
+function CategoryButton({ active, onClick, icon, label, expense = false }: { active:boolean; onClick:()=>void; icon:ReactNode; label:string; expense?:boolean }) {
+  return <button type="button" onClick={onClick} className={`flex min-h-[42px] items-center justify-center gap-1.5 border px-2 py-2 text-[9px] uppercase tracking-[0.06em] ${active ? (expense ? "border-bordeaux/70 bg-bordeaux/10 text-champagne" : "border-champagne bg-champagne/10 text-champagne") : (expense ? "border-bordeaux/25 text-vanilla/60" : "border-champagne/20 text-vanilla/60")}`}>{icon}<span className="leading-tight">{label}</span></button>;
 }
 
 function EntryForm(props: { mode:"income"|"expense"; title:string; date:string; setDate:(v:string)=>void; name:string; setName:(v:string)=>void; place:string; setPlace:(v:string)=>void; value:string; setValue:(v:string)=>void; method:string; setMethod:(v:string)=>void; note:string; setNote:(v:string)=>void; showPlace:boolean; placeLabel:string; showPurpose?:boolean; purpose?:string; setPurpose?:(v:string)=>void; pending:boolean; error:unknown; onSubmit:()=>void }) {
-  return <form onSubmit={e => { e.preventDefault(); props.onSubmit(); }} className="border border-champagne/15 p-3 space-y-3"><div className="font-display text-lg text-champagne">{props.title}</div><div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-    <Field label={props.mode === "income" ? "Bezahlt am" : "Datum"}><input required type="date" value={props.date} onChange={e=>props.setDate(e.target.value)} className="luxe-input"/></Field>
-    {props.mode === "income" && <Field label="Name"><input required value={props.name} onChange={e=>props.setName(e.target.value)} className="luxe-input"/></Field>}
-    {props.showPlace && <Field label={props.placeLabel}><input required value={props.place} onChange={e=>props.setPlace(e.target.value)} className="luxe-input"/></Field>}
-    {props.showPurpose && <Field label="Wofür?"><input required value={props.purpose ?? ""} onChange={e=>props.setPurpose?.(e.target.value)} placeholder="z. B. Deko" className="luxe-input"/></Field>}
-    <Field label="Betrag (€)"><input required inputMode="decimal" value={props.value} onChange={e=>props.setValue(e.target.value)} placeholder="0,00" className="luxe-input"/></Field>
-    <Field label={props.mode === "income" ? "Zahlungsart" : "Bezahlt mit"}><select required value={props.method} onChange={e=>props.setMethod(e.target.value)} className="luxe-input"><option value="">Auswählen</option>{METHODS.map(m=><option key={m}>{m}</option>)}</select></Field>
-    <div className="col-span-2 lg:col-span-4"><Field label="Notiz (optional)"><input value={props.note} onChange={e=>props.setNote(e.target.value)} className="luxe-input"/></Field></div>
-  </div><button disabled={props.pending} className="btn-gold inline-flex gap-2 !px-3 !py-2 text-sm"><Plus size={14}/>{props.pending ? "Speichere…" : "Speichern"}</button>{props.error instanceof Error && <p className="text-sm text-bordeaux">{props.error.message}</p>}</form>;
+  return <form onSubmit={e => { e.preventDefault(); props.onSubmit(); }} className="border border-champagne/15 p-3 space-y-3">
+    <div className="font-display text-base text-champagne">{props.title}</div>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+      <Field label="Betrag (€)"><input required inputMode="decimal" value={props.value} onChange={e=>props.setValue(e.target.value)} placeholder="0,00" className="luxe-input"/></Field>
+      <Field label={props.mode === "income" ? "Zahlungsart" : "Bezahlt mit"}><select required value={props.method} onChange={e=>props.setMethod(e.target.value)} className="luxe-input"><option value="">Auswählen</option>{METHODS.map(m=><option key={m}>{m}</option>)}</select></Field>
+      <Field label={props.mode === "income" ? "Bezahlt am" : "Datum"}><input required type="date" value={props.date} onChange={e=>props.setDate(e.target.value)} className="luxe-input"/></Field>
+      {props.mode === "income" && <Field label="Name"><input required value={props.name} onChange={e=>props.setName(e.target.value)} className="luxe-input"/></Field>}
+      {props.showPlace && <Field label={props.placeLabel}><input required value={props.place} onChange={e=>props.setPlace(e.target.value)} className="luxe-input"/></Field>}
+      {props.showPurpose && <Field label="Wofür?"><input required value={props.purpose ?? ""} onChange={e=>props.setPurpose?.(e.target.value)} placeholder="z. B. Deko" className="luxe-input"/></Field>}
+      <div className="col-span-2 lg:col-span-4"><Field label="Notiz (optional)"><input value={props.note} onChange={e=>props.setNote(e.target.value)} className="luxe-input"/></Field></div>
+    </div>
+    <button disabled={props.pending} className="btn-gold flex w-full items-center justify-center gap-2 !px-3 !py-2.5 text-sm"><Plus size={14}/>{props.pending ? "Speichere…" : "Speichern"}</button>
+    {props.error instanceof Error && <p className="text-sm text-bordeaux">{props.error.message}</p>}
+  </form>;
 }
 
 function Field({ label, children }: { label:string; children:ReactNode }) { return <label className="block space-y-1"><span className="block text-[9px] uppercase tracking-[.16em] text-vanilla/55">{label}</span>{children}</label>; }
