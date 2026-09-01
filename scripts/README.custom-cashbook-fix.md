@@ -1,0 +1,1 @@
+Custom Content wird im Kassenbuch als vollständige Vorauszahlung behandelt. Die Produktionsdauer (interner Zeitaufwand) bleibt getrennt vom ausgelieferten Umfang (Anzahl Bilder / Videolänge). Dieses Dokument dient nur als kurze technische Notiz zum zugehörigen Build-Patch.
