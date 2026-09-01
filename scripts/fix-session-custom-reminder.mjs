@@ -52,8 +52,6 @@ replaceIfPresent(terminplan, `  const createManualBookingFn = useServerFn(create
 replaceIfPresent(terminplan, `  const q = useQuery({`, `  const sessionCustomMut = useMutation({\n    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) => setSessionCustomFlagFn({ data: { id, enabled } }),\n    onSuccess: async () => {\n      await Promise.all([qc.invalidateQueries({ queryKey: ["admin-terminplan"], refetchType: "all" }), qc.invalidateQueries({ queryKey: ["admin-booking-detail"], refetchType: "all" }), qc.invalidateQueries({ queryKey: ["cashbook"], refetchType: "all" })]);\n    },\n  });\n\n  const q = useQuery({`);
 replaceIfPresent(terminplan, `                    <EntryCard key={e.id} e={e} />`, `                    <div key={e.id} className="space-y-2">\n                      <EntryCard e={e} />\n                      {!isPureCustomContent(e) && (\n                        <button type="button" disabled={sessionCustomMut.isPending} onClick={() => sessionCustomMut.mutate({ id: e.id, enabled: !e.is_content_shoot })} className={\`w-full border px-3 py-2 text-[0.65rem] uppercase tracking-[0.16em] transition disabled:opacity-40 \${e.is_content_shoot ? "border-green-500/40 bg-green-500/10 text-green-200" : "border-champagne/25 text-champagne hover:border-champagne/60"}\`}>\n                          {e.is_content_shoot ? "✓ Custom für diese Session vorgemerkt · entfernen" : "+ Custom für diese Session vormerken"}\n                        </button>\n                      )}\n                    </div>`);
 
-// IMPORTANT: patch the cashbook's actual base source shape. Earlier patches only matched
-// intermediate generated shapes and therefore never changed this line in production builds.
 const cashbook = "src/lib/cashbook.functions.ts";
 replaceIfPresent(cashbook,
   `      const art = slot?.is_duo ? (slot?.is_content_shoot ? "Duo + Content" : "Duo") : (slot?.is_content_shoot ? "Single + Content" : "Single");`,
@@ -67,3 +65,4 @@ replaceIfPresent(cashbook,
 replaceIfPresent(cashbook, `      const receivedCash = cashDate ? plannedCash : 0;`, `      const receivedCash = isPureCustomContent ? 0 : cashDate ? plannedCash : 0;`);
 
 console.log("Session + Custom reminder and direct cashbook legacy classification applied.");
+await import("./fix-terminplan-session-type-toggle.mjs");
