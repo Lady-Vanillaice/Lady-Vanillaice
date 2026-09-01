@@ -17,19 +17,20 @@ text = text.replace(
 
 text = text.replace(
   `{hasNoDeposit(e) ? "Keine Anzahlung" : e.anzahlung_paid ? "Anzahlung ok" : "Anzahlung offen"}`,
-  `{hasNoDeposit(e)\n              ? depositExemptionLabel(e.deposit_exemption_reason)\n              : e.is_content_shoot\n                ? e.anzahlung_paid ? "Vorauszahlung ok" : "Vorauszahlung offen"\n                : e.anzahlung_paid ? "Anzahlung ok" : "Anzahlung offen"}`,
+  `{hasNoDeposit(e)\n              ? depositExemptionLabel(e.deposit_exemption_reason)\n              : e.duration === "Custom Content"\n                ? e.anzahlung_paid ? "Vorauszahlung ok" : "Vorauszahlung offen"\n                : e.anzahlung_paid ? "Anzahlung ok" : "Anzahlung offen"}`,
 );
 
+// Reiner Custom-Auftrag = Custom. Bei einer normalen Session bleibt Single/Duo erhalten und Custom wird als Zusatz gezeigt.
 text = text.replace(
   `              {e.duration === "Custom Content" ? "Custom Content" : "Content"}\n            </span>`,
-  `              {e.is_content_shoot ? "Custom" : "Content"}\n            </span>`,
+  `              {e.duration === "Custom Content" ? "Custom" : e.is_duo ? "Duo + Custom" : "Single + Custom"}\n            </span>`,
 );
 
 text = text.replace(
   `        : entry.duration === "Custom Content"\n          ? "CUSTOM CONTENT"\n          : entry.is_content_shoot\n            ? "CONTENT"`,
-  `        : entry.is_content_shoot\n          ? "CUSTOM"`,
+  `        : entry.duration === "Custom Content"\n          ? "CUSTOM"\n          : entry.is_content_shoot\n            ? entry.is_duo ? "DUO + CUSTOM" : "SINGLE + CUSTOM"`,
 );
 
 writeFileSync(path, text);
-console.log("Terminplan custom/prepayment labels applied.");
+console.log("Terminplan distinguishes pure Custom from Session + Custom.");
 await import("./fix-custom-cashbook-display.mjs");
