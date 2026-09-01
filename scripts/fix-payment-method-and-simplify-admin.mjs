@@ -66,7 +66,7 @@ replace(customerRoute, `intro="Alle Gäste mit erfolgreich abgeschlossenen Sessi
 replace(customerRoute, `placeholder="Suchen (Name, E-Mail, Vorlieben…)"`, `placeholder="Kunde suchen: Name, E-Mail, Telefon …"`, "customer search placeholder");
 replace(customerRoute, `Noch keine bestätigten Kunden.`, `Keine passenden Kunden oder Buchungen gefunden.`, "customer empty state");
 
-// 4) Admin-Hub vereinfachen: Schnellzugriff bleibt offen, seltene Bereiche einklappen.
+// 4) Legacy Admin-Hub-Patch bleibt aus Kompatibilitätsgründen bestehen; das neue A-Z-Layout wird danach angewandt.
 const admin = "src/routes/_authenticated/admin.index.tsx";
 regex(
   admin,
@@ -76,6 +76,7 @@ regex(
   "Weitere Admin-Bereiche",
 );
 
-console.log("Payment methods, customer search and simplified admin UI patched.");
+console.log("Payment methods, customer search and legacy admin compatibility patched.");
 await import("./terminart-custom-option.mjs");
 await import("./fix-terminplan-custom-prepayment-labels.mjs");
+await import("./redesign-admin-hub.mjs");
