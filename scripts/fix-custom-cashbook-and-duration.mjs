@@ -60,3 +60,4 @@ replaceIfPresent(
 );
 
 console.log("Custom cashbook and duration wording updated.");
+await import("./fix-custom-detail-payment-detection.mjs");
