@@ -32,3 +32,4 @@ text = text.replace(
 
 writeFileSync(path, text);
 console.log("Terminplan custom/prepayment labels applied.");
+await import("./fix-custom-cashbook-display.mjs");
