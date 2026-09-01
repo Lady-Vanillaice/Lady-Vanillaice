@@ -23,7 +23,6 @@ if (!backend.includes("cashbookBookingFallback")) {
   else if (backend.includes(legacyBlock)) backend = backend.replace(legacyBlock, replacement);
 }
 
-// Older generated fallback versions still filtered lifecycle statuses. Remove those filters too.
 backend = backend.replaceAll('.in("status", ["confirmed", "cancelled", "rescheduling"])', '.not("id", "is", null)');
 backend = backend.replaceAll('.in("status", ["confirmed", "cancelled"])', '.not("id", "is", null)');
 
@@ -38,4 +37,5 @@ ui = ui.replace(
 writeFileSync(uiPath, ui);
 
 await import("./fix-custom-content-consistency.mjs");
+await import("./organize-cashbook-entry-ui.mjs");
 console.log("Direct cashbook source fix applied with all booking statuses preserved.");
