@@ -88,19 +88,7 @@ replaceIfPresent(
 replaceIfPresent(
   terminplan,
   `                    <EntryCard key={e.id} e={e} />`,
-  `                    <div key={e.id} className="space-y-2">\n                      <EntryCard e={e} />\n                      {!isPureCustomContent(e) && (\n                        <button\n                          type="button"\n                          disabled={sessionCustomMut.isPending}\n                          onClick={() => sessionCustomMut.mutate({ id: e.id, enabled: !e.is_content_shoot })}\n                          className={\`w-full border px-3 py-2 text-[0.65rem] uppercase tracking-[0.16em] transition disabled:opacity-40 ${e.is_content_shoot ? "border-green-500/40 bg-green-500/10 text-green-200" : "border-champagne/25 text-champagne hover:border-champagne/60"}\`}\n                        >\n                          {e.is_content_shoot ? "✓ Custom für diese Session vorgemerkt · entfernen" : "+ Custom für diese Session vormerken"}\n                        </button>\n                      )}\n                    </div>`,
-);
-
-// Labels: legacy duration=Custom Content without a dedicated Custom-payment marker is a normal session + Custom.
-replaceIfPresent(
-  terminplan,
-  `              {e.duration === "Custom Content" ? "Custom Content" : "Custom"}`,
-  `              {isPureCustomContent(e) ? "Custom" : e.is_content_shoot ? "Custom" : "Content"}`,
-);
-replaceIfPresent(
-  terminplan,
-  `              {e.is_content_shoot ? "Custom" : "Content"}`,
-  `              {isPureCustomContent(e) ? "Custom" : "Custom"}`,
+  `                    <div key={e.id} className="space-y-2">\n                      <EntryCard e={e} />\n                      {!isPureCustomContent(e) && (\n                        <button\n                          type="button"\n                          disabled={sessionCustomMut.isPending}\n                          onClick={() => sessionCustomMut.mutate({ id: e.id, enabled: !e.is_content_shoot })}\n                          className={\`w-full border px-3 py-2 text-[0.65rem] uppercase tracking-[0.16em] transition disabled:opacity-40 \${e.is_content_shoot ? "border-green-500/40 bg-green-500/10 text-green-200" : "border-champagne/25 text-champagne hover:border-champagne/60"}\`}\n                        >\n                          {e.is_content_shoot ? "✓ Custom für diese Session vorgemerkt · entfernen" : "+ Custom für diese Session vormerken"}\n                        </button>\n                      )}\n                    </div>`,
 );
 
 console.log("Session + Custom reminder and legacy Custom classification applied.");
