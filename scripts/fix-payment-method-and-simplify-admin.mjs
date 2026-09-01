@@ -78,3 +78,4 @@ regex(
 
 console.log("Payment methods, customer search and simplified admin UI patched.");
 await import("./terminart-custom-option.mjs");
+await import("./fix-terminplan-custom-prepayment-labels.mjs");
