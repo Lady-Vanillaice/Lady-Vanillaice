@@ -46,7 +46,7 @@ const studioMarker = "function StudioManagement() {";
 const hubEnd = text.indexOf(studioMarker, hubStart);
 if (hubStart < 0 || hubEnd < 0) throw new Error("AdminHubPage not found");
 
-const hub = `function AdminHubPage() {
+const hub = `function AdminHubPage() { /* Weitere Admin-Bereiche */
   const navigate = useNavigate();
   const [adminSearch, setAdminSearch] = useState("");
   const query = adminSearch.trim().toLowerCase();
