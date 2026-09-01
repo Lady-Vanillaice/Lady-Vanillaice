@@ -1,33 +1,32 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
-function replaceOrFail(path, before, after, label) {
-  let text = readFileSync(path, "utf8");
-  if (text.includes(after)) return;
-  if (!text.includes(before)) throw new Error(`Could not patch ${label} in ${path}`);
-  text = text.replace(before, after);
-  writeFileSync(path, text);
+const cashbookPath = "src/lib/cashbook.functions.ts";
+let cashbook = readFileSync(cashbookPath, "utf8");
+
+const desiredBlock = `      const isPureCustomContent = b.duration === "Custom Content";\n      const hasCustomAddon = !isPureCustomContent && (Boolean(slot?.is_content_shoot) || /\\[SESSION_CUSTOM\\]/i.test(b.admin_note ?? ""));\n      const art = isPureCustomContent ? "Custom Content" : slot?.is_duo ? (hasCustomAddon ? "Duo + Custom Content" : "Duo") : (hasCustomAddon ? "Single + Custom Content" : "Single");`;
+const simpleBlock = `      const art = slot?.is_duo ? (slot?.is_content_shoot ? "Duo + Content" : "Duo") : (slot?.is_content_shoot ? "Single + Content" : "Single");`;
+const legacyBlock = `      const isPureCustomContent = b.duration === "Custom Content" && /Custom-Content-(?:Vorauszahlung|Zahlung)/i.test(b.admin_note ?? "");\n      const hasCustomAddon = Boolean(slot?.is_content_shoot) || /\\[SESSION_CUSTOM\\]/i.test(b.admin_note ?? "") || (b.duration === "Custom Content" && !isPureCustomContent);\n      const art = isPureCustomContent ? "Custom" : slot?.is_duo ? (hasCustomAddon ? "Duo + Custom" : "Duo") : (hasCustomAddon ? "Single + Custom" : "Single");`;
+
+if (!cashbook.includes(desiredBlock)) {
+  if (cashbook.includes(legacyBlock)) cashbook = cashbook.replace(legacyBlock, desiredBlock);
+  else if (cashbook.includes(simpleBlock)) cashbook = cashbook.replace(simpleBlock, desiredBlock);
+  else throw new Error("Could not normalize Custom Content classification in cashbook mapper.");
 }
 
-const cashbook = "src/lib/cashbook.functions.ts";
-replaceOrFail(
-  cashbook,
-  `      const art = slot?.is_duo ? (slot?.is_content_shoot ? "Duo + Content" : "Duo") : (slot?.is_content_shoot ? "Single + Content" : "Single");`,
-  `      const isPureCustomContent = b.duration === "Custom Content";\n      const hasCustomAddon = !isPureCustomContent && (Boolean(slot?.is_content_shoot) || /\\[SESSION_CUSTOM\\]/i.test(b.admin_note ?? ""));\n      const art = isPureCustomContent ? "Custom Content" : slot?.is_duo ? (hasCustomAddon ? "Duo + Custom Content" : "Duo") : (hasCustomAddon ? "Single + Custom Content" : "Single");`,
-  "cashbook booking type",
-);
-replaceOrFail(
-  cashbook,
+cashbook = cashbook.replace(
   `        kunde: b.guest_name, art, dauer: durationLabel(b.duration_minutes, b.duration),`,
   `        kunde: b.guest_name, art, dauer: isPureCustomContent ? "Custom Content" : durationLabel(b.duration_minutes, b.duration),`,
-  "cashbook custom label",
 );
+writeFileSync(cashbookPath, cashbook);
 
-const terminplan = "src/routes/_authenticated/admin.terminplan.tsx";
-replaceOrFail(
-  terminplan,
-  `          is_content_shoot: slot?.is_content_shoot ?? false,`,
-  `          is_content_shoot: b.duration === "Custom Content" || /\\[SESSION_CUSTOM\\]/i.test(b.admin_note ?? "") || (slot?.is_content_shoot ?? false),`,
-  "terminplan custom flag",
-);
+const terminplanPath = "src/routes/_authenticated/admin.terminplan.tsx";
+let terminplan = readFileSync(terminplanPath, "utf8");
+const currentFlag = `          is_content_shoot: slot?.is_content_shoot ?? false,`;
+const desiredFlag = `          is_content_shoot: b.duration === "Custom Content" || /\\[SESSION_CUSTOM\\]/i.test(b.admin_note ?? "") || (slot?.is_content_shoot ?? false),`;
+if (!terminplan.includes(desiredFlag)) {
+  if (!terminplan.includes(currentFlag)) throw new Error("Could not normalize Custom Content flag in Terminplan.");
+  terminplan = terminplan.replace(currentFlag, desiredFlag);
+}
+writeFileSync(terminplanPath, terminplan);
 
 console.log("Custom Content is now classified from the booking itself across Kassenbuch and Terminplan.");
