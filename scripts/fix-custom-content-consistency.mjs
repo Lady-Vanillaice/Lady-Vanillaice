@@ -10,7 +10,7 @@ const legacyBlock = `      const isPureCustomContent = b.duration === "Custom Co
 if (!cashbook.includes(desiredBlock)) {
   if (cashbook.includes(legacyBlock)) cashbook = cashbook.replace(legacyBlock, desiredBlock);
   else if (cashbook.includes(simpleBlock)) cashbook = cashbook.replace(simpleBlock, desiredBlock);
-  else throw new Error("Could not normalize Custom Content classification in cashbook mapper.");
+  else console.warn("Custom Content cashbook classification already has an unknown/newer shape; leaving it untouched.");
 }
 
 cashbook = cashbook.replace(
@@ -23,10 +23,11 @@ const terminplanPath = "src/routes/_authenticated/admin.terminplan.tsx";
 let terminplan = readFileSync(terminplanPath, "utf8");
 const currentFlag = `          is_content_shoot: slot?.is_content_shoot ?? false,`;
 const desiredFlag = `          is_content_shoot: b.duration === "Custom Content" || /\\[SESSION_CUSTOM\\]/i.test(b.admin_note ?? "") || (slot?.is_content_shoot ?? false),`;
-if (!terminplan.includes(desiredFlag)) {
-  if (!terminplan.includes(currentFlag)) throw new Error("Could not normalize Custom Content flag in Terminplan.");
+if (!terminplan.includes(desiredFlag) && terminplan.includes(currentFlag)) {
   terminplan = terminplan.replace(currentFlag, desiredFlag);
+} else if (!terminplan.includes(desiredFlag)) {
+  console.warn("Terminplan Custom flag already has an unknown/newer shape; leaving it untouched.");
 }
 writeFileSync(terminplanPath, terminplan);
 
-console.log("Custom Content is now classified from the booking itself across Kassenbuch and Terminplan.");
+console.log("Custom Content consistency pass completed.");
