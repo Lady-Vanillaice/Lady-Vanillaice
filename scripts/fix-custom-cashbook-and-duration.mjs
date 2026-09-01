@@ -22,7 +22,8 @@ replaceIfPresent(
   `        <div className="mb-2">\n          <div className="eyebrow text-champagne">Produktionsdauer</div>\n          <p className="mt-1 text-xs text-vanilla/50">Von/Bis ist deine Arbeitszeit für die Produktion und bleibt getrennt von der Länge des fertigen Videos.</p>\n        </div>\n        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">\n          <div>\n            <label className="eyebrow block mb-1">Produktionsdatum</label>`,
 );
 
-// Cashbook: Custom is full prepayment only and "Dauer" means delivered output.
+// Cashbook: only a pure Custom Content order is prepaid-only.
+// A normal Single/Duo session with the Custom checkbox keeps the normal session payment logic.
 const cashbookLib = "src/lib/cashbook.functions.ts";
 replaceIfPresent(
   cashbookLib,
@@ -31,33 +32,28 @@ replaceIfPresent(
 );
 replaceIfPresent(
   cashbookLib,
-  `      const art = slot?.is_content_shoot ? "Custom" : slot?.is_duo ? "Duo" : "Single";`,
   `      const isCustomContent = b.duration === "Custom Content" || Boolean(slot?.is_content_shoot);\n      const art = isCustomContent ? "Custom" : slot?.is_duo ? "Duo" : "Single";`,
+  `      const isPureCustomContent = b.duration === "Custom Content";\n      const hasCustomAddon = Boolean(slot?.is_content_shoot);\n      const art = isPureCustomContent ? "Custom" : slot?.is_duo ? (hasCustomAddon ? "Duo + Custom" : "Duo") : (hasCustomAddon ? "Single + Custom" : "Single");`,
 );
 replaceIfPresent(
   cashbookLib,
-  `      const art = slot?.is_duo ? (slot?.is_content_shoot ? "Duo + Content" : "Duo") : (slot?.is_content_shoot ? "Single + Content" : "Single");`,
-  `      const isCustomContent = b.duration === "Custom Content" || Boolean(slot?.is_content_shoot);\n      const art = isCustomContent ? "Custom" : slot?.is_duo ? "Duo" : "Single";`,
-);
-replaceIfPresent(
-  cashbookLib,
-  `        kunde: b.guest_name, art, dauer: durationLabel(b.duration_minutes, b.duration),\n        anzahlung_vorgemerkt: plannedDeposit,`,
   `        kunde: b.guest_name, art, dauer: isCustomContent ? customOutputLabel(b.admin_note) : durationLabel(b.duration_minutes, b.duration),\n        anzahlung_vorgemerkt: plannedDeposit,`,
+  `        kunde: b.guest_name, art, dauer: isPureCustomContent ? customOutputLabel(b.admin_note) : durationLabel(b.duration_minutes, b.duration),\n        anzahlung_vorgemerkt: plannedDeposit,`,
 );
 replaceIfPresent(
   cashbookLib,
-  `        restbetrag_vorgemerkt: plannedCash, restzahlung_method: onsiteMethodFromNote ?? (b.deposit_exemption_reason || plannedDeposit === 0 ? b.anzahlung_method ?? null : plannedCash > 0 ? "Bar" : null),\n        bar_datum: cashDate, durchgefuehrt_datum: dateOnly(b.completed_at),`,
   `        restbetrag_vorgemerkt: isCustomContent ? 0 : plannedCash, restzahlung_method: isCustomContent ? null : onsiteMethodFromNote ?? (b.deposit_exemption_reason || plannedDeposit === 0 ? b.anzahlung_method ?? null : plannedCash > 0 ? "Bar" : null),\n        bar_datum: isCustomContent ? null : cashDate, durchgefuehrt_datum: dateOnly(b.completed_at),`,
+  `        restbetrag_vorgemerkt: isPureCustomContent ? 0 : plannedCash, restzahlung_method: isPureCustomContent ? null : onsiteMethodFromNote ?? (b.deposit_exemption_reason || plannedDeposit === 0 ? b.anzahlung_method ?? null : plannedCash > 0 ? "Bar" : null),\n        bar_datum: isPureCustomContent ? null : cashDate, durchgefuehrt_datum: dateOnly(b.completed_at),`,
 );
-replaceIfPresent(cashbookLib, `      const receivedCash = cashDate ? plannedCash : 0;`, `      const receivedCash = isCustomContent ? 0 : cashDate ? plannedCash : 0;`);
+replaceIfPresent(cashbookLib, `      const receivedCash = isCustomContent ? 0 : cashDate ? plannedCash : 0;`, `      const receivedCash = isPureCustomContent ? 0 : cashDate ? plannedCash : 0;`);
 
-// Existing Custom UI already says Vorauszahlung; make sure manual Custom rows are detected too.
+// Existing Custom UI says Vorauszahlung only for pure Custom rows.
 const cashbookUi = "src/routes/_authenticated/admin.kassenbuch.tsx";
 replaceIfPresent(
   cashbookUi,
-  `  const isCustom = (e: CashBookEntry) => e.art === "Custom" || e.art === "Custom Content";`,
+  `  const isCustom = (e: CashBookEntry) => e.art === "Custom" || e.art === "Custom Content" || e.studio === "Custom Content";`,
   `  const isCustom = (e: CashBookEntry) => e.art === "Custom" || e.art === "Custom Content" || e.studio === "Custom Content";`,
 );
 
-console.log("Custom cashbook and duration wording updated.");
+console.log("Pure Custom and Session + Custom are now separated in cashbook/payment logic.");
 await import("./fix-custom-detail-payment-detection.mjs");
