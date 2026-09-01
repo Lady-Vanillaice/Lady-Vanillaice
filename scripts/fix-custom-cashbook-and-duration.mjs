@@ -23,7 +23,10 @@ replaceIfPresent(
 );
 
 // Cashbook: only a pure Custom Content order is prepaid-only.
-// A normal Single/Duo session with the Custom checkbox keeps the normal session payment logic.
+// A normal Single/Duo session with Custom keeps the normal session payment logic.
+// Legacy homepage requests may still have duration="Custom Content" without the dedicated
+// Custom payment marker. Those are Session + Custom and must be visible as such even when
+// the slot flag was never set in the old data.
 const cashbookLib = "src/lib/cashbook.functions.ts";
 replaceIfPresent(
   cashbookLib,
@@ -33,12 +36,12 @@ replaceIfPresent(
 replaceIfPresent(
   cashbookLib,
   `      const isPureCustomContent = b.duration === "Custom Content";\n      const hasCustomAddon = Boolean(slot?.is_content_shoot);\n      const art = isPureCustomContent ? "Custom" : slot?.is_duo ? (hasCustomAddon ? "Duo + Custom" : "Duo") : (hasCustomAddon ? "Single + Custom" : "Single");`,
-  `      const isPureCustomContent = b.duration === "Custom Content" && /Custom-Content-(?:Vorauszahlung|Zahlung)/i.test(b.admin_note ?? "");\n      const hasCustomAddon = Boolean(slot?.is_content_shoot);\n      const art = isPureCustomContent ? "Custom" : slot?.is_duo ? (hasCustomAddon ? "Duo + Custom" : "Duo") : (hasCustomAddon ? "Single + Custom" : "Single");`,
+  `      const isPureCustomContent = b.duration === "Custom Content" && /Custom-Content-(?:Vorauszahlung|Zahlung)/i.test(b.admin_note ?? "");\n      const hasCustomAddon = Boolean(slot?.is_content_shoot) || /\\[SESSION_CUSTOM\\]/i.test(b.admin_note ?? "") || (b.duration === "Custom Content" && !isPureCustomContent);\n      const art = isPureCustomContent ? "Custom" : slot?.is_duo ? (hasCustomAddon ? "Duo + Custom" : "Duo") : (hasCustomAddon ? "Single + Custom" : "Single");`,
 );
 replaceIfPresent(
   cashbookLib,
   `      const isCustomContent = b.duration === "Custom Content" || Boolean(slot?.is_content_shoot);\n      const art = isCustomContent ? "Custom" : slot?.is_duo ? "Duo" : "Single";`,
-  `      const isPureCustomContent = b.duration === "Custom Content" && /Custom-Content-(?:Vorauszahlung|Zahlung)/i.test(b.admin_note ?? "");\n      const hasCustomAddon = Boolean(slot?.is_content_shoot);\n      const art = isPureCustomContent ? "Custom" : slot?.is_duo ? (hasCustomAddon ? "Duo + Custom" : "Duo") : (hasCustomAddon ? "Single + Custom" : "Single");`,
+  `      const isPureCustomContent = b.duration === "Custom Content" && /Custom-Content-(?:Vorauszahlung|Zahlung)/i.test(b.admin_note ?? "");\n      const hasCustomAddon = Boolean(slot?.is_content_shoot) || /\\[SESSION_CUSTOM\\]/i.test(b.admin_note ?? "") || (b.duration === "Custom Content" && !isPureCustomContent);\n      const art = isPureCustomContent ? "Custom" : slot?.is_duo ? (hasCustomAddon ? "Duo + Custom" : "Duo") : (hasCustomAddon ? "Single + Custom" : "Single");`,
 );
 replaceIfPresent(
   cashbookLib,
@@ -60,6 +63,6 @@ replaceIfPresent(
   `  const isCustom = (e: CashBookEntry) => e.art === "Custom" || e.art === "Custom Content" || e.studio === "Custom Content";`,
 );
 
-console.log("Pure Custom and Session + Custom are now separated in cashbook/payment logic.");
+console.log("Pure Custom and Session + Custom are now separated in cashbook/payment logic, including legacy Custom requests.");
 await import("./fix-custom-detail-payment-detection.mjs");
 await import("./fix-session-custom-reminder.mjs");
