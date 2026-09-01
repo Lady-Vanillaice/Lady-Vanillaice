@@ -31,3 +31,5 @@ if (!ui.includes("keepOpenCashbookAcrossMonths")) {
 } else {
   console.log("Open cashbook entries already ignore the month boundary.");
 }
+
+await import("./stabilize-cashbook.mjs");
