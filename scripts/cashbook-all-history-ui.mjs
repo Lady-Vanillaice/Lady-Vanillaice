@@ -26,3 +26,4 @@ if (!source.includes(marker)) {
 }
 
 console.log("Cashbook archive now shows all past/cancelled loaded entries across months.");
+await import("./cashbook-organizer-final.mjs");
