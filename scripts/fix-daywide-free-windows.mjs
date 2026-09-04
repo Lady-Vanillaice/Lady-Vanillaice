@@ -3,6 +3,54 @@ import fs from "node:fs";
 const bookingPath = "src/lib/public-booking.functions.ts";
 let source = fs.readFileSync(bookingPath, "utf8");
 
+// Public booking server functions run with the publishable Supabase key. New
+// opaque sb_publishable_* keys must be sent via the apikey header, not as a
+// Bearer JWT. Keep this helper in sync with src/integrations/supabase/client.ts.
+const oldPublicClient = `function publicClient() {
+  return createClient<Database>(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_PUBLISHABLE_KEY!,
+    { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
+  );
+}`;
+const newPublicClient = `function publicClient() {
+  const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error("Supabase-Konfiguration fehlt.");
+  }
+
+  const supabaseFetch: typeof fetch = (input, init) => {
+    const headers = new Headers(
+      typeof Request !== "undefined" && input instanceof Request ? input.headers : undefined,
+    );
+    if (init?.headers) {
+      new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+    }
+    if (
+      (supabaseKey.startsWith("sb_publishable_") || supabaseKey.startsWith("sb_secret_")) &&
+      headers.get("Authorization") === \`Bearer \${supabaseKey}\`
+    ) {
+      headers.delete("Authorization");
+    }
+    headers.set("apikey", supabaseKey);
+    return fetch(input, { ...init, headers });
+  };
+
+  return createClient<Database>(supabaseUrl, supabaseKey, {
+    global: { fetch: supabaseFetch },
+    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
+  });
+}`;
+
+if (source.includes(oldPublicClient)) {
+  source = source.replace(oldPublicClient, newPublicClient);
+}
+if (!source.includes('headers.set("apikey", supabaseKey)')) {
+  throw new Error("Public Supabase booking client patch could not be applied");
+}
+
 // Load appointments by their real requested time, not only by currently-open
 // availability slot ids. This includes bookings whose original slot is hidden,
 // held, booked, moved or otherwise no longer part of the open-slot list.
