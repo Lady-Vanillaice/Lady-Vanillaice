@@ -34,7 +34,7 @@ replaceAllIfPresent(
 replaceAllIfPresent(
   "src/lib/booking.functions.ts",
   `duration: booking.duration ?? undefined,`,
-  `duration: booking.duration_minutes ? \`${booking.duration_minutes} Minuten\` : booking.duration ?? undefined,`,
+  `duration: booking.duration_minutes ? \`\${booking.duration_minutes} Minuten\` : booking.duration ?? undefined,`,
 );
 
 // Ensure all email-producing booking queries that previously selected the
