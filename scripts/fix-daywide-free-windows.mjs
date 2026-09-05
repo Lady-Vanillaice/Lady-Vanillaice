@@ -51,6 +51,112 @@ if (!source.includes('headers.set("apikey", supabaseKey)')) {
   throw new Error("Public Supabase booking client patch could not be applied");
 }
 
+// Public booking requests must never fail merely because PostgREST cannot
+// return the inserted row or because an old slot trigger still exists in a
+// deployment. Generate the id ourselves, insert without RETURNING, and retry
+// once without the slot link. The retry is immediately re-linked afterwards,
+// so normal availability blocking still works whenever the schema permits it.
+const oldBookingInsert = `    const { data: row, error } = await supabaseAdmin
+      .from("bookings")
+      .insert(insertData)
+      .select("id")
+      .single();
+
+    if (error || !row) {
+      console.error("Failed to insert booking", error);
+      throw new Error(
+        "Diese Anfrage konnte nicht gespeichert werden. Bitte versuche es später erneut.",
+      );
+    }`;
+const newBookingInsert = `    const bookingId = crypto.randomUUID();
+    const primaryPayload = { ...insertData, id: bookingId };
+    let { error: insertError } = await supabaseAdmin
+      .from("bookings")
+      .insert(primaryPayload);
+
+    if (insertError && insertData.slot_id) {
+      console.error("Primary booking insert failed; retrying without slot link", {
+        code: insertError.code,
+        message: insertError.message,
+        details: insertError.details,
+        hint: insertError.hint,
+      });
+
+      const fallbackMessage = [
+        insertData.message,
+        "",
+        "— Technische Buchungsdaten —",
+        insertData.requested_start ? \`Gewünschter Start: \${insertData.requested_start}\` : null,
+        insertData.duration_minutes ? \`Dauer: \${insertData.duration_minutes} Minuten\` : null,
+        insertData.guest_phone ? \`WhatsApp: \${insertData.guest_phone}\` : null,
+      ]
+        .filter(Boolean)
+        .join("\\n")
+        .slice(0, 2000);
+
+      const { error: fallbackError } = await supabaseAdmin
+        .from("bookings")
+        .insert({
+          id: bookingId,
+          guest_name: insertData.guest_name,
+          guest_email: insertData.guest_email,
+          duration: insertData.duration ?? null,
+          message: fallbackMessage,
+        });
+
+      if (!fallbackError) {
+        const { error: relinkError } = await supabaseAdmin
+          .from("bookings")
+          .update({
+            slot_id: insertData.slot_id ?? null,
+            guest_phone: insertData.guest_phone ?? null,
+            duration_minutes: insertData.duration_minutes ?? null,
+            requested_start: insertData.requested_start ?? null,
+          })
+          .eq("id", bookingId);
+        if (relinkError) {
+          console.error("Booking was saved but structured slot relink failed", {
+            code: relinkError.code,
+            message: relinkError.message,
+            details: relinkError.details,
+            hint: relinkError.hint,
+          });
+        }
+        insertError = null;
+      } else {
+        console.error("Fallback booking insert failed", {
+          code: fallbackError.code,
+          message: fallbackError.message,
+          details: fallbackError.details,
+          hint: fallbackError.hint,
+        });
+      }
+    }
+
+    if (insertError) {
+      console.error("Failed to insert booking", {
+        code: insertError.code,
+        message: insertError.message,
+        details: insertError.details,
+        hint: insertError.hint,
+      });
+      throw new Error(
+        "Diese Anfrage konnte nicht gespeichert werden. Bitte versuche es später erneut.",
+      );
+    }
+
+    const row = { id: bookingId };`;
+
+if (!source.includes("const bookingId = crypto.randomUUID();")) {
+  if (!source.includes(oldBookingInsert)) {
+    throw new Error("Public booking insert patch target was not found");
+  }
+  source = source.replace(oldBookingInsert, newBookingInsert);
+}
+if (!source.includes("Primary booking insert failed; retrying without slot link")) {
+  throw new Error("Public booking resilient insert patch could not be applied");
+}
+
 // Load appointments by their real requested time, not only by currently-open
 // availability slot ids. This includes bookings whose original slot is hidden,
 // held, booked, moved or otherwise no longer part of the open-slot list.
