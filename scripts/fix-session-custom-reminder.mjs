@@ -68,3 +68,4 @@ console.log("Session + Custom reminder and direct cashbook legacy classification
 await import("./fix-terminplan-session-type-toggle.mjs");
 await import("./fix-admin-hub-search.mjs");
 await import("./fix-duration-based-deposit-split.mjs");
+await import("./fix-booking-confirmation-time-and-duration.mjs");
