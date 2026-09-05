@@ -64,3 +64,4 @@ replaceIfPresent(
 );
 
 console.log("Terminplan allows correcting existing bookings between Single and Duo.");
+await import("./fix-terminplan-compact-session-controls.mjs");
