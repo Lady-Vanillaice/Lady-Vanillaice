@@ -9,3 +9,4 @@ if (block.includes("isPureCustomContent") && !block.includes('const isPureCustom
 if (!ui.includes('matchesMonth || isUnfinishedBooking')) throw new Error("Open prior-month bookings are not preserved");
 console.log("Cashbook verification passed.");
 await import("./cashbook-all-history-ui.mjs");
+await import("./fix-mobile-fix-booking-dialog-scroll.mjs");
