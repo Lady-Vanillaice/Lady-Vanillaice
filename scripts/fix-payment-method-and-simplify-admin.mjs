@@ -80,3 +80,4 @@ console.log("Payment methods, customer search and legacy admin compatibility pat
 await import("./terminart-custom-option.mjs");
 await import("./fix-terminplan-custom-prepayment-labels.mjs");
 await import("./redesign-admin-hub.mjs");
+await import("./fix-deposit-status-sync.mjs");
