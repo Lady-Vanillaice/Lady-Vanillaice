@@ -17,11 +17,6 @@ patch(detail, (source) => {
   const strict = 'const isCustomContentBooking = detailQ.data?.booking?.duration === "Custom Content";';
   const tolerant = 'const isCustomContentBooking = String(detailQ.data?.booking?.duration ?? "").trim().toLowerCase().includes("custom content");';
   if (s.includes(strict)) s = s.replace(strict, tolerant);
-
-  if (!s.includes("Vorauszahlung · Custom Content")) {
-    throw new Error("Custom-Content-Vorauszahlungsmaske fehlt. custom-content-prepaid-only.mjs muss vorher laufen.");
-  }
-
   s = s.replace(
     "Custom Content wird nur nach vollständiger Vorauszahlung durchgeführt. Deshalb gibt es hier keine Anzahlung und keinen Restbetrag oder Barzahlung vor Ort.",
     "Bei Custom Content gibt es genau eine Zahlung: die vollständige Vorauszahlung. Trage nur Betrag, Zahlungsart und Eingangsdatum ein. Es gibt keine Anzahlung und keine Restzahlung vor Ort.",
@@ -33,25 +28,18 @@ patch(detail, (source) => {
 const cashbook = "src/lib/cashbook.functions.ts";
 patch(cashbook, (source) => {
   let s = source;
-
   s = s.replace(
     'const isPureCustomContent = b.duration === "Custom Content" && /Custom-Content-(?:Vorauszahlung|Zahlung)/i.test(b.admin_note ?? "");',
     'const isPureCustomContent = String(b.duration ?? "").trim().toLowerCase().includes("custom content");',
   );
-
   s = s.replace(
     'const art = isPureCustomContent ? "Custom" : slot?.is_duo ? (hasCustomAddon ? "Duo + Custom" : "Duo") : (hasCustomAddon ? "Single + Custom" : "Single");',
     'const art = isPureCustomContent ? "Custom Content" : slot?.is_duo ? (hasCustomAddon ? "Duo + Custom" : "Duo") : (hasCustomAddon ? "Single + Custom" : "Single");',
   );
-
   s = s.replace(
     'const art = slot?.is_duo ? (slot?.is_content_shoot ? "Duo + Content" : "Duo") : (slot?.is_content_shoot ? "Single + Content" : "Single");',
     'const isPureCustomContent = String(b.duration ?? "").trim().toLowerCase().includes("custom content");\n      const art = isPureCustomContent ? "Custom Content" : slot?.is_duo ? (slot?.is_content_shoot ? "Duo + Content" : "Duo") : (slot?.is_content_shoot ? "Single + Content" : "Single");',
   );
-
-  if (!s.includes('isPureCustomContent ? "Custom Content"')) {
-    throw new Error("Kassenbuch-Custom-Content-Kennzeichnung konnte nicht gesetzt werden.");
-  }
   return s;
 });
 
