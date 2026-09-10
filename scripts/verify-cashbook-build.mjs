@@ -10,3 +10,4 @@ if (!ui.includes('matchesMonth || isUnfinishedBooking')) throw new Error("Open p
 console.log("Cashbook verification passed.");
 await import("./cashbook-all-history-ui.mjs");
 await import("./fix-mobile-fix-booking-dialog-scroll.mjs");
+await import("./fix-custom-content-vorauszahlung-cashbook.mjs");
