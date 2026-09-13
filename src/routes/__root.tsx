@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import "../lib/admin-booking-payment-layout.client";
 import { Header } from "../components/site/Header";
 import { Footer } from "../components/site/Footer";
 import { AgeGate } from "../components/site/AgeGate";
