@@ -50,7 +50,7 @@ function installPaymentLayout() {
         <div class="mb-3 flex flex-wrap items-start justify-between gap-2">
           <div>
             <div class="text-[0.62rem] uppercase tracking-[0.22em] text-champagne">Beträge aufteilen</div>
-            <div class="mt-1 text-[0.68rem] leading-relaxed text-vanilla/50">Gesamtbetrag eingeben und Anzahlung / Rest vor Ort direkt aufteilen.</div>
+            <div class="mt-1 text-[0.68rem] leading-relaxed text-vanilla/50">Standard: 150 € Anzahlung, Rest vor Ort. Bei spontanen Terminen und Ausnahmen kann die Anzahlung auf 0 € gesetzt werden; Kurzsessions übernehmen ihren eigenen kleineren Betrag.</div>
           </div>
           <div data-payment-summary class="text-right text-[0.68rem] text-vanilla/60"></div>
         </div>
@@ -61,7 +61,7 @@ function installPaymentLayout() {
           </div>
           <div>
             <label class="mb-1 block text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/55">Anzahlung (€)</label>
-            <input data-payment-deposit type="text" inputmode="decimal" placeholder="0" class="input-luxe w-full" />
+            <input data-payment-deposit type="text" inputmode="decimal" placeholder="150" class="input-luxe w-full" />
           </div>
           <div>
             <label class="mb-1 block text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/55">Vor Ort (€)</label>
@@ -69,7 +69,7 @@ function installPaymentLayout() {
           </div>
         </div>
         <div class="mt-3 flex flex-wrap gap-2">
-          <button data-payment-half type="button" class="border border-champagne/35 px-3 py-1.5 text-[0.58rem] uppercase tracking-[0.15em] text-champagne hover:bg-champagne/10">50 / 50 aufteilen</button>
+          <button data-payment-standard type="button" class="border border-champagne/35 px-3 py-1.5 text-[0.58rem] uppercase tracking-[0.15em] text-champagne hover:bg-champagne/10">150 € Anzahlung</button>
           <button data-payment-onsite-all type="button" class="border border-champagne/25 px-3 py-1.5 text-[0.58rem] uppercase tracking-[0.15em] text-vanilla/65 hover:bg-vanilla/5">Alles vor Ort</button>
         </div>
       `;
@@ -78,7 +78,7 @@ function installPaymentLayout() {
       const totalField = panel.querySelector<HTMLInputElement>("[data-payment-total]")!;
       const depositField = panel.querySelector<HTMLInputElement>("[data-payment-deposit]")!;
       const onsiteField = panel.querySelector<HTMLInputElement>("[data-payment-onsite]")!;
-      const halfButton = panel.querySelector<HTMLButtonElement>("[data-payment-half]")!;
+      const standardButton = panel.querySelector<HTMLButtonElement>("[data-payment-standard]")!;
       const onsiteAllButton = panel.querySelector<HTMLButtonElement>("[data-payment-onsite-all]")!;
 
       const applySplit = (deposit: number, onsite: number) => {
@@ -103,8 +103,8 @@ function installPaymentLayout() {
           applySplit(0, total);
           return;
         }
-        const deposit = Math.round((total / 2) * 100) / 100;
-        applySplit(deposit, total - deposit);
+        const deposit = Math.min(150, total);
+        applySplit(deposit, Math.max(0, total - deposit));
       });
 
       depositField.addEventListener("input", () => {
@@ -119,10 +119,10 @@ function installPaymentLayout() {
         applySplit(Math.max(0, total - onsite), onsite);
       });
 
-      halfButton.addEventListener("click", () => {
+      standardButton.addEventListener("click", () => {
         const total = parseMoney(totalField.value);
-        const deposit = depositInput.disabled ? 0 : Math.round((total / 2) * 100) / 100;
-        applySplit(deposit, total - deposit);
+        const deposit = depositInput.disabled ? 0 : Math.min(150, total);
+        applySplit(deposit, Math.max(0, total - deposit));
       });
 
       onsiteAllButton.addEventListener("click", () => {
