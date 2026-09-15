@@ -49,7 +49,7 @@ function Preise() {
     },
     {
       duration: tr("90 Minuten", "90 minutes"),
-      price: tr("ab 450 €", "from € 450"),
+      price: tr("ab 500 €", "from € 500"),
       desc: tr(
         "Mehr Raum für Aufbau, Atmosphäre und einen ruhigen Nachklang.",
         "More space for build-up, atmosphere and a calm aftermath."
