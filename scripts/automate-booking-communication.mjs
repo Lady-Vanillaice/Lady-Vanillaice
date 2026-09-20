@@ -9,6 +9,12 @@ function replaceOnce(source, before, after, label) {
 // Admin communication: keep only the manual templates that are still useful.
 const adminPath = "src/routes/_authenticated/admin.buchung.$id.tsx";
 let admin = fs.readFileSync(adminPath, "utf8");
+const hasCombinedFixedAppointmentTemplate =
+  admin.includes('const resolvedStudio = studioName.trim()') &&
+  admin.includes('Anzahlung bereits geleistet:') &&
+  admin.includes('Termin fixiert · Zahlung, Adresse & Anfahrt');
+
+if (!hasCombinedFixedAppointmentTemplate) {
 admin = replaceOnce(
   admin,
   `const MESSAGE_TEMPLATES = [\n  { label: "Anfrage erhalten", text: "Danke für deine Anfrage. Ich prüfe den gewünschten Termin und melde mich schnellstmöglich mit einer verbindlichen Rückmeldung." },\n  { label: "Anzahlung", text: "Dein Termin ist vorgemerkt. Bitte überweise die vereinbarte Anzahlung, damit ich ihn verbindlich für dich reservieren kann." },\n  { label: "Termin-Erinnerung", text: "Ich freue mich auf unseren Termin. Bitte sei pünktlich und melde dich kurz, falls sich bei deiner Anreise etwas ändert." },\n  { label: "Adresse & Anfahrt", text: "Hier erhältst du noch einmal alle wichtigen Informationen zu Adresse und Anfahrt. Bitte plane ausreichend Zeit für deinen Weg ein." },\n  { label: "Danke danach", text: "Danke für dein Vertrauen und unsere gemeinsame Zeit. Ich wünsche dir einen angenehmen Nachklang." },\n] as const;`,
@@ -20,6 +26,7 @@ const oldFixedMessage = `  function createFixedAppointmentMessage() {\n    const
 
 const newFixedMessage = `  function createFixedAppointmentMessage() {\n    const dateValue = overrideDate || (booking.requested_start ? String(booking.requested_start).slice(0, 10) : "");\n    const timeValue = overrideTime || (booking.requested_start\n      ? format(new Date(booking.requested_start), "HH:mm")\n      : slot?.starts_at\n        ? format(new Date(slot.starts_at), "HH:mm")\n        : "");\n    const durationValue = Number(overrideDuration || booking.duration_minutes || 0);\n    const displayDate = dateValue\n      ? format(new Date(\`\${dateValue}T12:00:00\`), "EEEE, dd.MM.yyyy", { locale: de })\n      : "noch nicht eingetragen";\n    const durationText = durationValue > 0\n      ? \`\${durationValue} Minuten\${durationValue % 60 === 0 ? \` (\${durationValue / 60} Std.)\` : ""}\`\n      : "noch nicht eingetragen";\n    const locationText = studioName.trim() || slot?.location || "noch nicht eingetragen";\n    const sessionText = isDuoBooking\n      ? \`Duo Session\${duoPartner.trim() ? \` mit \${duoPartner.trim()}\` : ""}\`\n      : "Single Session";\n    setConfirmationNote([\n      \`Termin: \${displayDate}\${timeValue ? \` um \${timeValue} Uhr\` : ""}\`,\n      \`Dauer: \${durationText}\`,\n      \`Ort: \${locationText}\`,\n      \`Session: \${sessionText}\`,\n    ].join("\\n"));\n  }`;
 admin = replaceOnce(admin, oldFixedMessage, newFixedMessage, "simplify fixed appointment template");
+}
 fs.writeFileSync(adminPath, admin);
 
 // Booking email data: use the exact studio and payment data from Termin & Zahlung.
