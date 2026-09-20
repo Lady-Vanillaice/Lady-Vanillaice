@@ -67,7 +67,6 @@ const MESSAGE_TEMPLATES = [
   { label: "Anfrage erhalten", text: "Danke für deine Anfrage. Ich prüfe den gewünschten Termin und melde mich schnellstmöglich mit einer verbindlichen Rückmeldung." },
   { label: "Anzahlung", text: "Dein Termin ist vorgemerkt. Bitte überweise die vereinbarte Anzahlung, damit ich ihn verbindlich für dich reservieren kann." },
   { label: "Termin-Erinnerung", text: "Ich freue mich auf unseren Termin. Bitte sei pünktlich und melde dich kurz, falls sich bei deiner Anreise etwas ändert." },
-  { label: "Adresse & Anfahrt", text: "Hier erhältst du noch einmal alle wichtigen Informationen zu Adresse und Anfahrt. Bitte plane ausreichend Zeit für deinen Weg ein." },
   { label: "Danke danach", text: "Danke für dein Vertrauen und unsere gemeinsame Zeit. Ich wünsche dir einen angenehmen Nachklang." },
 ] as const;
 
@@ -576,6 +575,9 @@ const depositDateMut = useMutation({
     const durationText = durationValue > 0
       ? `${durationValue} Minuten${durationValue % 60 === 0 ? ` (${durationValue / 60} Std.)` : ""}`
       : "noch nicht eingetragen";
+    const resolvedStudio = studioName.trim() || slot?.location?.trim() || "noch nicht eingetragen";
+    const resolvedAddress = studioAddress.trim();
+    const isStudio60 = /studio\s*60/i.test(resolvedStudio);
     const lines = [
       `Hallo ${booking.guest_name},`,
       "",
@@ -583,17 +585,27 @@ const depositDateMut = useMutation({
       "",
       `Termin: ${displayDate}${timeValue ? ` um ${timeValue} Uhr` : ""}`,
       `Dauer: ${durationText}`,
-      slot?.location ? `Ort: ${slot.location}` : null,
+      `Ort: ${resolvedStudio}`,
+      resolvedAddress ? `Adresse: ${resolvedAddress}` : null,
       `Session: ${isDuoBooking ? `Duo Session${duoPartner.trim() ? ` mit ${duoPartner.trim()}` : ""}` : "Single Session"}`,
       "",
       depositExemptionReason
         ? "Anzahlung: nicht erforderlich"
-        : `Anzahlung: ${depositValue.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €${anzahlungMethod.trim() ? ` per ${anzahlungMethod.trim()}` : ""}`,
+        : `Anzahlung bereits geleistet: ${depositValue.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €${anzahlungMethod.trim() ? ` per ${anzahlungMethod.trim()}` : ""}`,
       !depositExemptionReason && anzahlungPaidDate
         ? `Anzahlung erhalten am: ${format(new Date(`${anzahlungPaidDate}T12:00:00`), "dd.MM.yyyy", { locale: de })}`
         : null,
-      `Vor Ort Betrag: ${cashValue.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €${restPaymentMethod.trim() ? ` per ${restPaymentMethod.trim()}` : ""}`,
+      `Restbetrag: ${cashValue.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} € – bitte bar vor Ort bezahlen.`,
       barPaidDate ? `Vor Ort erhalten am: ${format(new Date(`${barPaidDate}T12:00:00`), "dd.MM.yyyy", { locale: de })}` : null,
+      "",
+      "Adresse & Anfahrt",
+      "Hier erhältst du alle wichtigen Informationen zu Adresse und Anfahrt. Bitte plane ausreichend Zeit für deinen Weg ein und klingele pünktlich zur vereinbarten Uhrzeit.",
+      isStudio60
+        ? "Beim Studio 60 kannst du direkt vor Ort parken. Gehe bitte nicht die Treppen am Eingang hinauf, sondern einmal um das Haus herum. Nimm dort die Treppe nach oben und klingele bei „Studio 60“. Gehe anschließend bis ganz nach oben ins oberste Stockwerk und klingele dort noch einmal. Ich erwarte dich dort."
+        : null,
+      "",
+      "Ablauf vor Ort",
+      "Nach deiner Ankunft führen wir zuerst ein Vorgespräch. Danach kannst du duschen. Anschließend begleite ich dich zum Zimmer und die eigentliche Session beginnt. Zum Abschluss nehmen wir uns Zeit für ein Nachgespräch.",
       "",
       "Ich freue mich auf unseren Termin.",
       "",
@@ -1004,7 +1016,7 @@ const depositDateMut = useMutation({
                   onClick={createFixedAppointmentMessage}
                   className="text-[0.6rem] uppercase tracking-[0.14em] px-2.5 py-1.5 border border-champagne/50 bg-champagne/10 text-champagne hover:bg-champagne/20"
                 >
-                  Termin fixiert
+                  Termin fixiert · Zahlung & Anfahrt
                 </button>
                 {MESSAGE_TEMPLATES.map((template) => (
                   <button
