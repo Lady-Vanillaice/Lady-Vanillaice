@@ -50,25 +50,6 @@ const Email = ({ guestName, message, depositAmount, totalAmount, restAmount, dur
           </>
         ) : null}
 
-        <Hr style={hr} />
-
-        <Heading as="h2" style={h2}>So geht es weiter</Heading>
-        <Text style={p}>
-          Wenn du Rückfragen hast oder etwas besprechen möchtest, melde dich gerne direkt bei mir –
-          per E-Mail oder WhatsApp:
-        </Text>
-
-        <Section style={{ textAlign: 'center' as const, margin: '18px 0 8px' }}>
-          <Button href={`mailto:${EMAIL_ADDRESS}`} style={btn}>
-            ✉ {EMAIL_ADDRESS}
-          </Button>
-        </Section>
-        <Section style={{ textAlign: 'center' as const, margin: '0 0 18px' }}>
-          <Button href={WHATSAPP_LINK} style={btnOutline}>
-            WhatsApp: {WHATSAPP_NUMBER}
-          </Button>
-        </Section>
-
         {includeDepositInfo ? (
           <>
         <Hr style={hr} />
@@ -137,6 +118,25 @@ const Email = ({ guestName, message, depositAmount, totalAmount, restAmount, dur
           </>
         ) : null}
 
+        <Hr style={hr} />
+
+        <Heading as="h2" style={h2}>Fragen oder Rücksprache</Heading>
+        <Text style={p}>
+          Wenn du noch Fragen hast oder vorab etwas mit mir besprechen möchtest, melde dich gerne
+          direkt bei mir – per E-Mail oder WhatsApp:
+        </Text>
+
+        <Section style={{ textAlign: 'center' as const, margin: '18px 0 8px' }}>
+          <Button href={`mailto:${EMAIL_ADDRESS}`} style={btn}>
+            ✉ {EMAIL_ADDRESS}
+          </Button>
+        </Section>
+        <Section style={{ textAlign: 'center' as const, margin: '0 0 18px' }}>
+          <Button href={WHATSAPP_LINK} style={btnOutline}>
+            WhatsApp: {WHATSAPP_NUMBER}
+          </Button>
+        </Section>
+
         <Text style={signature}>— Lady Vanilla Ice</Text>
       </Container>
     </Body>
@@ -196,4 +196,3 @@ const btnOutline = {
   borderRadius: 2,
   display: 'inline-block',
 }
-
