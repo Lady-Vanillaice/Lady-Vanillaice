@@ -1016,7 +1016,7 @@ const depositDateMut = useMutation({
                   onClick={createFixedAppointmentMessage}
                   className="text-[0.6rem] uppercase tracking-[0.14em] px-2.5 py-1.5 border border-champagne/50 bg-champagne/10 text-champagne hover:bg-champagne/20"
                 >
-                  Termin fixiert · Zahlung & Anfahrt
+                  Termin fixiert · Zahlung, Adresse & Anfahrt
                 </button>
                 {MESSAGE_TEMPLATES.map((template) => (
                   <button
