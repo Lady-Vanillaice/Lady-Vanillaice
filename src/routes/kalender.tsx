@@ -16,6 +16,7 @@ import {
 } from "date-fns";
 import { de, enUS } from "date-fns/locale";
 import { useTr, useLang } from "@/i18n";
+import { getTimelineLabelTicks } from "@/lib/calendar-timeline";
 
 type Slot = {
   id: string;
@@ -938,15 +939,11 @@ function AvailabilityTimeline({ slotId }: { slotId: string }) {
 
   // Hour ticks (every full hour between win start/end).
   const ticks: number[] = [];
-  const firstHour = new Date(winStart);
-  firstHour.setMinutes(0, 0, 0);
-  if (firstHour.getTime() < winStart) firstHour.setHours(firstHour.getHours() + 1);
-  for (let t = firstHour.getTime(); t <= winEnd; t += 60 * 60_000) ticks.push(t);
+  const hourMs = 3_600_000;
+  for (let t = Math.ceil(winStart / hourMs) * hourMs; t <= winEnd; t += hourMs) ticks.push(t);
 
-  // Thin out visible labels so they don't overlap; more zoom → mehr Labels.
-  const effHours = (totalMs / 3_600_000) / zoom;
-  const labelStep = effHours > 12 ? 3 : effHours > 6 ? 2 : 1;
-  const labelTicks = ticks.filter((t) => new Date(t).getHours() % labelStep === 0);
+  // Leave room for readable mobile labels and always show the exact endpoints.
+  const labelTicks = getTimelineLabelTicks(winStart, winEnd, zoom);
 
   const pct = (t: number) => ((t - winStart) / totalMs) * 100;
   const fmtHm = (t: number) => formatMunichTime(new Date(t));
@@ -976,7 +973,7 @@ function AvailabilityTimeline({ slotId }: { slotId: string }) {
         </div>
       </div>
       <div className="overflow-x-auto">
-        <div style={{ width: `${zoom * 100}%`, minWidth: "100%" }}>
+        <div style={{ width: `${zoom * 100}%`, minWidth: `${zoom * 20}rem` }}>
       <div className="relative h-10 border border-champagne/20 bg-champagne/[0.04]">
         {/* Blocked segments — rendered first so free buttons sit on top */}
         {merged.map((seg) => {
@@ -1026,7 +1023,7 @@ function AvailabilityTimeline({ slotId }: { slotId: string }) {
         ))}
       </div>
       {/* Hour labels */}
-      <div className="relative h-5 mt-1.5 text-[0.7rem] font-medium text-vanilla/75">
+      <div className="relative h-5 mt-1.5 text-sm font-medium text-vanilla/75">
         {labelTicks.map((t) => {
           const p = pct(t);
           // Keep first/last labels inside the bar edges so nothing gets clipped.
@@ -1035,7 +1032,7 @@ function AvailabilityTimeline({ slotId }: { slotId: string }) {
           return (
             <span
               key={t}
-              className={`absolute tabular-nums ${align}`}
+              className={`absolute whitespace-nowrap tabular-nums ${align}`}
               style={p > 96 ? { left: `${p}%` } : p < 4 ? { left: 0 } : { left: `${p}%` }}
             >
               {fmtHm(t)}

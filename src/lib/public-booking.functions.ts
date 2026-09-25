@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { getTimelineBounds } from "@/lib/calendar-timeline";
 
 const STEP_MINUTES = 15;
 
@@ -379,8 +380,11 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
       ...sortedOpen.map((s) => new Date(s.ends_at).getTime()),
       ...blockingRanges.map((range) => new Date(range.end).getTime()),
     ];
-    const timelineStart = Math.min(...starts);
-    const timelineEnd = Math.max(...ends);
+    // Neighbouring slots and overnight bookings must not expand this day's
+    // occupancy bar into yesterday or tomorrow.
+    const { start: timelineStart, end: timelineEnd } = getTimelineBounds(
+      dayStart.getTime(), dayEnd.getTime(), starts, ends,
+    );
     return {
       starts_at: new Date(timelineStart).toISOString(),
       ends_at: new Date(timelineEnd).toISOString(),
