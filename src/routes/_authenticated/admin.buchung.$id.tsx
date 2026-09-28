@@ -116,7 +116,10 @@ function BookingDetailPage() {
     queryFn: () => fetchDetail({ data: { id } }),
   });
   const studiosQ = useQuery({ queryKey: ["admin-studios"], queryFn: () => listStudiosFn() });
-  const studioOptions = studiosQ.data ?? DEFAULT_STUDIOS;
+  const configuredStudios = studiosQ.data ?? DEFAULT_STUDIOS;
+  const studioOptions = configuredStudios.some((studio) => studio.name.trim().toLowerCase() === "contentwohnung")
+    ? configuredStudios
+    : [...configuredStudios, { id: "contentwohnung", name: "Contentwohnung", address: "" }];
 
   const [note, setNote] = useState("");
   const [noteSaved, setNoteSaved] = useState(false);
