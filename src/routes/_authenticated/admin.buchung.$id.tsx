@@ -19,6 +19,7 @@ import {
   previewPersonalMessage,
   retryEmail,
 } from "@/lib/booking.functions";
+import { PrivateBookingLocation } from "@/components/admin/PrivateBookingLocation";
 import { PageHeader } from "../../components/site/PageHeader";
 import {
   ArrowLeft,
@@ -116,10 +117,7 @@ function BookingDetailPage() {
     queryFn: () => fetchDetail({ data: { id } }),
   });
   const studiosQ = useQuery({ queryKey: ["admin-studios"], queryFn: () => listStudiosFn() });
-  const configuredStudios = studiosQ.data ?? DEFAULT_STUDIOS;
-  const studioOptions = configuredStudios.some((studio) => studio.name.trim().toLowerCase() === "contentwohnung")
-    ? configuredStudios
-    : [...configuredStudios, { id: "contentwohnung", name: "Contentwohnung", address: "" }];
+  const studioOptions = studiosQ.data ?? DEFAULT_STUDIOS;
 
   const [note, setNote] = useState("");
   const [noteSaved, setNoteSaved] = useState(false);
@@ -938,6 +936,8 @@ const depositDateMut = useMutation({
               </div>
             </div>
           </div>
+
+          <PrivateBookingLocation key={id} bookingId={id} />
 
           {/* NACHRICHT / VORLIEBEN DES GASTS */}
           <div className="bg-card border border-champagne/15 p-6 mb-6">

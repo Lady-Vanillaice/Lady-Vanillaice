@@ -13,6 +13,7 @@ import { updateBookingAccounting } from "@/lib/accounting.functions";
 import { createCashBookEntry, createStudioRentExpense, deleteCashBookEntry, listCashBookEntries, updateCashBookEntry, type CashBookEntry, type DepositExemptionReason } from "@/lib/cashbook.functions";
 import { hideBookingFromCashbook, listHiddenCashbookBookings } from "@/lib/cashbook-visibility.functions";
 import { listBookingRestPaymentMethods } from "@/lib/rest-payment.functions";
+import { listPrivateBookingDestinations } from "@/lib/private-booking-location.functions";
 import { calculateStudioDistances } from "@/lib/travel-log.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/kassenbuch")({ component: KassenbuchPage });
@@ -88,6 +89,7 @@ function KassenbuchPage() {
   const [anzahlung, setAnzahlung] = useState("0"); const [anzahlungMethod, setAnzahlungMethod] = useState("Überweisung"); const [anzahlungDatum, setAnzahlungDatum] = useState(""); const [manualDepositReason, setManualDepositReason] = useState<DepositExemptionReason | "">(""); const [bar, setBar] = useState("0"); const [manualRestMethod, setManualRestMethod] = useState("Bar"); const [manualRestDate, setManualRestDate] = useState(""); const [notiz, setNotiz] = useState("");
   const [expenseStudio, setExpenseStudio] = useState(""); const [expenseDate, setExpenseDate] = useState(today());
   const [expenseAmount, setExpenseAmount] = useState(""); const [expenseMethod, setExpenseMethod] = useState(""); const [expenseNote, setExpenseNote] = useState("");
+  const loadPrivateDestinations = useServerFn(listPrivateBookingDestinations);
   const [travelLogPending, setTravelLogPending] = useState(false);
   const [cashDay, setCashDay] = useState(today());
   const hiddenBookingSet = useMemo(() => new Set(hiddenBookingIds), [hiddenBookingIds]);
@@ -219,53 +221,56 @@ function KassenbuchPage() {
   }
 
   async function exportTravelLog() {
-    const cleanTravelText = (value: string) => value
-      .replace(/\s*(?:—|–|-)\s*(?:Raum|Room)\b.*$/i, "")
-      .replace(/\s*,\s*(?:Raum|Room)\b.*$/i, "")
-      .trim();
-    const cleanTravelStudio = (value: string) => value
-      .replace(/\s*(?:—|–|-)\s*(?:Raum|Room|VIP(?:\s+Lounge)?)\b.*$/i, "")
-      .trim();
-    const clockMinutes = (value: string | null) => {
-      const label = timeLabel(value);
-      if (!label) return null;
-      const [hours, minutes] = label.split(":").map(Number);
-      return hours * 60 + minutes;
-    };
-    const clock = (minutes: number) => {
-      const dayShift = Math.floor(minutes / 1440);
-      const normalized = ((minutes % 1440) + 1440) % 1440;
-      const label = `${String(Math.floor(normalized / 60)).padStart(2, "0")}:${String(normalized % 60).padStart(2, "0")}`;
-      if (dayShift > 0) return `${label} Uhr (+${dayShift} Tag${dayShift > 1 ? "e" : ""})`;
-      if (dayShift < 0) return `${label} Uhr (${Math.abs(dayShift)} Tag vorher)`;
-      return `${label} Uhr`;
-    };
-    const awayStart = (firstStart: number | null) => firstStart !== null && firstStart <= 12 * 60 ? firstStart - 3 * 60 : 10 * 60;
-    const awayEnd = (lastEnd: number | null, lastStart: number | null) => (lastEnd ?? lastStart ?? 20 * 60) + 4 * 60;
-
-    const appointmentMap = new Map<string, { date: string; studio: string; address: string; firstStart: number | null; lastStart: number | null; lastEnd: number | null }>();
-    for (const entry of data.filter(entry => entry.termin_datum.startsWith(month)).filter(entry => entry.source === "booking" && entry.status !== "cancelled")) {
-      const parts = studioParts(entry);
-      const studio = cleanTravelStudio(parts.studio);
-      const address = cleanTravelText(parts.address);
-      const key = `${entry.termin_datum}|${studio.toLowerCase()}|${address.toLowerCase()}`;
-      const startMinutes = clockMinutes(entry.termin_start);
-      const endMinutes = clockMinutes(entry.termin_ende);
-      const existing = appointmentMap.get(key);
-      if (!existing) {
-        appointmentMap.set(key, { date: entry.termin_datum, studio, address, firstStart: startMinutes, lastStart: startMinutes, lastEnd: endMinutes });
-      } else {
-        if (startMinutes !== null && (existing.firstStart === null || startMinutes < existing.firstStart)) existing.firstStart = startMinutes;
-        if (startMinutes !== null && (existing.lastStart === null || startMinutes > existing.lastStart)) existing.lastStart = startMinutes;
-        if (endMinutes !== null && (existing.lastEnd === null || endMinutes > existing.lastEnd)) existing.lastEnd = endMinutes;
-      }
-    }
-    const appointments = [...appointmentMap.values()].sort((a, b) => a.date.localeCompare(b.date) || a.studio.localeCompare(b.studio));
-    const missingAddress = appointments.find(entry => !entry.address);
-    if (missingAddress) { alert(`Für ${missingAddress.studio} am ${dateLabel(missingAddress.date)} fehlt die Studio-Adresse. Bitte den Termin zuerst im Kassenbuch bearbeiten.`); return; }
-    if (!appointments.length) { alert("Für den gewählten Monat gibt es keine Termine mit Fahrt."); return; }
     setTravelLogPending(true);
     try {
+      const cleanTravelText = (value: string) => value
+        .replace(/\s*(?:—|–|-)\s*(?:Raum|Room)\b.*$/i, "")
+        .replace(/\s*,\s*(?:Raum|Room)\b.*$/i, "")
+        .trim();
+      const cleanTravelStudio = (value: string) => value
+        .replace(/\s*(?:—|–|-)\s*(?:Raum|Room|VIP(?:\s+Lounge)?)\b.*$/i, "")
+        .trim();
+      const clockMinutes = (value: string | null) => {
+        const label = timeLabel(value);
+        if (!label) return null;
+        const [hours, minutes] = label.split(":").map(Number);
+        return hours * 60 + minutes;
+      };
+      const clock = (minutes: number) => {
+        const dayShift = Math.floor(minutes / 1440);
+        const normalized = ((minutes % 1440) + 1440) % 1440;
+        const label = `${String(Math.floor(normalized / 60)).padStart(2, "0")}:${String(normalized % 60).padStart(2, "0")}`;
+        if (dayShift > 0) return `${label} Uhr (+${dayShift} Tag${dayShift > 1 ? "e" : ""})`;
+        if (dayShift < 0) return `${label} Uhr (${Math.abs(dayShift)} Tag vorher)`;
+        return `${label} Uhr`;
+      };
+      const awayStart = (firstStart: number | null) => firstStart !== null && firstStart <= 12 * 60 ? firstStart - 3 * 60 : 10 * 60;
+      const awayEnd = (lastEnd: number | null, lastStart: number | null) => (lastEnd ?? lastStart ?? 20 * 60) + 4 * 60;
+
+      const appointmentMap = new Map<string, { date: string; studio: string; address: string; firstStart: number | null; lastStart: number | null; lastEnd: number | null }>();
+      const travelEntries = data.filter(entry => entry.termin_datum.startsWith(month) && entry.source === "booking" && entry.status !== "cancelled");
+      const privateDestinations = await loadPrivateDestinations({ data: { ids: [...new Set(travelEntries.flatMap(entry => entry.booking_id ? [entry.booking_id] : []))] } });
+      for (const entry of travelEntries) {
+        const privateDestination = entry.booking_id ? privateDestinations[entry.booking_id] : null;
+        const parts = privateDestination ? { studio: privateDestination.name, address: privateDestination.address } : studioParts(entry);
+        const studio = cleanTravelStudio(parts.studio);
+        const address = cleanTravelText(parts.address);
+        const key = `${entry.termin_datum}|${studio.toLowerCase()}|${address.toLowerCase()}`;
+        const startMinutes = clockMinutes(entry.termin_start);
+        const endMinutes = clockMinutes(entry.termin_ende);
+        const existing = appointmentMap.get(key);
+        if (!existing) {
+          appointmentMap.set(key, { date: entry.termin_datum, studio, address, firstStart: startMinutes, lastStart: startMinutes, lastEnd: endMinutes });
+        } else {
+          if (startMinutes !== null && (existing.firstStart === null || startMinutes < existing.firstStart)) existing.firstStart = startMinutes;
+          if (startMinutes !== null && (existing.lastStart === null || startMinutes > existing.lastStart)) existing.lastStart = startMinutes;
+          if (endMinutes !== null && (existing.lastEnd === null || endMinutes > existing.lastEnd)) existing.lastEnd = endMinutes;
+        }
+      }
+      const appointments = [...appointmentMap.values()].sort((a, b) => a.date.localeCompare(b.date) || a.studio.localeCompare(b.studio));
+      const missingAddress = appointments.find(entry => !entry.address);
+      if (missingAddress) { alert(`Für ${missingAddress.studio} am ${dateLabel(missingAddress.date)} fehlt die Studio-Adresse. Bitte den Termin zuerst im Kassenbuch bearbeiten.`); return; }
+      if (!appointments.length) { alert("Für den gewählten Monat gibt es keine Termine mit Fahrt."); return; }
       const distanceResult = await calculateDistances({ data: { destinations: appointments.map(entry => ({ key: `${entry.studio}|${entry.address}`, address: entry.address })) } });
       const kilometres = new Map(distanceResult.distances.map(entry => [entry.key, entry.kilometres]));
       const travelRows: Array<[string, string, string, string, string, string, number]> = [];
