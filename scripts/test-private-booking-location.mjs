@@ -25,7 +25,7 @@ const db = { storage: {
   from(name) { assert.equal(name, 'private-booking-locations'); return bucket; },
 }, from() { return { select() { return this; }, eq() { return this; }, async maybeSingle() { return { data: { id: 'booking' }, error: null }; } }; } };
 assert.equal(await storage.privateLocationBucket(db), null);
-const value = { name: 'Testhotel', address: 'Teststraße 1, 12345 Testort', notes: 'Zimmer 123, nur intern' };
+const value = { mode: 'private', name: 'Testhotel', address: 'Teststraße 1, 12345 Testort', notes: 'Zimmer 123, nur intern' };
 await storage.writePrivateLocation(db, 'booking', value);
 assert.deepEqual(await storage.readPrivateLocation(bucket, 'booking'), value);
 assert.equal(await storage.readPrivateLocation(bucket, 'missing'), null);
@@ -57,3 +57,11 @@ assert.equal('notes' in destinations[id], false);
 await functions.savePrivateBookingLocation({ data: { id, location: { name: '', address: '', notes: '' } }, context: context(true) });
 assert.equal(Object.keys(await functions.listPrivateBookingDestinations({ data: { ids: [id] }, context: context(true) })).length, 0);
 console.log('Private location: admin access, private storage, save/reload, public-bucket rejection, and travel-note exclusion passed.');
+
+assert.equal(schema.privateBookingLocationSchema.parse({ name: '', address: 'Legacy address', notes: '' }).mode, 'private');
+await functions.savePrivateBookingLocation({ data: { id, location: { ...value, mode: 'studio' } }, context: context(true) });
+assert.equal(Object.keys(await functions.listPrivateBookingDestinations({ data: { ids: [id] }, context: context(true) })).length, 0);
+assert.equal((await functions.getPrivateBookingLocation({ data: { id }, context: context(true) })).notes, value.notes);
+await functions.savePrivateBookingLocation({ data: { id, location: { ...value, address: '' } }, context: context(true) });
+await assert.rejects(() => functions.listPrivateBookingDestinations({ data: { ids: [id] }, context: context(true) }), /Adresse/);
+console.log('Exclusive venue mode, legacy migration, preserved notes, and missing private address checks passed.');

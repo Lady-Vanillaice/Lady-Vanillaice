@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
+import { CustomerSessionHistory } from "@/components/admin/CustomerSessionHistory";
 import { PageHeader } from "@/components/site/PageHeader";
 import { ArrowLeft, Search, Mail, Phone, User, Save, X, CalendarCheck, Star, ShieldAlert, HeartPulse, KeyRound } from "lucide-react";
 import { format } from "date-fns";
@@ -76,7 +77,7 @@ function AdminKundenPage() {
             Kunden<em className="font-script gold-text not-italic">liste</em>
           </>
         }
-        intro="Alle Gäste mit erfolgreich abgeschlossenen Sessions aus dem Kassenbuch — mit Pseudonym, Kontakt, Vorlieben und Tabus."
+        intro="Deine Kunden, ihre Session-Historie und persönliche Hinweise – nur für dich im Adminbereich."
       />
       <section className="py-16">
         <div className="container-luxe max-w-5xl">
@@ -227,6 +228,8 @@ function CustomerEditor({
 
   return (
     <div className="border-t border-champagne/10 p-5 space-y-4">
+      <CustomerSessionHistory key={customer.email.toLowerCase()} email={customer.email} />
+      <h2 className="font-display text-2xl text-champagne">Kundenprofil</h2>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <div className="border border-champagne/20 bg-anthracite/20 p-3">
           <div className="flex items-center gap-2 text-champagne text-xs uppercase tracking-[0.16em]">
@@ -313,7 +316,7 @@ function CustomerEditor({
         />
       </div>
       <div>
-        <label className="eyebrow block mb-1.5">Interne Notiz</label>
+        <label className="eyebrow block mb-1.5">Wichtig & Persönliches (intern)</label>
         <textarea
           rows={2}
           value={adminNote}
