@@ -70,7 +70,7 @@ const HUB_GROUPS: HubGroup[] = [
     { to: "/admin/fotoshooting", title: "Fotoshooting", description: "Anfragen von Fotografen (TFP / Pay).", Icon: Camera },
   ]},
   { label: "Kunden & Finanzen", hint: "Gästedaten und Buchhaltung", cards: [
-    { to: "/admin/kunden", title: "Kunden", description: "Gäste mit bestätigten Terminen — Kontakt, Vorlieben & Tabus.", Icon: Users },
+    { to: "/admin/kunden", title: "Kunden / CRM", description: "Session-Historie, persönliche Notizen, Vorlieben & Tabus.", Icon: Users },
     { to: "/admin/kassenbuch", title: "Kassenbuch", description: "Einnahmen, Anzahlungen und Bar-Beträge.", Icon: Wallet },
   ]},
   { label: "Inhalte", hint: "Website-Inhalte pflegen", cards: [

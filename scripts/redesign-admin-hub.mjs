@@ -28,7 +28,7 @@ const groups = `const HUB_GROUPS: HubGroup[] = [
     { to: "/admin/fotoshooting", title: "Fotoshooting-Anfragen", description: "TFP- und Pay-Fotoshooting-Anfragen.", Icon: Camera },
   ]},
   { label: "3 · Kunden", hint: "Person finden, Verlauf öffnen, Daten pflegen", cards: [
-    { to: "/admin/kunden", title: "Kunden suchen", description: "Aktuelle und ältere Kunden, Termine, Kontakt und Notizen durchsuchen.", Icon: Users },
+    { to: "/admin/kunden", title: "Kunden / CRM", description: "Session-Historie, persönliche Notizen, Vorlieben und Tabus.", Icon: Users },
   ]},
   { label: "4 · Geld & Kassenbuch", hint: "Zahlungen und Buchhaltung", cards: [
     { to: "/admin/kassenbuch", title: "Kassenbuch & Zahlungen", description: "Vorauszahlungen, Anzahlungen, Restzahlungen, Ausgaben und Zahlungsarten.", Icon: Wallet },
@@ -101,7 +101,7 @@ const hub = `function AdminHubPage() { /* Weitere Admin-Bereiche */
           {[
             { to: "/admin/terminplan" as const, title: "Terminplan", subtitle: "Was steht an?", Icon: CalendarClock },
             { to: "/admin/termine" as const, title: "Anfragen", subtitle: "Was ist neu?", Icon: Mail },
-            { to: "/admin/kunden" as const, title: "Kunden", subtitle: "Person suchen", Icon: Users },
+            { to: "/admin/kunden" as const, title: "Kunden / CRM", subtitle: "Person und Sessions suchen", Icon: Users },
             { to: "/admin/kassenbuch" as const, title: "Kassenbuch", subtitle: "Zahlungen prüfen", Icon: Wallet },
           ].map(({ to, title, subtitle, Icon }) => <Link key={to} to={to} className="group border border-champagne/30 bg-card p-4 sm:p-5 hover:border-champagne/70 transition">
             <Icon size={20} className="text-champagne mb-3" />

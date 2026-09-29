@@ -897,6 +897,11 @@ const depositDateMut = useMutation({
                   Kein Termin verknüpft (individuelle Anfrage &gt; 3 Std.).
                 </div>
               )}
+
+            </div>
+          </div>
+
+          <PrivateBookingLocation key={id} bookingId={id} studioPending={studioMut.isPending}>
               <div className="mt-5 border-t border-champagne/15 pt-4 space-y-3">
                 <label className="block text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/55">
                   Studio für diese Buchung
@@ -934,10 +939,7 @@ const depositDateMut = useMutation({
                 </button>
                 {studioMut.error instanceof Error && <p className="text-xs text-bordeaux">{studioMut.error.message}</p>}
               </div>
-            </div>
-          </div>
-
-          <PrivateBookingLocation key={id} bookingId={id} />
+          </PrivateBookingLocation>
 
           {/* NACHRICHT / VORLIEBEN DES GASTS */}
           <div className="bg-card border border-champagne/15 p-6 mb-6">

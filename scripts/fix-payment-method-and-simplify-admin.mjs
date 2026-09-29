@@ -62,7 +62,7 @@ replace(customers, `      const isPastVisit = !!when && new Date(when).getTime()
 
 // 3) Kundenansicht verständlicher beschriften.
 const customerRoute = "src/routes/_authenticated/admin.kunden.tsx";
-replace(customerRoute, `intro="Alle Gäste mit erfolgreich abgeschlossenen Sessions aus dem Kassenbuch — mit Pseudonym, Kontakt, Vorlieben und Tabus."`, `intro="Suche alle Kunden und Buchungen — auch ältere, offene, stornierte oder umgeplante Termine."`, "customer intro");
+if (!fs.readFileSync(customerRoute, "utf8").includes("Deine Kunden, ihre Session-Historie")) replace(customerRoute, `intro="Alle Gäste mit erfolgreich abgeschlossenen Sessions aus dem Kassenbuch — mit Pseudonym, Kontakt, Vorlieben und Tabus."`, `intro="Suche alle Kunden und Buchungen — auch ältere, offene, stornierte oder umgeplante Termine."`, "customer intro");
 replace(customerRoute, `placeholder="Suchen (Name, E-Mail, Vorlieben…)"`, `placeholder="Kunde suchen: Name, E-Mail, Telefon …"`, "customer search placeholder");
 replace(customerRoute, `Noch keine bestätigten Kunden.`, `Keine passenden Kunden oder Buchungen gefunden.`, "customer empty state");
 

@@ -47,7 +47,8 @@ export const listPrivateBookingDestinations = createServerFn({ method: "POST" })
     for (let i = 0; i < ids.length; i += 10) {
       await Promise.all(ids.slice(i, i + 10).map(async (id) => {
         const location = await readPrivateLocation(bucket, id);
-        if (location?.address) destinations[id] = { name: location.name || "Privater Terminort", address: location.address };
+        if (location?.mode === "private" && !location.address) throw new Error("Bitte zuerst die Adresse des privaten Terminorts für das Fahrtenbuch ergänzen.");
+        if (location?.mode === "private" && location.address) destinations[id] = { name: location.name || "Privater Terminort", address: location.address };
       }));
     }
     return destinations;
