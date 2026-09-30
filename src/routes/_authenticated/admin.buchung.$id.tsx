@@ -471,6 +471,7 @@ const depositDateMut = useMutation({
     }) => updateStatus({ data: {
       id,
       status: v.status,
+      ...(v.status === "open" ? { admin_note: note, confirmation_note: confirmationNote } : {}),
       decline_reason: v.decline_reason,
       anzahlung: v.anzahlung,
       bar: v.bar,
@@ -485,6 +486,8 @@ const depositDateMut = useMutation({
       qc.invalidateQueries({ queryKey: ["admin-bookings"] });
       qc.invalidateQueries({ queryKey: ["admin-slots"] });
       qc.invalidateQueries({ queryKey: ["cashbook"] });
+      qc.invalidateQueries({ queryKey: ["admin-terminplan"], refetchType: "all" });
+      qc.invalidateQueries({ queryKey: ["public-slots"], refetchType: "all" });
       router.invalidate();
     },
   });
@@ -782,6 +785,7 @@ const depositDateMut = useMutation({
               </div>
             </div>
 
+            <p className="text-xs text-vanilla/55 mb-3">„Neuer Termin offen“ gibt den bisherigen Termin frei und entfernt die Buchung aus dem Terminplan. Die Anfrage bleibt erhalten, bis ein Ersatztermin feststeht.</p>
             {/* Interne Status */}
             <div className="mb-3">
               <div className="text-[0.55rem] uppercase tracking-[0.25em] text-vanilla/35 mb-2">
@@ -807,7 +811,7 @@ const depositDateMut = useMutation({
                   onClick={() => statusMut.mutate({ status: "open" })}
                   className="text-[0.65rem] uppercase tracking-[0.2em] px-3 py-2 border border-sky-500/40 text-sky-200 hover:bg-sky-500/10 disabled:opacity-30 inline-flex items-center justify-center gap-1"
                 >
-                  <Circle size={12} /> Offen
+                  <Circle size={12} /> Neuer Termin offen
                 </button>
                 <button
                   disabled={booking.status === "pending" || statusMut.isPending}
@@ -1975,7 +1979,7 @@ function StatusBadge({
     cancelled: { label: "Storniert", cls: "bg-vanilla/10 text-vanilla/60" },
     rescheduling: { label: "Umplanen", cls: "bg-champagne/25 text-champagne" },
     waiting_deposit: { label: "Wartend · Anzahlung offen", cls: "bg-amber-700/30 text-amber-200" },
-    open: { label: "Offen", cls: "bg-sky-700/30 text-sky-200" },
+    open: { label: "Neuer Termin offen", cls: "bg-sky-700/30 text-sky-200" },
   } as const;
   const s = map[status];
   return (
