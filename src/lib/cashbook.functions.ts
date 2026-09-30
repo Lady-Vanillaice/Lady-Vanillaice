@@ -167,6 +167,7 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
       };
     });
 
+    for (const entry of manual) { if (entry.studio === "Telefon-Session") entry.art = "Telefon-Session"; }
     return [...manual, ...bookings].sort((a, b) => {
       const ad = a.payment_date || a.termin_start || a.termin_datum;
       const bd = b.payment_date || b.termin_start || b.termin_datum;
@@ -190,9 +191,18 @@ const entrySchema = z.object({
   notiz: z.string().max(2000).optional().nullable(),
 });
 
+function validatePhoneEntry<T extends z.infer<typeof entrySchema>>(entry: T): T {
+  if (entry.studio === "Telefon-Session" && (
+    ![50, 75, 100].includes(entry.anzahlung) || entry.bar !== 0 || entry.deposit_exemption_reason ||
+    !entry.kunde.trim() || !entry.anzahlung_method?.trim() || !entry.anzahlung_datum ||
+    !Number.isFinite(Date.parse(entry.anzahlung_datum)) || new Date(entry.anzahlung_datum).toISOString().slice(0, 10) !== entry.anzahlung_datum
+  )) throw new Error("Telefon-Session: Name, Zahlungsart, gültiges Zahlungsdatum und 50, 75 oder 100 € erforderlich.");
+  return entry;
+}
+
 export const createCashBookEntry = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => entrySchema.parse(data))
+  .inputValidator((data: unknown) => validatePhoneEntry(entrySchema.parse(data)))
   .handler(async ({ data, context }) => {
     await ensureAdmin(context.supabase, context.userId);
     const { data: row, error } = await context.supabase.from("cash_book_entries").insert({
@@ -209,7 +219,7 @@ export const createCashBookEntry = createServerFn({ method: "POST" })
 
 export const updateCashBookEntry = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => entrySchema.extend({ id: z.string().uuid() }).parse(data))
+  .inputValidator((data: unknown) => validatePhoneEntry(entrySchema.extend({ id: z.string().uuid() }).parse(data)))
   .handler(async ({ data, context }) => {
     await ensureAdmin(context.supabase, context.userId);
     const { error } = await context.supabase.from("cash_book_entries").update({

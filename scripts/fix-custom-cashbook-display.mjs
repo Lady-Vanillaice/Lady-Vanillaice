@@ -30,7 +30,7 @@ const cashbookUi = "src/routes/_authenticated/admin.kassenbuch.tsx";
 patch(
   cashbookUi,
   `  const paymentLabel = (e: CashBookEntry) => isFinancialSlave(e) ? "Zahlsklave" : e.source === "booking" ? "Buchung" : "Manuelle Zahlung";`,
-  `  const isCustom = (e: CashBookEntry) => e.art === "Custom" || e.art === "Custom Content";\n  const paymentLabel = (e: CashBookEntry) => isFinancialSlave(e) ? "Zahlsklave" : isCustom(e) ? "Custom" : e.source === "booking" ? "Buchung" : "Manuelle Zahlung";`,
+  `  const isCustom = (e: CashBookEntry) => e.art === "Custom" || e.art === "Custom Content";\n  const paymentLabel = (e: CashBookEntry) => e.studio === "Telefon-Session" ? "Telefon-Session" : isFinancialSlave(e) ? "Zahlsklave" : isCustom(e) ? "Custom" : e.source === "booking" ? "Buchung" : "Manuelle Zahlung";`,
   "custom payment label",
 );
 patch(

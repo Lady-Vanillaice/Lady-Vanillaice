@@ -1,12 +1,12 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Building2, CalendarDays, ChevronDown, Megaphone, MinusCircle, PencilLine, Plus, PlusCircle, UserRound } from "lucide-react";
+import { Building2, CalendarDays, ChevronDown, Megaphone, MinusCircle, PencilLine, Plus, PlusCircle, Phone, UserRound } from "lucide-react";
 import { createAdvertisingExpense, createCashBookEntry, createOtherExpense, createStudioRentExpense } from "@/lib/cashbook.functions";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const METHODS = ["Bar", "PayPal", "Überweisung", "Karte", "Sonstige"] as const;
-type IncomeKind = "external" | "financial_slave" | "custom";
+type IncomeKind = "external" | "financial_slave" | "custom" | "phone";
 type ExpenseKind = "studio" | "advertising" | "other";
 const parseAmount = (value: string) => Number(value.trim().replace(/\s/g, "").replace(",", "."));
 
@@ -29,7 +29,7 @@ export function CashbookEntryOrganizer() {
 
   const reset = () => { setDate(today()); setName(""); setPlace(""); setValue(""); setMethod(""); setNote(""); setPurpose(""); };
   const title = useMemo(() => mode === "income"
-    ? incomeKind === "external" ? "Externer Termin" : incomeKind === "financial_slave" ? "Zahlsklave" : incomeKind === "custom" ? "Custom" : ""
+    ? incomeKind === "phone" ? "Telefon-Session" : incomeKind === "external" ? "Externer Termin" : incomeKind === "financial_slave" ? "Zahlsklave" : incomeKind === "custom" ? "Custom" : ""
     : expenseKind === "studio" ? "Studiomiete" : expenseKind === "advertising" ? "Werbung" : expenseKind === "other" ? "Sonstige Ausgabe" : "", [mode, incomeKind, expenseKind]);
 
   const mutation = useMutation({
@@ -40,7 +40,7 @@ export function CashbookEntryOrganizer() {
 
       if (mode === "income") {
         if (!incomeKind || !name.trim()) throw new Error("Bitte Kategorie und Name ausfüllen.");
-        const studio = incomeKind === "financial_slave" ? "Zahlsklave" : incomeKind === "custom" ? "Custom Content" : place.trim() || "Externer Termin";
+        const studio = incomeKind === "phone" ? "Telefon-Session" : incomeKind === "financial_slave" ? "Zahlsklave" : incomeKind === "custom" ? "Custom Content" : place.trim() || "Externer Termin";
         const categoryNote = incomeKind === "financial_slave" ? "Zahlsklave" : incomeKind === "custom" ? ["Custom Content", note.trim()].filter(Boolean).join(" · ") : note.trim() || null;
         return createIncome({ data: { studio, datum: date, kunde: name.trim(), anzahlung: parsed, anzahlung_method: method.trim(), anzahlung_datum: date, bar: 0, restzahlung_method: null, restzahlung_datum: null, notiz: categoryNote } });
       }
@@ -75,12 +75,13 @@ export function CashbookEntryOrganizer() {
       </div>
 
       {mode === "income" && <div className="space-y-3 border-t border-champagne/15 pt-3">
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+          <CategoryButton active={incomeKind === "phone"} onClick={() => { setIncomeKind("phone"); reset(); }} icon={<Phone size={14}/>} label="Telefon-Session" />
           <CategoryButton active={incomeKind === "external"} onClick={() => { setIncomeKind("external"); reset(); }} icon={<CalendarDays size={14}/>} label="Externer Termin" />
           <CategoryButton active={incomeKind === "financial_slave"} onClick={() => { setIncomeKind("financial_slave"); reset(); }} icon={<UserRound size={14}/>} label="Zahlsklave" />
           <CategoryButton active={incomeKind === "custom"} onClick={() => { setIncomeKind("custom"); reset(); }} icon={<PencilLine size={14}/>} label="Custom" />
         </div>
-        {incomeKind && <EntryForm mode="income" title={title} date={date} setDate={setDate} name={name} setName={setName} place={place} setPlace={setPlace} value={value} setValue={setValue} method={method} setMethod={setMethod} note={note} setNote={setNote} showPlace={incomeKind === "external"} placeLabel="Studio / Ort" pending={mutation.isPending} error={mutation.error} onSubmit={() => mutation.mutate()} />}
+        {incomeKind && <EntryForm fixedAmounts={incomeKind === "phone" ? [50, 75, 100] : undefined} mode="income" title={title} date={date} setDate={setDate} name={name} setName={setName} place={place} setPlace={setPlace} value={value} setValue={setValue} method={method} setMethod={setMethod} note={note} setNote={setNote} showPlace={incomeKind === "external"} placeLabel="Studio / Ort" pending={mutation.isPending} error={mutation.error} onSubmit={() => mutation.mutate()} />}
       </div>}
 
       {mode === "expense" && <div className="space-y-3 border-t border-champagne/15 pt-3">
@@ -142,11 +143,11 @@ function CategoryButton({ active, onClick, icon, label, expense = false }: { act
   return <button type="button" onClick={onClick} className={`flex min-h-[42px] items-center justify-center gap-1.5 border px-2 py-2 text-[9px] uppercase tracking-[0.06em] ${active ? (expense ? "border-bordeaux/70 bg-bordeaux/10 text-champagne" : "border-champagne bg-champagne/10 text-champagne") : (expense ? "border-bordeaux/25 text-vanilla/60" : "border-champagne/20 text-vanilla/60")}`}>{icon}<span className="leading-tight">{label}</span></button>;
 }
 
-function EntryForm(props: { mode:"income"|"expense"; title:string; date:string; setDate:(v:string)=>void; name:string; setName:(v:string)=>void; place:string; setPlace:(v:string)=>void; value:string; setValue:(v:string)=>void; method:string; setMethod:(v:string)=>void; note:string; setNote:(v:string)=>void; showPlace:boolean; placeLabel:string; showPurpose?:boolean; purpose?:string; setPurpose?:(v:string)=>void; pending:boolean; error:unknown; onSubmit:()=>void }) {
+function EntryForm(props: { fixedAmounts?: number[]; mode:"income"|"expense"; title:string; date:string; setDate:(v:string)=>void; name:string; setName:(v:string)=>void; place:string; setPlace:(v:string)=>void; value:string; setValue:(v:string)=>void; method:string; setMethod:(v:string)=>void; note:string; setNote:(v:string)=>void; showPlace:boolean; placeLabel:string; showPurpose?:boolean; purpose?:string; setPurpose?:(v:string)=>void; pending:boolean; error:unknown; onSubmit:()=>void }) {
   return <form onSubmit={e => { e.preventDefault(); props.onSubmit(); }} className="border border-champagne/15 p-3 space-y-3">
     <div className="font-display text-base text-champagne">{props.title}</div>
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-      <Field label="Betrag (€)"><input required inputMode="decimal" value={props.value} onChange={e=>props.setValue(e.target.value)} placeholder="0,00" className="luxe-input"/></Field>
+      <Field label="Betrag (€)">{props.fixedAmounts ? <select required value={props.value} onChange={e=>props.setValue(e.target.value)} className="luxe-input"><option value="">Betrag auswählen</option>{props.fixedAmounts.map(amount => <option key={amount} value={amount}>{amount} €</option>)}</select> : <input required inputMode="decimal" value={props.value} onChange={e=>props.setValue(e.target.value)} placeholder="0,00" className="luxe-input"/>}</Field>
       <Field label={props.mode === "income" ? "Zahlungsart" : "Bezahlt mit"}><select required value={props.method} onChange={e=>props.setMethod(e.target.value)} className="luxe-input"><option value="">Auswählen</option>{METHODS.map(m=><option key={m}>{m}</option>)}</select></Field>
       <Field label={props.mode === "income" ? "Bezahlt am" : "Datum"}><input required type="date" value={props.date} onChange={e=>props.setDate(e.target.value)} className="luxe-input"/></Field>
       {props.mode === "income" && <Field label="Name"><input required value={props.name} onChange={e=>props.setName(e.target.value)} className="luxe-input"/></Field>}
