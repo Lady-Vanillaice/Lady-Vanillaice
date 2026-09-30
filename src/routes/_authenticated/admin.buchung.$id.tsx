@@ -19,6 +19,7 @@ import {
   previewPersonalMessage,
   retryEmail,
 } from "@/lib/booking.functions";
+import { BookingRestTime } from "@/components/admin/BookingRestTime";
 import { PrivateBookingLocation } from "@/components/admin/PrivateBookingLocation";
 import { PageHeader } from "../../components/site/PageHeader";
 import {
@@ -1534,6 +1535,7 @@ const depositDateMut = useMutation({
                 {scheduleMut.isPending ? "Speichere…" : "Termin speichern"}
               </button>
             </div>
+            <BookingRestTime key={id} bookingId={id} startsAt={booking.requested_start || slot?.starts_at || null} durationMinutes={Number(booking.duration_minutes || 0)} />
             {scheduleMut.error && (
               <p className="mt-3 text-xs text-bordeaux">
                 {(scheduleMut.error as Error).message}
