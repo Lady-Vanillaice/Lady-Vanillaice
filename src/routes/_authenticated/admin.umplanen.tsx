@@ -49,7 +49,7 @@ function AdminUmplanenPage() {
     },
   });
 
-  const rescheduling = (bookingsQ.data ?? []).filter((b) => b.status === "rescheduling");
+  const rescheduling = (bookingsQ.data ?? []).filter((b) => ["rescheduling", "open", "cancelled"].includes(b.status));
   const pending = statusMut.isPending || deleteMut.isPending;
 
   return (
@@ -57,7 +57,7 @@ function AdminUmplanenPage() {
       <PageHeader
         eyebrow="Admin"
         title={<>Zum <em className="font-script gold-text not-italic">Umplanen</em></>}
-        intro="Gäste, die fristgerecht storniert haben — Anzahlung bleibt gültig. Hier kannst du sie kontaktieren und einen neuen Termin vereinbaren."
+        intro="Umplanungen, stornierte Buchungen und Gäste ohne Ersatztermin. Hier findest du ihre Daten und kannst einen neuen Termin vereinbaren."
       />
       <section className="py-16">
         <div className="container-luxe max-w-3xl">
@@ -71,7 +71,7 @@ function AdminUmplanenPage() {
             {bookingsQ.isLoading && <p className="text-vanilla/50 text-sm">Lade…</p>}
             {!bookingsQ.isLoading && rescheduling.length === 0 && (
               <p className="text-vanilla/50 text-sm border border-dashed border-champagne/20 p-6 text-center">
-                Keine offenen Umplanungen.
+                Keine Umplanungen oder Stornierungen vorhanden.
               </p>
             )}
             {rescheduling.map((b) => (
