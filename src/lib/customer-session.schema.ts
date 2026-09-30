@@ -9,6 +9,7 @@ export const customerSessionSchema = z.object({
   }, "Bitte ein gültiges Datum angeben."),
   time: z.string().regex(/^(?:|(?:[01]\d|2[0-3]):[0-5]\d)$/),
   place: z.string().trim().max(300),
+  room: z.string().trim().max(200).default(""),
   activities: z.string().trim().max(6000),
   liked: z.string().trim().max(3000),
   disliked: z.string().trim().max(3000),
