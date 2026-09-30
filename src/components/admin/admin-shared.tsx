@@ -113,7 +113,7 @@ export function BookingStatusBadge({ status }: { status: Booking["status"] }) {
     cancelled: { label: "Storniert", cls: "bg-vanilla/10 text-vanilla/60" },
     rescheduling: { label: "Umplanen", cls: "bg-champagne/25 text-champagne" },
     waiting_deposit: { label: "Wartend · Anzahlung offen", cls: "bg-amber-700/30 text-amber-200" },
-    open: { label: "Offen", cls: "bg-sky-700/30 text-sky-200" },
+    open: { label: "Neuer Termin offen", cls: "bg-sky-700/30 text-sky-200" },
   } as const;
   const s = map[status];
   return <span className={`text-[0.6rem] uppercase tracking-[0.2em] px-2 py-1 ${s.cls}`}>{s.label}</span>;

@@ -24,7 +24,8 @@ function statusBucket(b: Booking): StatusTab | null {
   if ((s === "confirmed" || s === "waiting_deposit") && appointmentIsPast) return "geschlossen";
   if (s === "waiting_deposit") return "wartend";
   if (s === "confirmed") return b.anzahlung_paid || b.deposit_exemption_reason ? null : "wartend";
-  // pending / rescheduling / open: älter als 24h → geschlossen, sonst offen
+  if (s === "open") return "offen";
+  // pending / rescheduling: älter als 24h → geschlossen, sonst offen
   const ageMs = Date.now() - new Date(b.created_at).getTime();
   if (ageMs > 24 * 60 * 60 * 1000) return "geschlossen";
   return "offen";
