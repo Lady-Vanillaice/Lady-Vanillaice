@@ -377,6 +377,7 @@ const depositDateMut = useMutation({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-booking-detail", id] });
       qc.invalidateQueries({ queryKey: ["admin-bookings"] });
+      qc.invalidateQueries({ queryKey: ["cashbook"] });
       alert("Persönliche Nachricht wurde an den Gast versendet.");
     },
     onError: (err) => {
@@ -1078,7 +1079,9 @@ const depositDateMut = useMutation({
               }} className="input-luxe w-full mt-1" /></label>
               <label className="text-sm">Anzahlung (€)<input type="number" min="0" max={paymentTotalInput || undefined} step="0.01" value={anzahlungInput} onChange={e => changeDepositAmount(e.target.value)} className="input-luxe w-full mt-1" /></label>
               <label className="text-sm">Restbetrag (€)<input readOnly value={barInput} className="input-luxe w-full mt-1" /></label>
-              <p className="sm:col-span-3 text-xs text-vanilla/55">Restbetrag = Gesamtpreis minus Anzahlung. Diese Beträge werden beim Senden gespeichert.</p>
+              <p className="sm:col-span-3 text-xs text-vanilla/55">Restbetrag = Gesamtpreis minus Anzahlung. Diese Beträge werden beim Speichern oder Senden ins Kassenbuch übernommen.</p>
+              <button type="button" className="btn-outline-gold sm:col-span-3" disabled={paymentMut.isPending || !paymentTotalInput || Number(anzahlungInput.replace(",", ".")) > Number(paymentTotalInput)} onClick={() => paymentMut.mutate()}>{paymentMut.isPending ? "Speichere…" : paymentSaved ? "✓ Beträge gespeichert" : "Beträge speichern"}</button>
+              {paymentMut.isError && <p role="alert" className="sm:col-span-3 text-sm text-bordeaux">{paymentMut.error.message}</p>}
               {Number(anzahlungInput.replace(",", ".")) > Number(paymentTotalInput) && <p role="alert" className="sm:col-span-3 text-sm text-bordeaux">Die Anzahlung darf den Gesamtpreis nicht überschreiten.</p>}
             </div>}
             {isDuoBooking ? (

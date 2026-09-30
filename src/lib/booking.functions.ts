@@ -678,7 +678,8 @@ export const sendPersonalMessage = createServerFn({ method: "POST" })
     };
     if (typeof data.depositOverride === "number") updatePayload.anzahlung = data.depositOverride;
     if (typeof data.barOverride === "number") updatePayload.bar = data.barOverride;
-    await context.supabase.from("bookings").update(updatePayload).eq("id", data.id);
+    const { error: paymentSaveError } = await context.supabase.from("bookings").update(updatePayload).eq("id", data.id);
+    if (paymentSaveError) throw new Error("Die Beträge konnten nicht gespeichert werden: " + paymentSaveError.message);
 
     const amounts = computePersonalMessageAmounts(booking, {
       deposit: data.depositOverride,
