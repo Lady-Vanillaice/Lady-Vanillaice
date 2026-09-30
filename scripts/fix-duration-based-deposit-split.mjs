@@ -29,40 +29,17 @@ const oldBlock = `  const overrideDeposit = typeof override.deposit === "number"
   }
 `;
 
-const newBlock = `  const overrideDeposit = typeof override.deposit === "number" && override.deposit > 0 ? override.deposit : null;
+const newBlock = `  const overrideDeposit = typeof override.deposit === "number" && override.deposit >= 0 ? override.deposit : null;
   const overrideBar = typeof override.bar === "number" && override.bar >= 0 ? override.bar : null;
-
-  const savedDeposit = Number(booking.anzahlung) > 0 ? Number(booking.anzahlung) : null;
-  const savedBar = Number(booking.bar) >= 0 ? Number(booking.bar) : null;
-
-  const minutes = booking.duration_minutes ?? null;
-  const durationTotal = minutes ? Math.round((minutes / 60) * 300) : null;
-
-  let deposit: number | null = null;
-  let bar: number | null = null;
-
-  if (durationTotal) {
-    // The 50%-Anzahlung is based on the requested session duration.
-    // Keep manually entered values only when they already add up to the correct
-    // duration-based total. This prevents stale values such as 300 + 300 from
-    // turning a 60-minute / 300-Euro session into a 600-Euro session.
-    if (overrideDeposit != null && overrideBar != null && overrideDeposit + overrideBar === durationTotal) {
-      deposit = overrideDeposit;
-      bar = overrideBar;
-    } else if (savedDeposit != null && savedBar != null && savedDeposit + savedBar === durationTotal) {
-      deposit = savedDeposit;
-      bar = savedBar;
-    } else {
-      deposit = Math.round(durationTotal * 0.5);
-      bar = durationTotal - deposit;
-    }
-  } else {
-    // If no duration is available, retain the previous fallback behaviour.
-    deposit = overrideDeposit ?? savedDeposit;
-    bar = overrideBar ?? savedBar;
-    if (deposit != null && bar == null) bar = deposit;
-    else if (bar != null && deposit == null) deposit = bar;
-  }
+  const savedDeposit = booking.anzahlung != null && Number(booking.anzahlung) >= 0 ? Number(booking.anzahlung) : null;
+  const savedBar = booking.bar != null && Number(booking.bar) >= 0 ? Number(booking.bar) : null;
+  const durationTotal = booking.duration_minutes ? Math.round((booking.duration_minutes / 60) * 300) : null;
+  const deposit = overrideDeposit ?? savedDeposit ?? 0;
+  // Explicit amounts represent the agreed price and must never revert to 50 percent.
+  const bar = overrideBar ?? (overrideDeposit != null && durationTotal != null
+    ? Math.round(Math.max(0, durationTotal - deposit) * 100) / 100
+    : savedBar != null && savedBar > 0 ? savedBar
+    : durationTotal != null ? Math.round(Math.max(0, durationTotal - deposit) * 100) / 100 : null);
 `;
 
 if (!source.includes(newBlock)) {
@@ -73,4 +50,4 @@ if (!source.includes(newBlock)) {
 }
 
 writeFileSync(path, source);
-console.log("50% deposit now follows the requested booking duration.");
+console.log("Personal-message deposit preserves agreed amounts and calculates the remainder.");

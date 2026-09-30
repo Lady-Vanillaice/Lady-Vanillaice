@@ -637,7 +637,7 @@ function computePersonalMessageAmounts(
 
   return {
     totalAmount: total ? fmtEuro(total) : undefined,
-    depositAmount: deposit ? fmtEuro(deposit) : undefined,
+    depositAmount: deposit != null ? fmtEuro(deposit) : undefined,
     restAmount: rest != null && rest > 0 ? fmtEuro(rest) : undefined,
   };
 }

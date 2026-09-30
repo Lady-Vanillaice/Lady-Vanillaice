@@ -57,7 +57,7 @@ const Email = ({ guestName, message, depositAmount, totalAmount, restAmount, dur
         <Heading as="h2" style={h2}>Anzahlung – Termin fixieren</Heading>
         <Text style={p}>
           Wenn du mit dem einverstanden bist, was ich dir geschrieben habe, leiste bitte eine
-          Anzahlung von <strong>50 %</strong> des vereinbarten Betrags – erst dann ist dein Termin
+          Anzahlung von <strong>{depositAmount || "dem vereinbarten Betrag"}</strong> – erst dann ist dein Termin
           verbindlich für dich reserviert.
         </Text>
         <Text style={p}>
