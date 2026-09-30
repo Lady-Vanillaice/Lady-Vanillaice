@@ -9,6 +9,7 @@ const today = () => new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Berlin"
 const dateLabel = (date: string) => date ? date.split("-").reverse().join(".") : "Datum nicht hinterlegt";
 const statusLabel: Record<string, string> = { confirmed: "Bestätigt", cancelled: "Abgesagt", rescheduling: "Wird verschoben", pending: "Anfrage", waiting_deposit: "Reserviert", declined: "Abgelehnt" };
 const fields = [
+  ["room", "Raum", 200],
   ["activities", "Ablauf – was haben wir gemacht?", 6000],
   ["liked", "Was kam gut an?", 3000],
   ["disliked", "Was mochte er nicht / welche Grenzen sind wichtig?", 3000],
@@ -18,7 +19,7 @@ const fields = [
 function newEntry(booking?: { id: string; date: string; time: string; place: string }): CustomerSession {
   return { id: booking?.id ?? crypto.randomUUID(), bookingId: booking?.id ?? null,
     date: booking?.date || today(), time: booking?.time || "", place: booking?.place || "",
-    activities: "", liked: "", disliked: "", nextTime: "", notes: "" };
+    room: "", activities: "", liked: "", disliked: "", nextTime: "", notes: "" };
 }
 
 export function CustomerSessionHistory({ email }: { email: string }) {
