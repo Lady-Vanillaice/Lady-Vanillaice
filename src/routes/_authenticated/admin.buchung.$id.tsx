@@ -141,6 +141,7 @@ const [overrideDate, setOverrideDate] = useState("");
   const [studioSaved, setStudioSaved] = useState(false);
 
   // Zahlung
+  const [paymentTotalInput, setPaymentTotalInput] = useState<string>("");
   const [anzahlungInput, setAnzahlungInput] = useState<string>("");
   const [anzahlungMethod, setAnzahlungMethod] = useState<string>("");
   const [barInput, setBarInput] = useState<string>("");
@@ -226,6 +227,7 @@ setDuoPartner(b.availability_slots?.duo_partner ?? "");
         setOverrideTime("");
       }
       setOverrideDuration(b.duration_minutes ? String(b.duration_minutes) : "");
+      setPaymentTotalInput(String((Number(b.anzahlung) + Number(b.bar)) > 0 ? Number(b.anzahlung) + Number(b.bar) : Math.round(Number(b.duration_minutes || 0) / 60 * 300)));
       setAnzahlungInput(b.anzahlung != null ? String(b.anzahlung) : "0");
       setAnzahlungMethod(b.anzahlung_method ?? "");
       setDepositExemptionReason(b.deposit_exemption_reason ?? "");
@@ -404,7 +406,7 @@ const depositDateMut = useMutation({
     }
     const parsedDeposit = Number((anzahlungInput || "").replace(",", "."));
     const parsedBar = Number((barInput || "").replace(",", "."));
-    const depositOverride = Number.isFinite(parsedDeposit) && parsedDeposit > 0 ? parsedDeposit : null;
+    const depositOverride = Number.isFinite(parsedDeposit) && parsedDeposit >= 0 ? parsedDeposit : null;
     const barOverride = Number.isFinite(parsedBar) && parsedBar >= 0 ? parsedBar : null;
 
     const t = setTimeout(async () => {
@@ -552,6 +554,14 @@ const depositDateMut = useMutation({
   const total = minutes ? Math.round((minutes / 60) * 300) : null;
   const deposit = total ? Math.round(total * 0.5) : null;
   const rest = total && deposit ? total - deposit : null;
+
+  function changeDepositAmount(value: string) {
+    setAnzahlungInput(value);
+    setShortSessionPrice("");
+    const amount = Number(value.replace(",", "."));
+    const price = Number(paymentTotalInput);
+    if (Number.isFinite(amount) && Number.isFinite(price)) setBarInput(String(Math.round(Math.max(0, price - amount) * 100) / 100));
+  }
 
   const TABS = [
     { id: "overview" as const, label: "Übersicht" },
@@ -991,7 +1001,7 @@ const depositDateMut = useMutation({
               <div>
                 <span className="text-champagne">1. „Nachricht senden"</span> (unten in diesem Kasten) →
                 der Gast bekommt eine <strong>eigenständige E-Mail</strong> mit deinem Text und
-                Kontaktdaten. Der Hinweis auf die 50 %-Anzahlung wird nur mitgeschickt, wenn du ihn
+                Kontaktdaten. Der Hinweis auf die vereinbarte Anzahlung wird nur mitgeschickt, wenn du ihn
                 unten bewusst aktivierst. Nutze das für lockere Kontaktaufnahme oder Rückfragen.
               </div>
               <div>
@@ -1052,13 +1062,25 @@ const depositDateMut = useMutation({
               />
               <div className="flex-1">
                 <div className="text-[0.75rem] text-vanilla leading-snug">
-                  50-%-Anzahlungshinweis mitsenden
+                  Anzahlungshinweis mit Betrag mitsenden
                 </div>
                 <div className="text-[0.65rem] text-vanilla/55 mt-1 leading-snug">
                   Nur aktivieren, wenn ihr den Termin verbindlich vereinbaren möchtet. Ohne Häkchen enthält die Nachricht keinen Anzahlungshinweis.
                 </div>
               </div>
             </label>
+            {includeDepositInfo && <div className="mt-3 grid sm:grid-cols-3 gap-3 border border-champagne/25 p-3">
+              <label className="text-sm">Gesamtpreis (€)<input type="number" min="0" step="0.01" value={paymentTotalInput} onChange={e => {
+                setPaymentTotalInput(e.target.value);
+                const amount = Number(e.target.value);
+                const paid = Number(anzahlungInput.replace(",", ".")) || 0;
+                setBarInput(String(Math.round(Math.max(0, amount - paid) * 100) / 100));
+              }} className="input-luxe w-full mt-1" /></label>
+              <label className="text-sm">Anzahlung (€)<input type="number" min="0" max={paymentTotalInput || undefined} step="0.01" value={anzahlungInput} onChange={e => changeDepositAmount(e.target.value)} className="input-luxe w-full mt-1" /></label>
+              <label className="text-sm">Restbetrag (€)<input readOnly value={barInput} className="input-luxe w-full mt-1" /></label>
+              <p className="sm:col-span-3 text-xs text-vanilla/55">Restbetrag = Gesamtpreis minus Anzahlung. Diese Beträge werden beim Senden gespeichert.</p>
+              {Number(anzahlungInput.replace(",", ".")) > Number(paymentTotalInput) && <p role="alert" className="sm:col-span-3 text-sm text-bordeaux">Die Anzahlung darf den Gesamtpreis nicht überschreiten.</p>}
+            </div>}
             {isDuoBooking ? (
               <div className="mt-3 border border-champagne/25 bg-anthracite/40 p-3">
                 <label className="flex items-start gap-3 cursor-pointer">
@@ -1129,13 +1151,13 @@ const depositDateMut = useMutation({
               </span>
               <button
                 type="button"
-                disabled={!confirmationNote.trim() || personalMsgMut.isPending}
+                disabled={!confirmationNote.trim() || personalMsgMut.isPending || (includeDepositInfo && (!paymentTotalInput || Number(anzahlungInput.replace(",", ".")) > Number(paymentTotalInput)))}
                 onClick={() => {
                   const msg = confirmationNote.trim();
                   if (!msg) return;
                   if (
                     confirm(
-                      `Persönliche Nachricht jetzt als eigene E-Mail an den Gast senden?\n\nDie E-Mail enthält deinen Text sowie Kontaktmöglichkeiten (E-Mail & WhatsApp)${includeDepositInfo ? " und den Hinweis auf die 50 %-Anzahlung" : ""}.\n\nHinweis: Für „Termin reserviert" oder „Termin final bestätigt" musst du stattdessen die entsprechenden Buttons drücken — dieser Text wird dort automatisch mitgeschickt.`,
+                      `Persönliche Nachricht jetzt als eigene E-Mail an den Gast senden?\n\nDie E-Mail enthält deinen Text sowie Kontaktmöglichkeiten (E-Mail & WhatsApp)${includeDepositInfo ? " und den Hinweis auf die vereinbarte Anzahlung" : ""}.\n\nHinweis: Für „Termin reserviert" oder „Termin final bestätigt" musst du stattdessen die entsprechenden Buttons drücken — dieser Text wird dort automatisch mitgeschickt.`,
                     )
                   ) {
                     const parsedDeposit = Number((anzahlungInput || "").replace(",", "."));
@@ -1143,7 +1165,7 @@ const depositDateMut = useMutation({
                     personalMsgMut.mutate({
                       message: msg,
                       includeDepositInfo,
-                      depositOverride: Number.isFinite(parsedDeposit) && parsedDeposit > 0 ? parsedDeposit : null,
+                      depositOverride: Number.isFinite(parsedDeposit) && parsedDeposit >= 0 ? parsedDeposit : null,
                       barOverride: Number.isFinite(parsedBar) && parsedBar >= 0 ? parsedBar : null,
                       depositPartnerName: depositPartnerEnabled ? depositPartnerName.trim() || null : null,
                       depositPartnerEmail: null,
@@ -1541,6 +1563,7 @@ const depositDateMut = useMutation({
                 type="button"
                 disabled={total == null || deposit == null || rest == null}
                 onClick={() => {
+                  if (total != null) setPaymentTotalInput(String(total));
                   if (deposit != null) setAnzahlungInput(String(deposit));
                   if (rest != null) setBarInput(String(rest));
                 }}
@@ -1559,6 +1582,7 @@ const depositDateMut = useMutation({
                     key={price}
                     type="button"
                     onClick={() => {
+                      setPaymentTotalInput(String(price));
                       setShortSessionPrice(String(price));
                       setAnzahlungInput("0");
                       setBarInput(String(price));
@@ -1613,7 +1637,7 @@ const depositDateMut = useMutation({
                   inputMode="decimal"
                   value={anzahlungInput}
                   disabled={Boolean(depositExemptionReason)}
-                  onChange={(e) => { setAnzahlungInput(e.target.value); setShortSessionPrice(""); }}
+                  onChange={(e) => changeDepositAmount(e.target.value)}
                   placeholder="0"
                   className="input-luxe w-full disabled:opacity-40"
                 />
@@ -1626,7 +1650,7 @@ const depositDateMut = useMutation({
                   type="text"
                   inputMode="decimal"
                   value={barInput}
-                  onChange={(e) => { setBarInput(e.target.value); setShortSessionPrice(""); }}
+                  onChange={(e) => { setBarInput(e.target.value); setPaymentTotalInput(String((Number(anzahlungInput.replace(",", ".")) || 0) + (Number(e.target.value.replace(",", ".")) || 0))); setShortSessionPrice(""); }}
                   placeholder="0"
                   className="input-luxe w-full"
                 />
