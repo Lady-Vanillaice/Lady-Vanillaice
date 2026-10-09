@@ -3,7 +3,6 @@ export const APPOINTMENT_FILTERS = {
   neu: { label: "Neu", empty: "Keine neuen Anfragen." },
   umplanen: { label: "Umplanen", empty: "Keine Termine zum Umplanen." },
   storniert: { label: "Storniert", empty: "Keine stornierten Termine." },
-  bestaetigt: { label: "Bestätigt", empty: "Keine bestätigten Termine." },
   wartend: { label: "Anzahlung offen", empty: "Keine offenen Anzahlungen." },
   abgelehnt: { label: "Abgelehnt", empty: "Keine abgelehnten Anfragen." },
 } as const;
@@ -20,14 +19,13 @@ type InboxBooking = {
 };
 
 export function matchesAppointmentFilter(booking: InboxBooking, filter: AppointmentFilter) {
-  if (filter === "alle") return true;
+  if (filter === "alle") return booking.status !== "confirmed";
   switch (filter) {
     case "neu": return booking.status === "pending";
     case "umplanen": return booking.status === "rescheduling" || booking.status === "open";
     case "storniert": return booking.status === "cancelled";
-    case "bestaetigt": return booking.status === "confirmed";
     case "wartend": return booking.status === "waiting_deposit" ||
-      (booking.status === "confirmed" && !booking.anzahlung_paid && !booking.deposit_exemption_reason);
+      false;
     case "abgelehnt": return booking.status === "declined";
   }
 }

@@ -62,7 +62,7 @@ const HUB_GROUPS: HubGroup[] = [
     { to: "/admin/kalender", title: "Kalender", description: "Termine anlegen, sperren und löschen.", Icon: Calendar },
   ]},
   { label: "Anfragen", hint: "Eingehende Buchungen prüfen und beantworten", cards: [
-    { to: "/admin/termine", title: "Termin-Anfragen", description: "Alle Termine: Neu, Umplanen, Storniert und Bestätigt – mit Namenssuche.", Icon: Mail },
+    { to: "/admin/termine", title: "Termin-Anfragen", description: "Neu, Umplanen und Storniert – mit Namenssuche. Bestätigte Termine stehen im Terminplan.", Icon: Mail },
     { to: "/admin/duo", title: "Duo-Anfragen", description: "Anfragen für Duo Sessions.", Icon: Mail },
     { to: "/admin/contentdreh", title: "Content-Dreh", description: "Anfragen für Content-Dreh-Termine.", Icon: Mail },
     { to: "/admin/custom", title: "Custom", description: "Anfragen für Custom Content (Bilder, Videos).", Icon: Sparkles },

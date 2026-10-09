@@ -53,7 +53,7 @@ const KIND_META: Record<BookingKind, { accent: string; rest: string; intro: stri
   standard: {
     accent: "Termin",
     rest: "Anfragen",
-    intro: "Alle Termine an einem Ort – neue Anfragen, Umplanungen, Stornierungen und bestätigte Termine. Suche einen Namen oder wähle einen Status.",
+    intro: "Neue Anfragen, Umplanungen und Stornierungen an einem Ort. Bestätigte Termine findest du im Terminplan. Suche einen Namen oder wähle einen Status.",
     empty: "Keine Termin-Anfragen.",
   },
   custom: {
@@ -253,7 +253,7 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
                   </button>
                 ))}
               </div>
-              <p className="mb-6 text-xs text-vanilla/55">Mit „Alle“ findest du jeden Termin, auch ältere Anfragen. Klicke auf „Öffnen & bearbeiten“, um Details und Termin zu ändern.</p>
+              <p className="mb-6 text-xs text-vanilla/55">Mit „Alle“ findest du alle offenen, stornierten und umzuplanenden Termine, auch ältere Anfragen. Klicke auf „Öffnen & bearbeiten“, um Details und Termin zu ändern.</p>
             </>
           )}
           {!isInbox && <div className="mb-6 flex flex-wrap gap-2">

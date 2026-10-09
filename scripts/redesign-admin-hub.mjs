@@ -20,7 +20,7 @@ const groups = `const HUB_GROUPS: HubGroup[] = [
     { to: "/admin/kalender", title: "Kalender & Verfügbarkeit", description: "Freie Zeiten, Sperren und neue Slots verwalten.", Icon: Calendar },
   ]},
   { label: "2 · Anfragen & Termine", hint: "Alle eingehenden Buchungsarten an einem Ort", cards: [
-    { to: "/admin/termine", title: "Termin-Anfragen", description: "Alle Termine: Neu, Umplanen, Storniert und Bestätigt – mit Namenssuche.", Icon: Mail },
+    { to: "/admin/termine", title: "Termin-Anfragen", description: "Neu, Umplanen und Storniert – mit Namenssuche. Bestätigte Termine stehen im Terminplan.", Icon: Mail },
     { to: "/admin/duo", title: "Duo-Anfragen", description: "Anfragen für Duo-Sessions.", Icon: Mail },
     { to: "/admin/contentdreh", title: "Content-Dreh-Anfragen", description: "Anfragen für Content-Dreh-Termine.", Icon: Camera },
     { to: "/admin/custom", title: "Custom-Content-Anfragen", description: "Individuelle Custom-Anfragen für Bilder und Videos.", Icon: Sparkles },
