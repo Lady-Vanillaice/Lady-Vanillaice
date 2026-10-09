@@ -18,10 +18,9 @@ const groups = `const HUB_GROUPS: HubGroup[] = [
   { label: "1 · Heute & Planung", hint: "Alles rund um deinen Arbeitstag", cards: [
     { to: "/admin/terminplan", title: "Terminplan", description: "Deine bestätigten Termine – nach Datum und Uhrzeit.", Icon: CalendarClock },
     { to: "/admin/kalender", title: "Kalender & Verfügbarkeit", description: "Freie Zeiten, Sperren und neue Slots verwalten.", Icon: Calendar },
-    { to: "/admin/umplanen", title: "Umplanen & Stornierungen", description: "Termine verschieben und stornierte Buchungen im Blick behalten.", Icon: RotateCcw },
   ]},
-  { label: "2 · Neue Anfragen", hint: "Alle eingehenden Buchungsarten an einem Ort", cards: [
-    { to: "/admin/termine", title: "Normale Terminanfragen", description: "Neue reguläre Buchungsanfragen prüfen und bearbeiten.", Icon: Mail },
+  { label: "2 · Anfragen & Termine", hint: "Alle eingehenden Buchungsarten an einem Ort", cards: [
+    { to: "/admin/termine", title: "Termin-Anfragen", description: "Alle Termine: Neu, Umplanen, Storniert und Bestätigt – mit Namenssuche.", Icon: Mail },
     { to: "/admin/duo", title: "Duo-Anfragen", description: "Anfragen für Duo-Sessions.", Icon: Mail },
     { to: "/admin/contentdreh", title: "Content-Dreh-Anfragen", description: "Anfragen für Content-Dreh-Termine.", Icon: Camera },
     { to: "/admin/custom", title: "Custom-Content-Anfragen", description: "Individuelle Custom-Anfragen für Bilder und Videos.", Icon: Sparkles },
@@ -100,7 +99,7 @@ const hub = `function AdminHubPage() { /* Weitere Admin-Bereiche */
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
             { to: "/admin/terminplan" as const, title: "Terminplan", subtitle: "Was steht an?", Icon: CalendarClock },
-            { to: "/admin/termine" as const, title: "Anfragen", subtitle: "Was ist neu?", Icon: Mail },
+            { to: "/admin/termine" as const, title: "Termin-Anfragen", subtitle: "Neu, Umplanen & Storniert", Icon: Mail },
             { to: "/admin/kunden" as const, title: "Kunden / CRM", subtitle: "Person und Sessions suchen", Icon: Users },
             { to: "/admin/kassenbuch" as const, title: "Kassenbuch", subtitle: "Zahlungen prüfen", Icon: Wallet },
           ].map(({ to, title, subtitle, Icon }) => <Link key={to} to={to} className="group border border-champagne/30 bg-card p-4 sm:p-5 hover:border-champagne/70 transition">

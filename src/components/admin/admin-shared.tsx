@@ -218,6 +218,7 @@ export function BookingCard({
   onDecline,
   onDelete,
   pending,
+  inbox = false,
 }: {
   b: Booking;
   slot?: Slot;
@@ -225,6 +226,7 @@ export function BookingCard({
   onDecline: (reason: DeclineReason) => void;
   onDelete: () => void;
   pending: boolean;
+  inbox?: boolean;
 }) {
   return (
     <div className="bg-card border border-champagne/15 p-5">
@@ -273,29 +275,31 @@ export function BookingCard({
       )}
 
       <div className="flex flex-wrap gap-2">
-        <button
+        {inbox && <Link to="/admin/buchung/$id" params={{ id: b.id }}
+          className="btn-gold !py-2 !px-3 !text-[0.65rem]">Öffnen & bearbeiten</Link>}
+        {!inbox && <button
           disabled={b.status === "confirmed" || pending}
           onClick={onConfirm}
           className="text-[0.65rem] uppercase tracking-[0.2em] px-3 py-2 border border-champagne/40 text-champagne hover:bg-champagne/10 disabled:opacity-30"
         >
           <CheckCircle2 size={12} className="inline mr-1" /> Termin fixieren
-        </button>
-        <DeclineButton
+        </button>}
+        {!inbox && <DeclineButton
           disabled={b.status === "declined" || pending}
           onPick={onDecline}
-        />
-        <Link
+        />}
+        {!inbox && <Link
           to="/admin/buchung/$id"
           params={{ id: b.id }}
           className="text-[0.65rem] uppercase tracking-[0.2em] px-3 py-2 border border-vanilla/30 text-vanilla/75 hover:bg-vanilla/5"
         >
           Details
-        </Link>
-        <InlineDeleteButton
+        </Link>}
+        {!inbox && <InlineDeleteButton
           guestName={b.guest_name}
           pending={pending}
           onConfirm={onDelete}
-        />
+        />}
 
       </div>
 

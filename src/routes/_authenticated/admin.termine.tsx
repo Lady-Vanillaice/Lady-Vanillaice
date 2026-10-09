@@ -9,6 +9,7 @@ import { createCashBookEntry } from "@/lib/cashbook.functions";
 import { updateBookingOnsitePayment } from "@/lib/rest-payment.functions";
 import { PageHeader } from "@/components/site/PageHeader";
 import { BookingCard, type Booking, type Slot } from "@/components/admin/admin-shared";
+import { APPOINTMENT_FILTERS, matchesAppointmentFilter, matchesAppointmentSearch, type AppointmentFilter } from "@/lib/appointment-inbox";
 import { ArrowLeft, Plus, X, CheckCircle2 } from "lucide-react";
 
 type StatusTab = "offen" | "wartend" | "geschlossen";
@@ -52,7 +53,7 @@ const KIND_META: Record<BookingKind, { accent: string; rest: string; intro: stri
   standard: {
     accent: "Termin",
     rest: "Anfragen",
-    intro: "Alle regulären Buchungsanfragen aus dem Kalender.",
+    intro: "Alle Termine an einem Ort – neue Anfragen, Umplanungen, Stornierungen und bestätigte Termine. Suche einen Namen oder wähle einen Status.",
     empty: "Keine Termin-Anfragen.",
   },
   custom: {
@@ -82,7 +83,7 @@ function matchKind(b: Booking, kind: BookingKind): boolean {
   if (kind === "custom") return isCustom;
   if (kind === "contentdreh") return isContentdreh;
   if (kind === "duo") return isDuo;
-  return !isCustom && !isContentdreh && !isDuo;
+  return !isCustom;
 }
 
 export function BookingsList({ kind }: { kind: BookingKind }) {
@@ -191,13 +192,23 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
   const [fixing, setFixing] = useState<Booking | null>(null);
 
   const [tab, setTab] = useState<StatusTab>("offen");
+  const [appointmentFilter, setAppointmentFilter] = useState<AppointmentFilter>("alle");
+  const [search, setSearch] = useState("");
+  const isInbox = kind === "standard";
   const kindFiltered = (bookingsQ.data ?? []).filter((b) => matchKind(b, kind));
   const counts: Record<StatusTab, number> = { offen: 0, wartend: 0, geschlossen: 0 };
   for (const b of kindFiltered) {
     const bucket = statusBucket(b);
     if (bucket) counts[bucket]++;
   }
-  const filtered = kindFiltered.filter((b) => statusBucket(b) === tab);
+  const searched = kindFiltered.filter((b) => matchesAppointmentSearch(b, search));
+  const inboxCounts = Object.fromEntries(
+    (Object.keys(APPOINTMENT_FILTERS) as AppointmentFilter[]).map((filter) =>
+      [filter, searched.filter((b) => matchesAppointmentFilter(b, filter)).length]),
+  ) as Record<AppointmentFilter, number>;
+  const filtered = isInbox
+    ? searched.filter((b) => matchesAppointmentFilter(b, appointmentFilter))
+    : kindFiltered.filter((b) => statusBucket(b) === tab);
   const meta = KIND_META[kind];
 
   return (
@@ -226,7 +237,26 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
             />
           )}
 
-          <div className="mb-6 flex flex-wrap gap-2">
+          {isInbox && (
+            <>
+              <label className="block mb-4">
+                <span className="eyebrow block mb-2">Termin oder Kunde suchen</span>
+                <input type="search" value={search} onChange={(event) => setSearch(event.target.value)}
+                  className="input-luxe w-full" placeholder="Name, E-Mail oder Telefon …" />
+              </label>
+              <div className="mb-4 flex flex-wrap gap-2" aria-label="Termine nach Status filtern">
+                {(Object.keys(APPOINTMENT_FILTERS) as AppointmentFilter[]).map((filter) => (
+                  <button key={filter} type="button" aria-pressed={appointmentFilter === filter}
+                    onClick={() => setAppointmentFilter(filter)}
+                    className={appointmentFilter === filter ? "btn-gold !py-2 !px-4 !text-[0.65rem]" : "btn-outline-gold !py-2 !px-4 !text-[0.65rem]"}>
+                    {APPOINTMENT_FILTERS[filter].label} ({inboxCounts[filter]})
+                  </button>
+                ))}
+              </div>
+              <p className="mb-6 text-xs text-vanilla/55">Mit „Alle“ findest du jeden Termin, auch ältere Anfragen. Klicke auf „Öffnen & bearbeiten“, um Details und Termin zu ändern.</p>
+            </>
+          )}
+          {!isInbox && <div className="mb-6 flex flex-wrap gap-2">
             {(Object.keys(TAB_META) as StatusTab[]).map((t) => {
               const active = t === tab;
               return (
@@ -244,13 +274,15 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
                 </button>
               );
             })}
-          </div>
+          </div>}
 
+          {bookingsQ.isError && <p role="alert" className="mb-4 text-sm text-bordeaux">Termine konnten nicht geladen werden. <button type="button" onClick={() => bookingsQ.refetch()} className="underline">Erneut versuchen</button></p>}
+          {(statusMut.isError || deleteBookingMut.isError) && <p role="alert" className="mb-4 text-sm text-bordeaux">{(statusMut.error ?? deleteBookingMut.error)?.message}</p>}
           <div className="space-y-3">
             {bookingsQ.isLoading && <p className="text-vanilla/50 text-sm">Lade…</p>}
-            {!bookingsQ.isLoading && filtered.length === 0 && (
+            {!bookingsQ.isLoading && !bookingsQ.isError && filtered.length === 0 && (
               <p className="text-vanilla/50 text-sm border border-dashed border-champagne/20 p-6 text-center">
-                {TAB_META[tab].empty}
+                {isInbox ? (search.trim() ? "Keine passenden Termine gefunden. Wähle „Alle“ oder ändere die Suche." : APPOINTMENT_FILTERS[appointmentFilter].empty) : TAB_META[tab].empty}
               </p>
             )}
             {filtered.map((b) => {
@@ -259,6 +291,7 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
                 <BookingCard
                   key={b.id}
                   b={b}
+                  inbox={isInbox}
                   slot={slot}
                   pending={statusMut.isPending || deleteBookingMut.isPending}
                   onConfirm={() => setFixing(b)}

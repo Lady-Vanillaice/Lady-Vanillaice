@@ -60,10 +60,9 @@ const HUB_GROUPS: HubGroup[] = [
   { label: "Termine & Kalender", hint: "Tagesgeschäft — Planung und Übersicht", cards: [
     { to: "/admin/terminplan", title: "Mein Terminplan", description: "Alle bestätigten Termine chronologisch nach Uhrzeit.", Icon: CalendarClock },
     { to: "/admin/kalender", title: "Kalender", description: "Termine anlegen, sperren und löschen.", Icon: Calendar },
-    { to: "/admin/umplanen", title: "Storniert · Umplanen", description: "Fristgerecht stornierte Gäste — Anzahlung bleibt gültig.", Icon: RotateCcw },
   ]},
   { label: "Anfragen", hint: "Eingehende Buchungen prüfen und beantworten", cards: [
-    { to: "/admin/termine", title: "Termin-Anfragen", description: "Reguläre Buchungsanfragen aus dem Kalender.", Icon: Mail },
+    { to: "/admin/termine", title: "Termin-Anfragen", description: "Alle Termine: Neu, Umplanen, Storniert und Bestätigt – mit Namenssuche.", Icon: Mail },
     { to: "/admin/duo", title: "Duo-Anfragen", description: "Anfragen für Duo Sessions.", Icon: Mail },
     { to: "/admin/contentdreh", title: "Content-Dreh", description: "Anfragen für Content-Dreh-Termine.", Icon: Mail },
     { to: "/admin/custom", title: "Custom", description: "Anfragen für Custom Content (Bilder, Videos).", Icon: Sparkles },
@@ -122,8 +121,8 @@ function AdminHubPage() {
           </Link>
           <Link to="/admin/termine" className="group bg-card border border-champagne/25 p-4 hover:border-champagne/60 transition">
             <Mail size={19} className="text-champagne mb-2" />
-            <div className="font-display text-lg text-vanilla group-hover:text-champagne transition">Anfragen</div>
-            <div className="text-xs text-vanilla/45 mt-1">Neue Anfragen prüfen</div>
+            <div className="font-display text-lg text-vanilla group-hover:text-champagne transition">Termin-Anfragen</div>
+            <div className="text-xs text-vanilla/45 mt-1">Neu, Umplanen & Storniert</div>
           </Link>
           <Link to="/admin/kassenbuch" className="group bg-card border border-champagne/25 p-4 hover:border-champagne/60 transition">
             <Wallet size={19} className="text-champagne mb-2" />
