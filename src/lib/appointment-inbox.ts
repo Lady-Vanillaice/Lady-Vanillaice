@@ -24,8 +24,7 @@ export function matchesAppointmentFilter(booking: InboxBooking, filter: Appointm
     case "neu": return booking.status === "pending";
     case "umplanen": return booking.status === "rescheduling" || booking.status === "open";
     case "storniert": return booking.status === "cancelled";
-    case "wartend": return booking.status === "waiting_deposit" ||
-      false;
+    case "wartend": return booking.status === "waiting_deposit";
     case "abgelehnt": return booking.status === "declined";
   }
 }
