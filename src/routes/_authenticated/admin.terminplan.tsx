@@ -38,6 +38,7 @@ type Entry = {
   deposit_exemption_reason: string | null;
   anzahlung: number | null;
   bar: number | null;
+  is_liegezeit_only: boolean;
 };
 
 function hasNoDeposit(entry: Pick<Entry, "deposit_exemption_reason" | "anzahlung" | "bar">) {
@@ -93,8 +94,13 @@ function TerminplanPage() {
             } | null);
         const start = b.requested_start ?? slot?.starts_at ?? null;
         if (!start) return null;
-        const end = b.duration_minutes
-          ? new Date(new Date(start).getTime() + b.duration_minutes * 60_000).toISOString()
+        const isLiegezeitOnly = b.duration?.startsWith("Nur Liegezeit") ?? false;
+        const liegezeitMinutes = isLiegezeitOnly
+          ? Number(b.duration?.match(/(\d+) Minuten/)?.[1] ?? 0)
+          : null;
+        const durationMinutes = b.duration_minutes ?? (liegezeitMinutes || null);
+        const end = durationMinutes
+          ? new Date(new Date(start).getTime() + durationMinutes * 60_000).toISOString()
           : (slot?.ends_at ?? null);
         return {
           id: b.id,
@@ -104,7 +110,8 @@ function TerminplanPage() {
           guest_email: b.guest_email,
           guest_phone: b.guest_phone,
           duration: b.duration,
-          duration_minutes: b.duration_minutes,
+          duration_minutes: durationMinutes,
+          is_liegezeit_only: isLiegezeitOnly,
           location: b.studio_override?.trim() || slot?.location || null,
           location_address: b.studio_address_override?.trim() || slot?.location_address || null,
           is_duo: slot?.is_duo ?? false,
@@ -341,13 +348,15 @@ function DayPlanDownloadButton({ day, items }: { day: Date; items: Entry[] }) {
       const duration = entry.duration_minutes
         ? `${entry.duration_minutes} Min. · ${(entry.duration_minutes / 60).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Std.`
         : entry.duration || "—";
-      const appointmentType = entry.is_duo
-        ? `DUO · ${entry.duo_partner?.trim() || "Partnerin"}`
-        : entry.duration === "Custom Content"
-          ? "CUSTOM CONTENT"
-          : entry.is_content_shoot
-            ? "CONTENT"
-          : "SINGLE";
+      const appointmentType = entry.is_liegezeit_only
+        ? "LIEGEZEIT · KEINE SESSION"
+        : entry.is_duo
+          ? `DUO · ${entry.duo_partner?.trim() || "Partnerin"}`
+          : entry.duration === "Custom Content"
+            ? "CUSTOM CONTENT"
+            : entry.is_content_shoot
+              ? "CONTENT"
+              : "SINGLE";
 
       ctx.fillStyle = card;
       ctx.fillRect(side + 28, y, contentWidth - 56, rowHeight - 18);
@@ -452,6 +461,7 @@ function EntryCard({ e }: { e: Entry }) {
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-medium text-lg text-vanilla">{e.guest_name}</span>
+          {e.is_liegezeit_only ? <span className="border border-champagne bg-champagne/15 px-2 py-1 text-[0.6rem] font-bold uppercase tracking-[0.18em] text-champagne">Liegezeit · keine Session</span> : null}
           <span
             className={`text-[0.5rem] uppercase tracking-[0.16em] px-1.5 py-0.5 ${
               e.anzahlung_paid || hasNoDeposit(e)
@@ -464,11 +474,11 @@ function EntryCard({ e }: { e: Entry }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.14em] text-champagne">
-          <span>
+          {!e.is_liegezeit_only ? <span>
             {e.is_duo
               ? `Duo – mit ${e.duo_partner?.trim() || "Partnerin"}`
               : "Single"}
-          </span>
+          </span> : null}
           {e.is_content_shoot ? (
             <span className="border border-champagne/30 px-1.5 py-0.5 text-vanilla/80">
               {e.duration === "Custom Content" ? "Custom Content" : "Content"}

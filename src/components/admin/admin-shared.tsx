@@ -592,14 +592,15 @@ export function ManualBookingForm({
   const [healthNotes, setHealthNotes] = useState("");
   const [bookingType, setBookingType] =
     useState<"single" | "duo" | "content">("single");
-  const [liegezeitOnly, setLiegezeitOnly] = useState(false);
+  const [entryMode, setEntryMode] = useState<"session" | "liegezeit" | "session_liegezeit">("session");
+  const liegezeitOnly = entryMode === "liegezeit";
+  const hasLiegezeit = entryMode === "session_liegezeit";
   const [duoPartner, setDuoPartner] = useState("");
   const [totalAmount, setTotalAmount] = useState("");
   const [depositAmount, setDepositAmount] = useState("");
   const [shortSessionPrice, setShortSessionPrice] = useState("");
   const [onsiteMethod, setOnsiteMethod] = useState("Bar");
-  const [hasLiegezeit, setHasLiegezeit] = useState(false);
-  const [liegezeitDuration, setLiegezeitDuration] = useState("60");
+remove boolean state  const [liegezeitDuration, setLiegezeitDuration] = useState("60");
   const [liegezeitType, setLiegezeitType] = useState<"beaufsichtigt" | "unbeaufsichtigt">("unbeaufsichtigt");
   const [liegezeitSurcharge, setLiegezeitSurcharge] = useState("");
   const [depositExemptionReason, setDepositExemptionReason] = useState<ManualBookingValues["deposit_exemption_reason"]>(null);
@@ -667,7 +668,7 @@ export function ManualBookingForm({
     const sessionPrice = liegezeitOnly ? 0 : Number(totalAmount.replace(",", "."));
     const surcharge = hasLiegezeit || liegezeitOnly ? Number(liegezeitSurcharge.replace(",", ".")) : 0;
     const total = liegezeitOnly ? surcharge : sessionPrice + surcharge;
-    const deposit = liegezeitOnly ? 0 : Number(depositAmount.replace(",", "."));
+    const deposit = Number(depositAmount.replace(",", "."));
     const liegezeitMinutes = Number(liegezeitDuration);
     if (!liegezeitOnly && (!Number.isFinite(sessionPrice) || sessionPrice <= 0)) {
       setErr("Bitte den Sessionpreis eintragen.");
@@ -681,11 +682,11 @@ export function ManualBookingForm({
       setErr("Bitte einen gültigen Liegezeit-Aufschlag eintragen.");
       return;
     }
-    if (!liegezeitOnly && !depositExemptionReason && (!Number.isFinite(deposit) || deposit <= 0 || deposit > total)) {
+    if (!depositExemptionReason && (!Number.isFinite(deposit) || deposit <= 0 || deposit > total)) {
       setErr("Die erhaltene Anzahlung muss größer als 0 € und höchstens so hoch wie der Gesamtpreis sein.");
       return;
     }
-    if (!liegezeitOnly && !depositExemptionReason && (!depositMethod.trim() || !depositPaidAt)) {
+    if (!depositExemptionReason && (!depositMethod.trim() || !depositPaidAt)) {
       setErr("Bitte Zahlungsart und Eingangsdatum der Anzahlung angeben.");
       return;
     }
@@ -730,8 +731,8 @@ export function ManualBookingForm({
         deposit_method: depositMethod.trim(),
         deposit_paid_at: depositExemptionReason ? null : depositPaidAt,
         deposit_exemption_reason: depositExemptionReason,
-        onsite_method: liegezeitOnly ? null : onsiteMethod.trim() || null,
-        onsite_paid_at: liegezeitOnly ? null : onsitePaidAt || null,
+        onsite_method: onsiteMethod.trim() || null,
+        onsite_paid_at: onsitePaidAt || null,
         liegezeit_only: liegezeitOnly,
         liegezeit_duration_minutes: liegezeitOnly ? liegezeitMinutes : null,
         liegezeit_type: liegezeitOnly ? liegezeitType : null,
@@ -750,13 +751,13 @@ export function ManualBookingForm({
       setTaboos("");
       setHealthNotes("");
       setBookingType("single");
-      setLiegezeitOnly(false);
+      setEntryMode("session");
       setDuoPartner("");
       setTotalAmount("");
       setDepositAmount("");
       setShortSessionPrice("");
       setOnsiteMethod("Bar");
-      setHasLiegezeit(false);
+
       setLiegezeitDuration("60");
       setLiegezeitType("unbeaufsichtigt");
       setLiegezeitSurcharge("");
@@ -777,9 +778,10 @@ export function ManualBookingForm({
 
       <div>
         <label className="eyebrow block mb-2">Was möchtest du eintragen?</label>
-        <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => setLiegezeitOnly(false)} className={!liegezeitOnly ? "btn-gold !py-2 !px-3 !text-[0.65rem]" : "btn-outline-gold !py-2 !px-3 !text-[0.65rem]"}>Session</button>
-          <button type="button" onClick={() => setLiegezeitOnly(true)} className={liegezeitOnly ? "btn-gold !py-2 !px-3 !text-[0.65rem]" : "btn-outline-gold !py-2 !px-3 !text-[0.65rem]"}>Nur Liegezeit</button>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <button type="button" onClick={() => setEntryMode("session")} className={entryMode === "session" ? "btn-gold !py-2 !px-3 !text-[0.65rem]" : "btn-outline-gold !py-2 !px-3 !text-[0.65rem]"}>Nur Session</button>
+          <button type="button" onClick={() => setEntryMode("liegezeit")} className={entryMode === "liegezeit" ? "btn-gold !py-2 !px-3 !text-[0.65rem]" : "btn-outline-gold !py-2 !px-3 !text-[0.65rem]"}>Nur Liegezeit</button>
+          <button type="button" onClick={() => setEntryMode("session_liegezeit")} className={entryMode === "session_liegezeit" ? "btn-gold !py-2 !px-3 !text-[0.65rem]" : "btn-outline-gold !py-2 !px-3 !text-[0.65rem]"}>Session + Liegezeit</button>
         </div>
         {liegezeitOnly && <p className="mt-2 text-xs text-vanilla/55">Die Liegezeit kann parallel zu anderen Sessions eingetragen werden.</p>}
       </div>
@@ -1074,6 +1076,15 @@ export function ManualBookingForm({
         <div><label className="eyebrow block mb-1">Art</label><select value={liegezeitType} onChange={(e) => setLiegezeitType(e.target.value as "beaufsichtigt" | "unbeaufsichtigt")} className="input-luxe !py-2"><option value="unbeaufsichtigt">Unbeaufsichtigt</option><option value="beaufsichtigt">Beaufsichtigt</option></select></div>
         <div><label className="eyebrow block mb-1">Liegezeit-Preis (€)</label><div className="grid grid-cols-4 gap-2 mb-2">{[100, 150, 200, 250].map((amount) => <button key={amount} type="button" onClick={() => setLiegezeitSurcharge(String(amount))} className={liegezeitSurcharge === String(amount) ? "btn-gold !py-2 !px-2 !text-[0.65rem]" : "btn-outline-gold !py-2 !px-2 !text-[0.65rem]"}>{amount} €</button>)}</div><input type="number" min={0} step={10} value={liegezeitSurcharge} onChange={(e) => setLiegezeitSurcharge(e.target.value)} className="input-luxe !py-2" placeholder="Preis, 0 € falls kostenlos" /></div>
         <p className="text-xs text-vanilla/65">Preis: {(Number(liegezeitSurcharge.replace(",", ".")) || 0).toLocaleString("de-DE", { style: "currency", currency: "EUR" })}</p>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div><label className="eyebrow block mb-1">Anzahlungsregel</label><select value={depositExemptionReason ?? ""} onChange={(e) => { const value = e.target.value as ManualBookingValues["deposit_exemption_reason"] | ""; setDepositExemptionReason(value || null); if (value) setDepositAmount("0"); }} className="input-luxe !py-2"><option value="">Normale Anzahlung</option><option value="regular_customer">Keine Anzahlung – Stammkunde</option><option value="trust">Keine Anzahlung – Vertrauensbasis</option><option value="exception">Keine Anzahlung – Ausnahme</option><option value="colleague_guarantees">Keine Anzahlung – Kollegin bürgt</option><option value="spontaneous">Keine Anzahlung – Spontaner Termin</option></select></div>
+          <div className={depositExemptionReason === "spontaneous" ? "hidden" : ""}><label className="eyebrow block mb-1">Anzahlung Betrag (€)</label><input required={!depositExemptionReason} disabled={Boolean(depositExemptionReason)} inputMode="decimal" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} placeholder="z. B. 150" className="input-luxe !py-2 disabled:opacity-40" /></div>
+          <div className={depositExemptionReason === "spontaneous" ? "hidden" : ""}><label className="eyebrow block mb-1">Anzahlungsmethode</label><select disabled={Boolean(depositExemptionReason)} value={depositMethod} onChange={(e) => setDepositMethod(e.target.value)} className="input-luxe !py-2 disabled:opacity-40"><option>Überweisung</option><option>PayPal</option><option>Bar</option><option>Karte</option><option>Sonstige</option></select></div>
+          <div className={depositExemptionReason === "spontaneous" ? "hidden" : ""}><label className="eyebrow block mb-1">Anzahlung erhalten am</label><input required={!depositExemptionReason} disabled={Boolean(depositExemptionReason)} type="date" value={depositPaidAt} onChange={(e) => setDepositPaidAt(e.target.value)} className="input-luxe !py-2 disabled:opacity-40" /></div>
+          <div><label className="eyebrow block mb-1">Vor Ort Betrag (€)</label><div className="input-luxe !py-2 opacity-80">{Math.max(0, total - (depositExemptionReason ? 0 : deposit)).toLocaleString("de-DE")} €</div></div>
+          <div><label className="eyebrow block mb-1">Vor Ort erhalten am</label><input type="date" value={onsitePaidAt} onChange={(e) => setOnsitePaidAt(e.target.value)} className="input-luxe !py-2" /></div>
+          <div><label className="eyebrow block mb-1">Vor Ort Zahlungsmethode</label><select value={onsiteMethod} onChange={(e) => setOnsiteMethod(e.target.value)} className="input-luxe !py-2"><option>Bar</option><option>PayPal</option><option>Überweisung</option><option>Karte</option><option>Sonstige</option></select></div>
+        </div>
       </div>
       ) : (
       <div className="border border-champagne/25 bg-champagne/[0.04] p-4 space-y-3">
@@ -1088,8 +1099,7 @@ export function ManualBookingForm({
           {/* LIEGEZEIT_BOOKING_FEATURE */}
       <div className="border border-champagne/25 bg-champagne/[0.03] p-4 space-y-3">
         <label className="flex items-start gap-3 text-xs text-vanilla/75 cursor-pointer">
-          <input type="checkbox" checked={hasLiegezeit} onChange={(e) => setHasLiegezeit(e.target.checked)} className="mt-0.5 accent-[var(--color-champagne)]" />
-          <span><strong className="text-champagne">Liegezeit</strong> innerhalb der gebuchten Session hinzufügen</span>
+          <span><strong className="text-champagne">Liegezeit</strong> zusätzlich zur Session</span>
         </label>
         {hasLiegezeit && (
           <div className="space-y-3 border-t border-champagne/15 pt-3">
