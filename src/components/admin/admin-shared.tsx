@@ -557,6 +557,9 @@ export type ManualBookingValues = {
   deposit_exemption_reason: "regular_customer" | "trust" | "exception" | "colleague_guarantees" | "spontaneous" | null;
   onsite_method: string | null;
   onsite_paid_at: string | null;
+  liegezeit_only: boolean;
+  liegezeit_duration_minutes: number | null;
+  liegezeit_type: "beaufsichtigt" | "unbeaufsichtigt" | null;
 };
 
 export function ManualBookingForm({
@@ -589,6 +592,7 @@ export function ManualBookingForm({
   const [healthNotes, setHealthNotes] = useState("");
   const [bookingType, setBookingType] =
     useState<"single" | "duo" | "content">("single");
+  const [liegezeitOnly, setLiegezeitOnly] = useState(false);
   const [duoPartner, setDuoPartner] = useState("");
   const [totalAmount, setTotalAmount] = useState("");
   const [depositAmount, setDepositAmount] = useState("");
@@ -650,39 +654,46 @@ export function ManualBookingForm({
       return;
     }
 
-    if (bookingType === "duo" && !duoPartner.trim()) {
+    if (!liegezeitOnly && bookingType === "duo" && !duoPartner.trim()) {
       setErr("Bitte die Duo-Partnerin angeben.");
       return;
     }
 
-    if (bookingType === "single" && calendarDayType === "duo" && !calendarDuoPartner.trim()) {
+    if (!liegezeitOnly && bookingType === "single" && calendarDayType === "duo" && !calendarDuoPartner.trim()) {
       setErr("Bitte die Duo-Partnerin für den Duo-Tag angeben.");
       return;
     }
 
-    const sessionPrice = Number(totalAmount.replace(",", "."));
-    const surcharge = hasLiegezeit ? Number(liegezeitSurcharge.replace(",", ".")) : 0;
-    const total = sessionPrice + surcharge;
-    const deposit = Number(depositAmount.replace(",", "."));
-    if (!Number.isFinite(sessionPrice) || sessionPrice <= 0) {
+    const sessionPrice = liegezeitOnly ? 0 : Number(totalAmount.replace(",", "."));
+    const surcharge = hasLiegezeit || liegezeitOnly ? Number(liegezeitSurcharge.replace(",", ".")) : 0;
+    const total = liegezeitOnly ? surcharge : sessionPrice + surcharge;
+    const deposit = liegezeitOnly ? 0 : Number(depositAmount.replace(",", "."));
+    const liegezeitMinutes = Number(liegezeitDuration);
+    if (!liegezeitOnly && (!Number.isFinite(sessionPrice) || sessionPrice <= 0)) {
       setErr("Bitte den Sessionpreis eintragen.");
       return;
     }
-    if (hasLiegezeit && (!Number.isFinite(surcharge) || surcharge < 0)) {
+    if (liegezeitOnly && (!Number.isInteger(liegezeitMinutes) || liegezeitMinutes < 15 || liegezeitMinutes > 1440)) {
+      setErr("Bitte eine Liegezeit zwischen 15 Minuten und 24 Stunden eintragen.");
+      return;
+    }
+    if ((hasLiegezeit || liegezeitOnly) && (!Number.isFinite(surcharge) || surcharge < 0)) {
       setErr("Bitte einen gültigen Liegezeit-Aufschlag eintragen.");
       return;
     }
-    if (!depositExemptionReason && (!Number.isFinite(deposit) || deposit <= 0 || deposit > total)) {
+    if (!liegezeitOnly && !depositExemptionReason && (!Number.isFinite(deposit) || deposit <= 0 || deposit > total)) {
       setErr("Die erhaltene Anzahlung muss größer als 0 € und höchstens so hoch wie der Gesamtpreis sein.");
       return;
     }
-    if (!depositExemptionReason && (!depositMethod.trim() || !depositPaidAt)) {
+    if (!liegezeitOnly && !depositExemptionReason && (!depositMethod.trim() || !depositPaidAt)) {
       setErr("Bitte Zahlungsart und Eingangsdatum der Anzahlung angeben.");
       return;
     }
 
     const starts_at = berlinWallTimeToDate(date, start);
-    const ends_at = berlinWallTimeToDate(date, end, end <= start);
+    const ends_at = liegezeitOnly
+      ? new Date(starts_at.getTime() + liegezeitMinutes * 60_000)
+      : berlinWallTimeToDate(date, end, end <= start);
 
     const fullLocation = room.trim()
       ? `${location} — Raum ${room.trim()}`
@@ -719,8 +730,11 @@ export function ManualBookingForm({
         deposit_method: depositMethod.trim(),
         deposit_paid_at: depositExemptionReason ? null : depositPaidAt,
         deposit_exemption_reason: depositExemptionReason,
-        onsite_method: onsiteMethod.trim() || null,
-        onsite_paid_at: onsitePaidAt || null,
+        onsite_method: liegezeitOnly ? null : onsiteMethod.trim() || null,
+        onsite_paid_at: liegezeitOnly ? null : onsitePaidAt || null,
+        liegezeit_only: liegezeitOnly,
+        liegezeit_duration_minutes: liegezeitOnly ? liegezeitMinutes : null,
+        liegezeit_type: liegezeitOnly ? liegezeitType : null,
       });
 
       setOk(true);
@@ -736,6 +750,7 @@ export function ManualBookingForm({
       setTaboos("");
       setHealthNotes("");
       setBookingType("single");
+      setLiegezeitOnly(false);
       setDuoPartner("");
       setTotalAmount("");
       setDepositAmount("");
@@ -757,13 +772,20 @@ export function ManualBookingForm({
   return (
     <form onSubmit={submit} className="space-y-3">
       <p className="text-[0.7rem] text-vanilla/55 leading-relaxed">
-        Trag hier Termine ein, die du außerhalb der Website, zum Beispiel über
-        Telegram oder E-Mail, vereinbart hast. Die Zeit wird sofort im Kalender
-        gesperrt – keine Doppelbuchungen.
+        Externe Sessions werden im Kalender gesperrt. Ein Eintrag „Nur Liegezeit“ wird dokumentiert, ohne Session-Zeit zu reservieren.
       </p>
 
-      <div className="grid grid-cols-3 gap-3">
-        <div className="col-span-3 sm:col-span-1">
+      <div>
+        <label className="eyebrow block mb-2">Was möchtest du eintragen?</label>
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" onClick={() => setLiegezeitOnly(false)} className={!liegezeitOnly ? "btn-gold !py-2 !px-3 !text-[0.65rem]" : "btn-outline-gold !py-2 !px-3 !text-[0.65rem]"}>Session</button>
+          <button type="button" onClick={() => setLiegezeitOnly(true)} className={liegezeitOnly ? "btn-gold !py-2 !px-3 !text-[0.65rem]" : "btn-outline-gold !py-2 !px-3 !text-[0.65rem]"}>Nur Liegezeit</button>
+        </div>
+        {liegezeitOnly && <p className="mt-2 text-xs text-vanilla/55">Die Liegezeit kann parallel zu anderen Sessions eingetragen werden.</p>}
+      </div>
+
+      <div className={liegezeitOnly ? "grid grid-cols-2 gap-3" : "grid grid-cols-3 gap-3"}>
+        <div className={liegezeitOnly ? "" : "col-span-3 sm:col-span-1"}>
           <label className="eyebrow block mb-1">Datum</label>
           <input
             type="date"
@@ -785,16 +807,17 @@ export function ManualBookingForm({
           />
         </div>
 
-        <div>
-          <label className="eyebrow block mb-1">Bis</label>
-          <input
-            type="time"
-            required
-            value={end}
-            onChange={(e) => setEnd(e.target.value)}
-            className="input-luxe !py-2"
-          />
-        </div>
+        {liegezeitOnly ? (
+          <div>
+            <label className="eyebrow block mb-1">Dauer (Minuten)</label>
+            <input type="number" min={15} max={1440} step={15} required value={liegezeitDuration} onChange={(e) => setLiegezeitDuration(e.target.value)} className="input-luxe !py-2" />
+          </div>
+        ) : (
+          <div>
+            <label className="eyebrow block mb-1">Bis</label>
+            <input type="time" required value={end} onChange={(e) => setEnd(e.target.value)} className="input-luxe !py-2" />
+          </div>
+        )}
       </div>
 
       <div>
@@ -818,6 +841,8 @@ export function ManualBookingForm({
         />
       </div>
 
+      {!liegezeitOnly && (
+        <>
       <div>
         <label className="eyebrow block mb-2">Terminart</label>
 
@@ -916,6 +941,9 @@ export function ManualBookingForm({
             required
           />
         </div>
+      )}
+
+        </>
       )}
 
       <div className="grid sm:grid-cols-2 gap-3">
@@ -1040,6 +1068,14 @@ export function ManualBookingForm({
         />
       </div>
 
+      {liegezeitOnly ? (
+      <div className="border border-champagne/25 bg-champagne/[0.04] p-4 space-y-3">
+        <div className="eyebrow text-champagne">Liegezeit ohne Session</div>
+        <div><label className="eyebrow block mb-1">Art</label><select value={liegezeitType} onChange={(e) => setLiegezeitType(e.target.value as "beaufsichtigt" | "unbeaufsichtigt")} className="input-luxe !py-2"><option value="unbeaufsichtigt">Unbeaufsichtigt</option><option value="beaufsichtigt">Beaufsichtigt</option></select></div>
+        <div><label className="eyebrow block mb-1">Liegezeit-Preis (€)</label><div className="grid grid-cols-4 gap-2 mb-2">{[100, 150, 200, 250].map((amount) => <button key={amount} type="button" onClick={() => setLiegezeitSurcharge(String(amount))} className={liegezeitSurcharge === String(amount) ? "btn-gold !py-2 !px-2 !text-[0.65rem]" : "btn-outline-gold !py-2 !px-2 !text-[0.65rem]"}>{amount} €</button>)}</div><input type="number" min={0} step={10} value={liegezeitSurcharge} onChange={(e) => setLiegezeitSurcharge(e.target.value)} className="input-luxe !py-2" placeholder="Preis, 0 € falls kostenlos" /></div>
+        <p className="text-xs text-vanilla/65">Preis: {(Number(liegezeitSurcharge.replace(",", ".")) || 0).toLocaleString("de-DE", { style: "currency", currency: "EUR" })}</p>
+      </div>
+      ) : (
       <div className="border border-champagne/25 bg-champagne/[0.04] p-4 space-y-3">
         <div>
           <div className="eyebrow text-champagne">Preis & Zahlung</div>
@@ -1090,11 +1126,13 @@ export function ManualBookingForm({
         </div>
       </div>
 
+      )}
+
       {err && <div className="text-xs text-destructive">{err}</div>}
 
       {ok && (
         <div className="text-xs text-green-300">
-          Termin wurde eingetragen und im Kalender gesperrt.
+          {liegezeitOnly ? "Liegezeit wurde eingetragen – Session-Zeit bleibt frei." : "Termin wurde eingetragen und im Kalender gesperrt."}
         </div>
       )}
 
@@ -1106,7 +1144,7 @@ export function ManualBookingForm({
         <CalendarPlus size={14} />
         {pending
           ? "Wird gespeichert…"
-          : "Externen Termin eintragen"}
+          : liegezeitOnly ? "Nur Liegezeit eintragen" : "Externen Termin eintragen"}
       </button>
     </form>
   );

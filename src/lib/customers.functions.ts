@@ -76,7 +76,8 @@ export const listCustomers = createServerFn({ method: "GET" })
       const key = rawEmail.toLowerCase();
       const existing = map.get(key);
       const when = b.requested_start ?? b.created_at ?? null;
-      const isPastVisit = !!when && new Date(when).getTime() <= now;
+      const isLiegezeitOnly = b.duration?.startsWith("Nur Liegezeit") || b.message?.includes("Nur Liegezeit");
+      const isPastVisit = !isLiegezeitOnly && !!when && new Date(when).getTime() <= now;
       const profile = {
         vorlieben: extractSection(b.message, ["Vorlieben & Wünsche", "Vorlieben"]),
         tabus: extractSection(b.message, ["Tabus & Grenzen", "Tabus"]),

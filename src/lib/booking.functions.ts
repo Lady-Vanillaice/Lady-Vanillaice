@@ -1221,14 +1221,24 @@ const manualBookingInput = z.object({
   taboos: z.string().trim().max(2000).optional().nullable(),
   health_notes: z.string().trim().max(2000).optional().nullable(),
   booking_type: z.enum(["single", "duo", "content", "custom_content"]),
+  liegezeit_only: z.boolean().default(false),
+  liegezeit_duration_minutes: z.number().int().min(15).max(24 * 60).nullable().optional(),
+  liegezeit_type: z.enum(["beaufsichtigt", "unbeaufsichtigt"]).nullable().optional(),
   duo_partner: z.string().trim().max(120).optional().nullable(),
-  total_amount: z.number().positive().max(1_000_000),
+  total_amount: z.number().min(0).max(1_000_000),
   deposit_amount: z.number().min(0).max(1_000_000),
   deposit_method: z.string().trim().min(1).max(100).nullable(),
   deposit_paid_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
   deposit_exemption_reason: z.enum(["regular_customer", "trust", "exception", "colleague_guarantees", "spontaneous"]).nullable(),
   onsite_method: z.string().trim().min(1).max(100).nullable(),
   onsite_paid_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+}).superRefine((data, ctx) => {
+  if (data.liegezeit_only && !data.liegezeit_duration_minutes) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["liegezeit_duration_minutes"], message: "Bitte eine gültige Liegezeit angeben." });
+  }
+  if (!data.liegezeit_only && data.total_amount <= 0) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["total_amount"], message: "Der Sessionpreis muss größer als 0 € sein." });
+  }
 });
 
 export const createManualBooking = createServerFn({ method: "POST" })
@@ -1242,17 +1252,19 @@ export const createManualBooking = createServerFn({ method: "POST" })
     if (!(endsAt > startsAt)) {
       throw new Error("Endzeit muss nach Startzeit liegen.");
     }
-    const durationMinutes = Math.round((endsAt.getTime() - startsAt.getTime()) / 60_000);
+    const durationMinutes = data.liegezeit_only
+      ? data.liegezeit_duration_minutes!
+      : Math.round((endsAt.getTime() - startsAt.getTime()) / 60_000);
     if (durationMinutes < 15) {
       throw new Error("Termin muss mindestens 15 Minuten dauern.");
     }
-    if (!data.deposit_exemption_reason && data.deposit_amount > 0 && !data.deposit_paid_at) {
+    if (!data.liegezeit_only && !data.deposit_exemption_reason && data.deposit_amount > 0 && !data.deposit_paid_at) {
       throw new Error("Das Eingangsdatum der Zahlung fehlt.");
     }
-    if (data.booking_type !== "custom_content" && !data.deposit_exemption_reason && data.deposit_amount <= 0) {
+    if (!data.liegezeit_only && data.booking_type !== "custom_content" && !data.deposit_exemption_reason && data.deposit_amount <= 0) {
       throw new Error("Die erhaltene Anzahlung muss größer als 0 € sein.");
     }
-    if (data.deposit_amount > data.total_amount) {
+    if (!data.liegezeit_only && data.deposit_amount > data.total_amount) {
       throw new Error("Die Anzahlung darf nicht höher als der Gesamtpreis sein.");
     }
 
@@ -1284,6 +1296,45 @@ export const createManualBooking = createServerFn({ method: "POST" })
       data.internal_note ? `Weitere Notiz:\n${data.internal_note}` : null,
       data.onsite_method ? `Vor Ort Zahlungsmethode: ${data.onsite_method}` : null,
     ].filter(Boolean).join("\n\n") || null;
+
+    if (data.liegezeit_only) {
+      const liegezeitNote = [
+        combinedInternalNote,
+        `Nur Liegezeit – keine Session: ${durationMinutes} Minuten`,
+        `Art: ${data.liegezeit_type ?? "unbeaufsichtigt"}`,
+        `Preis: ${data.total_amount.toLocaleString("de-DE", { style: "currency", currency: "EUR" })}`,
+        `Standort: ${data.location}`,
+      ].filter(Boolean).join("\n\n");
+      const liegezeitMessage = [
+        ...originLines,
+        ...profileSections,
+        `—\nNur Liegezeit (${durationMinutes} Minuten), keine Session. Manuell durch Admin eingetragen.`,
+      ].join("\n\n").slice(0, 2000);
+      const { error: liegezeitErr } = await supabaseAdmin
+        .from("bookings")
+        .insert({
+          slot_id: null,
+          guest_name: data.guest_name,
+          guest_email: guestEmail,
+          duration: `Nur Liegezeit · ${durationMinutes} Minuten`,
+          duration_minutes: null,
+          requested_start: data.starts_at,
+          message: liegezeitMessage,
+          status: "confirmed",
+          admin_note: liegezeitNote,
+          studio_override: data.location,
+          anzahlung: 0,
+          anzahlung_method: data.onsite_method,
+          anzahlung_paid: false,
+          anzahlung_paid_at: null,
+          deposit_exemption_reason: null,
+          bar: data.total_amount,
+          cash_received_at: data.onsite_paid_at ? `${data.onsite_paid_at}T12:00:00.000Z` : null,
+          fully_paid: data.total_amount === 0 || Boolean(data.onsite_paid_at),
+        });
+      if (liegezeitErr) throw new Error(liegezeitErr.message);
+      return { ok: true, slot_id: null, liegezeit_only: true };
+    }
 
     // First check only real blocked/reserved/booked slots. Open availability
     // windows must not block a manual booking; they are resized below.
