@@ -1362,7 +1362,7 @@ const depositDateMut = useMutation({
 
           <div className="bg-card border border-champagne/15 p-6 mb-6">
             <div className="eyebrow mb-3 flex items-center justify-between gap-2">
-              <span>Interne Notiz (nur für dich sichtbar)</span>
+              <span>Session-Notizen (nur für dich sichtbar)</span>
               {noteSaved && (
                 <span className="text-[0.6rem] text-green-300 normal-case tracking-normal">
                   ✓ gespeichert
@@ -1372,7 +1372,7 @@ const depositDateMut = useMutation({
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Eigene Notizen zum Gast, Vorlieben, Absprachen, Wiederholungsbuchung …"
+              placeholder="Outfit, Wünsche, Absprachen und weitere Session-Notizen …"
               rows={5}
               maxLength={2000}
               className="input-luxe w-full resize-y min-h-[120px] text-sm leading-relaxed"
