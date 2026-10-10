@@ -1218,7 +1218,8 @@ const manualBookingInput = z.object({
   source: z.string().trim().max(60).optional().nullable(),
   internal_note: z.string().trim().max(2000).optional().nullable(),
   preferences: z.string().trim().max(2000).optional().nullable(),
-  taboos: z.string().trim().max(2000).optional().nullable(),
+  outfit: z.string().trim().max(1000).optional().nullable(),
+  taboos: z.string().trim().max(2000).optional().nullable()
   health_notes: z.string().trim().max(2000).optional().nullable(),
   booking_type: z.enum(["single", "duo", "content", "custom_content"]),
   liegezeit_only: z.boolean().default(false),
@@ -1274,6 +1275,7 @@ export const createManualBooking = createServerFn({ method: "POST" })
     const guestEmail = data.guest_email?.trim() ||
       `manuell+${crypto.randomUUID().slice(0, 8)}@intern.local`;
     const profileSections = [
+      data.outfit ? `Outfit / Kleidung:\n${data.outfit}` : null,
       data.preferences ? `${data.booking_type === "custom_content" ? "Custom-Content-Wunsch" : "Vorlieben & Wünsche"}:\n${data.preferences}` : null,
       data.taboos ? `Tabus & Grenzen:\n${data.taboos}` : null,
       data.health_notes ? `Gesundheitliche Hinweise:\n${data.health_notes}` : null,
@@ -1290,6 +1292,7 @@ export const createManualBooking = createServerFn({ method: "POST" })
           "—\nManuell durch Admin eingetragen.",
         ].join("\n\n").slice(0, 2000);
     const combinedInternalNote = [
+      data.outfit ? `Outfit / Kleidung:\n${data.outfit}` : null,
       data.preferences ? `Vorlieben & Wünsche:\n${data.preferences}` : null,
       data.taboos ? `Tabus & Grenzen:\n${data.taboos}` : null,
       data.health_notes ? `Gesundheitliche Hinweise:\n${data.health_notes}` : null,
