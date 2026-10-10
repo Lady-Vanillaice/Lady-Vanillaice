@@ -58,7 +58,7 @@ replace(
   `      // Für die Suche sollen auch ältere, offene, stornierte und umgeplante\n      // Buchungen auffindbar bleiben. Besuche werden weiter nur für vergangene\n      // tatsächlich bestätigte/abgeschlossene Termine gezählt.`,
   "include historic customers",
 );
-replace(customers, `      const isPastVisit = !!when && new Date(when).getTime() <= now;`, `      const isPastVisit = b.status === "confirmed" && !!when && new Date(when).getTime() <= now;`, "count real visits only");
+replace(customers, `      const isPastVisit = !isLiegezeitOnly && !!when && new Date(when).getTime() <= now;`, `      const isPastVisit = b.status === "confirmed" && !isLiegezeitOnly && !!when && new Date(when).getTime() <= now;`, "count real visits only");
 
 // 3) Kundenansicht verständlicher beschriften.
 const customerRoute = "src/routes/_authenticated/admin.kunden.tsx";
