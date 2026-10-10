@@ -1219,7 +1219,7 @@ const manualBookingInput = z.object({
   internal_note: z.string().trim().max(2000).optional().nullable(),
   preferences: z.string().trim().max(2000).optional().nullable(),
   outfit: z.string().trim().max(1000).optional().nullable(),
-  taboos: z.string().trim().max(2000).optional().nullable()
+  taboos: z.string().trim().max(2000).optional().nullable(),
   health_notes: z.string().trim().max(2000).optional().nullable(),
   booking_type: z.enum(["single", "duo", "content", "custom_content"]),
   liegezeit_only: z.boolean().default(false),
