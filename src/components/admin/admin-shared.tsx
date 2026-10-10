@@ -546,6 +546,7 @@ export type ManualBookingValues = {
   source?: string | null;
   internal_note?: string | null;
   preferences?: string | null;
+  outfit?: string | null;
   taboos?: string | null;
   health_notes?: string | null;
   booking_type: "single" | "duo" | "content" | "custom_content";
@@ -588,6 +589,7 @@ export function ManualBookingForm({
   const [calendarDuoPartner, setCalendarDuoPartner] = useState("");
   const [note, setNote] = useState("");
   const [preferences, setPreferences] = useState("");
+  const [outfit, setOutfit] = useState("");
   const [taboos, setTaboos] = useState("");
   const [healthNotes, setHealthNotes] = useState("");
   const [bookingType, setBookingType] =
@@ -721,6 +723,7 @@ const [liegezeitDuration, setLiegezeitDuration] = useState("60");
           hasLiegezeit ? `Liegezeit: ${liegezeitDuration} Minuten · ${liegezeitType} · Aufschlag ${surcharge.toLocaleString("de-DE", { style: "currency", currency: "EUR" })} · Sessionpreis ${sessionPrice.toLocaleString("de-DE", { style: "currency", currency: "EUR" })} · Gesamt ${total.toLocaleString("de-DE", { style: "currency", currency: "EUR" })}` : null,
         ].filter(Boolean).join("\n\n") || null,
         preferences: preferences.trim() || null,
+        outfit: outfit.trim() || null,
         taboos: taboos.trim() || null,
         health_notes: healthNotes.trim() || null,
         booking_type: bookingType,
@@ -748,6 +751,7 @@ const [liegezeitDuration, setLiegezeitDuration] = useState("60");
       setCalendarDuoPartner("");
       setNote("");
       setPreferences("");
+      setOutfit("");
       setTaboos("");
       setHealthNotes("");
       setBookingType("single");
@@ -1028,6 +1032,17 @@ const [liegezeitDuration, setLiegezeitDuration] = useState("60");
             placeholder="Was ist gewünscht? Welche Vorlieben wurden besprochen?"
             rows={3}
             maxLength={2000}
+            className="input-luxe !py-2 resize-y"
+          />
+        </div>
+        <div>
+          <label className="eyebrow block mb-1">Outfit / Kleidung (optional)</label>
+          <textarea
+            value={outfit}
+            onChange={(e) => setOutfit(e.target.value)}
+            placeholder="Outfit-Wunsch oder passende Kleidung für die Session"
+            rows={2}
+            maxLength={1000}
             className="input-luxe !py-2 resize-y"
           />
         </div>
