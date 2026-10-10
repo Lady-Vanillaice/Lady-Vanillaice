@@ -600,7 +600,7 @@ export function ManualBookingForm({
   const [depositAmount, setDepositAmount] = useState("");
   const [shortSessionPrice, setShortSessionPrice] = useState("");
   const [onsiteMethod, setOnsiteMethod] = useState("Bar");
-remove boolean state  const [liegezeitDuration, setLiegezeitDuration] = useState("60");
+const [liegezeitDuration, setLiegezeitDuration] = useState("60");
   const [liegezeitType, setLiegezeitType] = useState<"beaufsichtigt" | "unbeaufsichtigt">("unbeaufsichtigt");
   const [liegezeitSurcharge, setLiegezeitSurcharge] = useState("");
   const [depositExemptionReason, setDepositExemptionReason] = useState<ManualBookingValues["deposit_exemption_reason"]>(null);
