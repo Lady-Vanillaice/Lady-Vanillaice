@@ -202,13 +202,23 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
     if (bucket) counts[bucket]++;
   }
   const searched = kindFiltered.filter((b) => matchesAppointmentSearch(b, search));
+  const isActionableInboxBooking = (booking: Booking) => {
+    const bucket = statusBucket(booking);
+    return booking.status !== "confirmed" && (bucket === "offen" || bucket === "wartend");
+  };
   const inboxCounts = Object.fromEntries(
-    (Object.keys(APPOINTMENT_FILTERS) as AppointmentFilter[]).map((filter) =>
-      [filter, searched.filter((b) => matchesAppointmentFilter(b, filter)).length]),
+    (Object.keys(APPOINTMENT_FILTERS) as AppointmentFilter[]).map((filter) => [
+      filter,
+      filter === "alle"
+        ? searched.filter(isActionableInboxBooking).length
+        : searched.filter((booking) => matchesAppointmentFilter(booking, filter)).length,
+    ]),
   ) as Record<AppointmentFilter, number>;
   const filtered = isInbox
-    ? searched.filter((b) => matchesAppointmentFilter(b, appointmentFilter))
-    : kindFiltered.filter((b) => statusBucket(b) === tab);
+    ? appointmentFilter === "alle"
+      ? searched.filter(isActionableInboxBooking)
+      : searched.filter((booking) => matchesAppointmentFilter(booking, appointmentFilter))
+    : kindFiltered.filter((booking) => statusBucket(booking) === tab);
   const meta = KIND_META[kind];
 
   return (
@@ -249,11 +259,11 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
                   <button key={filter} type="button" aria-pressed={appointmentFilter === filter}
                     onClick={() => setAppointmentFilter(filter)}
                     className={appointmentFilter === filter ? "btn-gold !py-2 !px-4 !text-[0.65rem]" : "btn-outline-gold !py-2 !px-4 !text-[0.65rem]"}>
-                    {APPOINTMENT_FILTERS[filter].label} ({inboxCounts[filter]})
+                    {filter === "alle" ? "Offen" : APPOINTMENT_FILTERS[filter].label} ({inboxCounts[filter]})
                   </button>
                 ))}
               </div>
-              <p className="mb-6 text-xs text-vanilla/55">Mit „Alle“ findest du alle offenen, stornierten und umzuplanenden Termine, auch ältere Anfragen. Klicke auf „Öffnen & bearbeiten“, um Details und Termin zu ändern.</p>
+              <p className="mb-6 text-xs text-vanilla/55">„Offen“ zeigt nur Anfragen, Umplanungen und offene Anzahlungen, die noch bearbeitet werden müssen. Stornierte, abgelehnte und ältere Fälle bleiben über ihre Statusfilter erreichbar.</p>
             </>
           )}
           {!isInbox && <div className="mb-6 flex flex-wrap gap-2">
@@ -282,7 +292,7 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
             {bookingsQ.isLoading && <p className="text-vanilla/50 text-sm">Lade…</p>}
             {!bookingsQ.isLoading && !bookingsQ.isError && filtered.length === 0 && (
               <p className="text-vanilla/50 text-sm border border-dashed border-champagne/20 p-6 text-center">
-                {isInbox ? (search.trim() ? "Keine passenden Termine gefunden. Wähle „Alle“ oder ändere die Suche." : APPOINTMENT_FILTERS[appointmentFilter].empty) : TAB_META[tab].empty}
+                {isInbox ? (search.trim() ? "Keine passenden Termine gefunden. Wähle „Offen“ oder ändere die Suche." : APPOINTMENT_FILTERS[appointmentFilter].empty) : TAB_META[tab].empty}
               </p>
             )}
             {filtered.map((b) => {
