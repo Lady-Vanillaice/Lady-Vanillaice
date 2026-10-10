@@ -266,11 +266,7 @@ function DayPlanDownloadButton({ day, items }: { day: Date; items: Entry[] }) {
     const measure = canvas.getContext("2d");
     if (!measure) return;
 
-    measure.font = '24px Arial, sans-serif';
-    const wishLines = items.map((entry) =>
-      wrapCanvasText(measure, entry.guest_wish?.trim() || "Kein Wunsch eingetragen.", contentWidth - 92),
-    );
-    const rowHeights = wishLines.map((lines) => 250 + Math.max(1, lines.length) * 32);
+    const rowHeights = items.map(() => 220);
     const headerHeight = 290;
     const footerHeight = 112;
     const height = Math.max(
@@ -401,16 +397,6 @@ function DayPlanDownloadButton({ day, items }: { day: Date; items: Entry[] }) {
       );
       ctx.fillStyle = vanilla;
       ctx.fillText(`Bar: ${(entry.bar ?? 0).toLocaleString("de-DE")} €`, right, y + 151);
-
-      ctx.textAlign = "left";
-      ctx.fillStyle = gold;
-      ctx.font = 'bold 17px Arial, sans-serif';
-      ctx.fillText("WUNSCH", left, y + 204);
-      ctx.fillStyle = vanilla;
-      ctx.font = '24px Arial, sans-serif';
-      wishLines[index].forEach((line, lineIndex) => {
-        ctx.fillText(line, left, y + 240 + lineIndex * 32);
-      });
 
       y += rowHeight;
     });
