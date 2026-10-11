@@ -177,21 +177,21 @@ function Buchung() {
             <p className="text-xs leading-relaxed text-vanilla/55">
               {tr("Die Liegezeit liegt innerhalb deiner gebuchten Sessiondauer. Ein möglicher Aufpreis wird anschließend individuell bestätigt.", "The restraint time is included within your booked session duration. Any surcharge will be confirmed individually afterwards.")}
             </p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="eyebrow block mb-1.5">{tr("Gewünschte Dauer", "Requested duration")}</label>
-                <select name="liegezeit_duration" defaultValue="" className="input-luxe">
-                  <option value="">{tr("Keine Liegezeit", "No restraint time")}</option>
-                  <option value="30">30 {tr("Minuten", "minutes")}</option>
-                  <option value="60">60 {tr("Minuten", "minutes")}</option>
-                  <option value="90">90 {tr("Minuten", "minutes")}</option>
-                  <option value="120">120 {tr("Minuten", "minutes")}</option>
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
+              <div className="min-w-0">
+                <label className="eyebrow mb-1.5 block whitespace-nowrap">{tr("Liegezeit", "Restraint time")}</label>
+                <select name="liegezeit_duration" defaultValue="" className="input-luxe w-full min-w-0 !px-2 !text-xs">
+                  <option value="">{tr("Keine", "None")}</option>
+                  <option value="30">30 {tr("Min.", "min.")}</option>
+                  <option value="60">60 {tr("Min.", "min.")}</option>
+                  <option value="90">90 {tr("Min.", "min.")}</option>
+                  <option value="120">120 {tr("Min.", "min.")}</option>
                   <option value="custom">{tr("Andere Dauer", "Other duration")}</option>
                 </select>
               </div>
-              <div>
-                <label className="eyebrow block mb-1.5">{tr("Art", "Type")}</label>
-                <select name="liegezeit_type" defaultValue="unbeaufsichtigt" className="input-luxe">
+              <div className="min-w-0">
+                <label className="eyebrow mb-1.5 block whitespace-nowrap">{tr("Art", "Type")}</label>
+                <select name="liegezeit_type" defaultValue="unbeaufsichtigt" className="input-luxe w-full min-w-0 !px-2 !text-xs">
                   <option value="unbeaufsichtigt">{tr("Unbeaufsichtigt", "Unsupervised")}</option>
                   <option value="beaufsichtigt">{tr("Beaufsichtigt", "Supervised")}</option>
                 </select>
