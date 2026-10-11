@@ -8,11 +8,11 @@ import { useT, useTr } from "@/i18n";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Lady Vanilla Ice – Domina in München & Umgebung | Sessions & BDSM" },
+      { title: "Domina München – Lady Vanilla Ice | Individuelle Sessions" },
       {
         name: "description",
         content:
-          "Hart, weich und unberechenbar: individuelle Domina-Sessions in München und Umgebung mit Kopfkino, Stil und klaren Grenzen.",
+          "Lady Vanilla Ice, Domina in München: individuelle BDSM-Sessions, klare Grenzen und persönliche Terminabstimmung. Jetzt diskret anfragen.",
       },
       {
         property: "og:title",
@@ -220,6 +220,40 @@ function Index() {
 
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-vanilla/40 text-[0.6rem] tracking-[0.3em] uppercase animate-pulse">
           {t<string>("home.hero.scroll")}
+        </div>
+      </section>
+
+      {/* MÜNCHEN */}
+      <section className="py-20 border-b border-champagne/15">
+        <div className="container-luxe max-w-3xl text-center">
+          <div className="eyebrow mb-4">{tr("München & Umgebung", "Munich & surrounding area")}</div>
+          <h2 className="font-display text-3xl md:text-4xl gold-text mb-6">
+            {tr(
+              "Domina in München – individuelle Sessions mit Lady Vanilla Ice",
+              "Dominatrix in Munich – individual sessions with Lady Vanilla Ice"
+            )}
+          </h2>
+          <p className="text-vanilla/70 leading-relaxed mb-5">
+            {tr(
+              "Du suchst eine Domina in München und möchtest vorab wissen, ob meine Art zu dir passt? Jede Begegnung wird persönlich abgestimmt. Wünsche, Erwartungen und klare Grenzen besprechen wir vertraulich vor dem Termin.",
+              "Looking for a professional dominatrix in Munich? Every session is arranged personally. We discuss your expectations, wishes and clear boundaries confidentially before the appointment."
+            )}
+          </p>
+          <p className="text-vanilla/70 leading-relaxed mb-8">
+            {tr(
+              "Informiere dich über meine Leistungen oder sieh im Kalender nach verfügbaren Terminen in München und Umgebung.",
+              "Learn about my sessions or check the calendar for available appointments in Munich and the surrounding area."
+            )}
+          </p>
+          <div className="flex flex-wrap justify-center gap-4">
+            <Link to="/leistungen" className="btn-outline-gold">
+              {tr("Leistungen ansehen", "Explore sessions")}
+            </Link>
+            <Link to="/kalender" className="btn-gold">
+              {tr("Termine ansehen", "View appointments")}
+              <Calendar size={14} />
+            </Link>
+          </div>
         </div>
       </section>
 
