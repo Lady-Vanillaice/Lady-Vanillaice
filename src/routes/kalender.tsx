@@ -387,6 +387,12 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
     );
     return [...uniqueRows].sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
   }, [slot]);
+  const windowAvailabilityLabel = (window: (typeof windows)[number]) =>
+    window.is_duo
+      ? window.duo_partner?.startsWith(OPTIONAL_DUO_PREFIX)
+        ? tr("Single verfügbar – Duo verfügbar", "Single available – Duo available")
+        : tr("Duo verfügbar", "Duo available")
+      : tr("Single verfügbar", "Single available");
   const windowDurations = windows.map((w) => Math.round((new Date(w.ends_at).getTime() - new Date(w.starts_at).getTime()) / 60_000));
   const longestWindowMinutes = Math.max(...windowDurations, 30);
   const slotDurationMinutes = useMemo(() => {
@@ -572,12 +578,7 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
         <div className="flex flex-col gap-1 pl-[17px] text-vanilla/80">
           {windows.map((window) => (
             <span key={window.id}>
-              {formatMunichTime(window.starts_at)} – {formatMunichTime(window.ends_at)}{lang === "en" ? "" : " Uhr"} —{" "}
-              {window.is_duo
-                ? window.duo_partner?.startsWith(OPTIONAL_DUO_PREFIX)
-                  ? tr("Single verfügbar – Duo verfügbar", "Single available – Duo available")
-                  : tr("Duo verfügbar", "Duo available")
-                : tr("Single verfügbar", "Single available")}
+              {formatMunichTime(window.starts_at)} – {formatMunichTime(window.ends_at)}{lang === "en" ? "" : " Uhr"} — {windowAvailabilityLabel(window)}
               {window.is_content_shoot ? " · " + tr("Content-Dreh verfügbar", "Content shoot available") : ""}
             </span>
           ))}
