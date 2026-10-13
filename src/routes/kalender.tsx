@@ -376,7 +376,16 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
   const slotEndHm = formatMunichTime(slot.ends_at);
   const windows = useMemo(() => {
     const rows = slot.windows?.length ? slot.windows : [slot];
-    return [...rows].sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
+    const uniqueRows = rows.filter((row, index) =>
+      rows.findIndex((candidate) =>
+        candidate.starts_at === row.starts_at &&
+        candidate.ends_at === row.ends_at &&
+        candidate.is_duo === row.is_duo &&
+        candidate.duo_partner === row.duo_partner &&
+        candidate.is_content_shoot === row.is_content_shoot
+      ) === index
+    );
+    return [...uniqueRows].sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
   }, [slot]);
   const windowDurations = windows.map((w) => Math.round((new Date(w.ends_at).getTime() - new Date(w.starts_at).getTime()) / 60_000));
   const longestWindowMinutes = Math.max(...windowDurations, 30);
@@ -560,10 +569,6 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
       </h3>
       {/* Booking information stacked vertically */}
       <div className="text-xs text-vanilla/60 mb-5 flex flex-col items-start gap-2">
-        <div className="flex items-center gap-1.5">
-          <Clock size={11} className="text-champagne shrink-0" />
-          <span>{tr("Verfügbar", "Available")}</span>
-        </div>
         <div className="flex flex-col gap-1 pl-[17px] text-vanilla/80">
           {windows.map((window) => (
             <span key={window.id}>
