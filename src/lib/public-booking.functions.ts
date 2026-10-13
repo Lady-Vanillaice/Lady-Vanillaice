@@ -300,7 +300,7 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
 
     const { data: bookings } = await supabaseAdmin
       .from("bookings")
-      .select("slot_id, requested_start, duration_minutes, status, updated_at")
+      .select("slot_id, requested_start, duration_minutes, status, updated_at, message")
       .gte("requested_start", bookingLookback.toISOString())
       .lt("requested_start", dayEnd.toISOString())
       .in("status", ["waiting_deposit", "confirmed"])
@@ -326,7 +326,7 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
     if (activeBookingSlotIds.length) {
       const { data: activeBookingSlots, error: activeBookingSlotsError } = await supabaseAdmin
         .from("availability_slots")
-        .select("id, is_duo, duo_partner, buffer_minutes")
+        .select("id, is_duo, is_content_shoot, duo_partner, buffer_minutes")
         .in("id", activeBookingSlotIds);
       if (activeBookingSlotsError) throw activeBookingSlotsError;
       for (const activeSlot of activeBookingSlots ?? []) {
@@ -353,9 +353,11 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
           b.status === "confirmed"
             ? (() => {
                 const bookingSlot = b.slot_id ? slotById.get(b.slot_id) : null;
-                return bookingSlot && !bookingSlot.is_duo && bookingSlot.duo_partner
-                  ? "single_only" as const
-                  : "booked" as const;
+                const isExplicitSingle = /^— Session-Art —\s*Single Session(?:\s|$)/i.test(b.message ?? "");
+                const isSingleOnly =
+                  isExplicitSingle ||
+                  Boolean(bookingSlot && !bookingSlot.is_duo && !bookingSlot.is_content_shoot);
+                return isSingleOnly ? "single_only" as const : "booked" as const;
               })()
             : "reserved" as const,
         buffer_minutes: b.slot_id ? (bufferBySlotId.get(b.slot_id) ?? 30) : 30,
