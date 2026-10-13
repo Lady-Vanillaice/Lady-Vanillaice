@@ -991,7 +991,7 @@ function AvailabilityTimeline({ slotId }: { slotId: string }) {
           return (
             <div
               key={`b-${seg.s}`}
-              title={`${isUnavailable ? tr("Nicht freigegeben","Unavailable") : isReserved ? tr("Reserviert","Reserved") : isSingleOnly ? tr("Nur Einzel","Single only") : tr("Belegt","Booked")} ${fmtHm(seg.s)} – ${fmtHm(seg.e)}`}
+              title={`${isUnavailable ? tr("Nicht freigegeben","Unavailable") : isReserved ? tr("Reserviert","Reserved") : isSingleOnly ? tr("Nur Einzel belegt","Single session booked") : tr("Belegt","Booked")} ${fmtHm(seg.s)} – ${fmtHm(seg.e)}`}
               className={`absolute top-0 bottom-0 pointer-events-none ${
                 isUnavailable
                   ? "bg-anthracite/80 border-x border-vanilla/15"
@@ -1051,7 +1051,7 @@ function AvailabilityTimeline({ slotId }: { slotId: string }) {
       <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-vanilla/60">
         <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-champagne" /> {tr("verfügbar", "available")}</span>
         <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-bordeaux" /> {tr("belegt", "booked")}</span>
-        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-orange-400" /> {tr("nur Einzel", "single only")}</span>
+        <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-orange-400" /> {tr("nur Einzel belegt", "single session booked")}</span>
         <span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-vanilla/40" /> {tr("reserviert", "reserved")}</span>
       </div>
     </div>
