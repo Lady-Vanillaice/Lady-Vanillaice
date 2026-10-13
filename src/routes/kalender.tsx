@@ -380,6 +380,17 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
   }, [slot]);
   const windowDurations = windows.map((w) => Math.round((new Date(w.ends_at).getTime() - new Date(w.starts_at).getTime()) / 60_000));
   const longestWindowMinutes = Math.max(...windowDurations, 30);
+  const availabilityLabels = [
+    windows.some((window) => !window.is_duo || window.duo_partner?.startsWith(OPTIONAL_DUO_PREFIX))
+      ? tr("Single verfügbar", "Single available")
+      : null,
+    windows.some((window) => window.is_duo)
+      ? tr("Duo verfügbar", "Duo available")
+      : null,
+    windows.some((window) => window.is_content_shoot)
+      ? tr("Content-Dreh verfügbar", "Content shoot available")
+      : null,
+  ].filter(Boolean).join(" – ");
 
   const slotDurationMinutes = useMemo(() => {
     if (windows.length > 1) return longestWindowMinutes;
@@ -563,18 +574,12 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
       <div className="text-xs text-vanilla/60 mb-5 flex flex-col items-start gap-2">
         <div className="flex items-center gap-1.5">
           <Clock size={11} className="text-champagne shrink-0" />
-          <span>{tr("Verfügbar", "Available")}</span>
+          <span>{availabilityLabels}</span>
         </div>
         <div className="flex flex-col gap-1 pl-[17px] text-vanilla/80">
           {windows.map((window) => (
             <span key={window.id}>
-              {formatMunichTime(window.starts_at)} – {formatMunichTime(window.ends_at)}{lang === "en" ? "" : " Uhr"} —{" "}
-              {window.is_duo
-                ? window.duo_partner?.startsWith(OPTIONAL_DUO_PREFIX)
-                  ? tr("Single verfügbar – Duo verfügbar", "Single available – Duo available")
-                  : tr("Duo verfügbar", "Duo available")
-                : tr("Single verfügbar", "Single available")}
-              {window.is_content_shoot ? " · " + tr("Content-Dreh verfügbar", "Content shoot available") : ""}
+              {formatMunichTime(window.starts_at)} – {formatMunichTime(window.ends_at)}{lang === "en" ? "" : " Uhr"}
             </span>
           ))}
         </div>
