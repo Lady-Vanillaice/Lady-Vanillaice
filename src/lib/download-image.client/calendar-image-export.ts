@@ -48,7 +48,7 @@ const COLORS = {
   muted: "#a99d8d",
   available: "rgba(216,182,118,0.50)",
   booked: "rgba(127,36,56,0.60)",
-  reserved: "rgba(244,234,216,0.35)",
+  reserved: "rgba(110,110,115,0.95)",
   unavailable: "rgba(62,59,55,0.80)",
   tick: "rgba(244,234,216,0.10)",
 };
