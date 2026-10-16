@@ -85,8 +85,8 @@ image = replaceOnce(
 
 image = replaceOnce(
   image,
-  '  available: "rgba(216,182,118,0.50)",\n  booked: "rgba(127,36,56,0.60)",\n  reserved: "rgba(244,234,216,0.35)",',
-  '  singleAvailable: "rgba(216,182,118,0.58)",\n  duoAvailable: "rgba(205,123,45,0.72)",\n  duoBooked: "rgba(181,111,126,0.78)",\n  singleBooked: "rgba(127,36,56,0.72)",\n  reserved: "rgba(244,234,216,0.35)",',
+  '  available: "rgba(216,182,118,0.50)",\n  booked: "rgba(127,36,56,0.60)",\n  reserved: "rgba(110,110,115,0.95)",',
+  '  singleAvailable: "rgba(216,182,118,0.58)",\n  duoAvailable: "rgba(205,123,45,0.72)",\n  duoBooked: "rgba(181,111,126,0.78)",\n  singleBooked: "rgba(127,36,56,0.72)",\n  reserved: "rgba(110,110,115,0.95)",',
 );
 image = image.replace(
   'duoBooked: "rgba(103,58,142,0.72)"',
