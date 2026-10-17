@@ -578,7 +578,7 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
         <div className="flex flex-col gap-1 pl-[17px] text-vanilla/80">
           {windows.map((window) => (
             <span key={window.id}>
-              {formatMunichTime(window.starts_at)} – {formatMunichTime(window.ends_at)}{lang === "en" ? "" : " Uhr"} — {windowAvailabilityLabel(window)}
+              {formatMunichTime(window.starts_at)} – {formatMunichTime(window.ends_at)}{lang === "en" ? "" : " Uhr"}
               {window.is_content_shoot ? " · " + tr("Content-Dreh verfügbar", "Content shoot available") : ""}
             </span>
           ))}
