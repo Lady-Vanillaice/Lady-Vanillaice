@@ -199,7 +199,7 @@ function KassenbuchPage() {
     const sections = [
       { title: "1. ALLE ZAHLUNGSEINGÄNGE", entries: receipts },
       { title: "2. BARZAHLUNGEN", entries: receipts.filter(e => isCash(e.method)) },
-      { title: "3. UNBARE ZAHLUNGEN (BANK, PAYPAL ETC.)", entries: receipts.filter(e => !isCash(e.method)) },
+      { title: "3. ONLINE-ZAHLUNGEN (BANK, PAYPAL ETC.)", entries: receipts.filter(e => !isCash(e.method)) },
     ];
     sections.forEach((section, index) => {
       if (index > 0) doc.addPage();
