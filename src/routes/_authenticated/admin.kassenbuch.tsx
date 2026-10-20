@@ -181,24 +181,48 @@ function KassenbuchPage() {
 
   function exportPdf(mobile = false) {
     if (!canExport()) return false;
+    type Receipt = { date: string; customer: string; kind: string; method: string; amount: number; appointment: string };
+    const receipts: Receipt[] = [];
+    for (const entry of filtered) {
+      if (entry.entry_type !== "income") continue;
+      const appointment = dateLabel(entry.termin_datum);
+      if (entry.anzahlung > 0 && entry.anzahlung_datum?.startsWith(month))
+        receipts.push({ date: entry.anzahlung_datum, customer: entry.kunde, kind: "Anzahlung", method: entry.anzahlung_method || "Nicht angegeben", amount: entry.anzahlung, appointment });
+      if (entry.bar > 0 && entry.bar_datum?.startsWith(month))
+        receipts.push({ date: entry.bar_datum, customer: entry.kunde, kind: "Rest-/Vor-Ort-Zahlung", method: restMethodFor(entry) || "Nicht angegeben", amount: entry.bar, appointment });
+    }
+    receipts.sort((a, b) => a.date.localeCompare(b.date) || a.customer.localeCompare(b.customer) || a.kind.localeCompare(b.kind));
+    if (!receipts.length) { alert("Keine datierten Zahlungseingänge in diesem Monat vorhanden."); return false; }
+    const isCash = (method: string) => ["bar", "bargeld"].includes(method.trim().toLowerCase());
     const doc = new jsPDF({ orientation: mobile ? "portrait" : "landscape", unit: "pt", format: "a4" });
-    addPdfLogo(doc);
-    const monthLabel = format(parseISO(`${month}-01`), "LLLL yyyy", { locale: de });
-    doc.setFont("helvetica", "bold"); doc.setFontSize(20); doc.text("KASSENBUCH", 28, 40); doc.setFontSize(11); doc.text(monthLabel, 28, 58);
-    autoTable(doc, mobile ? {
-      startY: 92, head: [["Zahlung / Kunde", "Session", "Studio / Art", "Betrag"]],
-      body: receivedIncomeEntries.map(e => [`${paymentDateText(e)} · ${paymentLabel(e)}\n${e.kunde}\n${paymentMethodText(e)}`, `${dateLabel(e.termin_datum)} · ${appointmentTime(e)}\n${e.dauer ?? ""}`, `${studioText(e)}\n${e.art}`, eur(monthAmount(e))]),
-      foot: [["SUMME", "", "", eur(totals.gesamt)]], styles: { fontSize: 7.5, cellPadding: 4, overflow: "linebreak" }, headStyles: { fillColor: [15, 15, 15] }, footStyles: { fillColor: [239, 229, 207], textColor: 15 },
-    } : {
-      startY: 92, head: [["Zahlungseingang", "Vorgang", "Betrag", "Zahlungsart", "Kunde", "Session am", "Uhrzeit", "Art", "Studio", "Adresse", "Dauer", "Status"]], body: rows(),
-      foot: [["SUMME", "", eur(totals.gesamt), "", "", "", "", "", "", "", "", ""]], styles: { fontSize: 6, cellPadding: 3, overflow: "linebreak" }, headStyles: { fillColor: [15, 15, 15] }, footStyles: { fillColor: [239, 229, 207], textColor: 15 },
+    const monthLabel = format(parseISO(month + "-01"), "LLLL yyyy", { locale: de });
+    const sections = [
+      { title: "1. ALLE ZAHLUNGSEINGÄNGE", entries: receipts },
+      { title: "2. BARZAHLUNGEN", entries: receipts.filter(e => isCash(e.method)) },
+      { title: "3. UNBARE ZAHLUNGEN (BANK, PAYPAL ETC.)", entries: receipts.filter(e => !isCash(e.method)) },
+    ];
+    sections.forEach((section, index) => {
+      if (index > 0) doc.addPage();
+      addPdfLogo(doc);
+      doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.text("KASSENBUCH", 28, 40);
+      doc.setFontSize(11); doc.text(monthLabel, 28, 58);
+      doc.setFontSize(12); doc.text(section.title, 28, 80);
+      const sum = section.entries.reduce((total, e) => total + e.amount, 0);
+      autoTable(doc, {
+        startY: 94,
+        head: [["Zahlungseingang", "Kunde", "Vorgang", "Zahlungsart", "Termin am", "Betrag"]],
+        body: section.entries.length
+          ? section.entries.map(e => [dateLabel(e.date), e.customer, e.kind, e.method, e.appointment, eur(e.amount)])
+          : [["—", "Keine Zahlungseingänge", "", "", "", ""]],
+        foot: [["SUMME", "", "", "", "", eur(sum)]],
+        styles: { fontSize: mobile ? 8 : 9, cellPadding: 5, overflow: "linebreak" },
+        headStyles: { fillColor: [15, 15, 15] },
+        footStyles: { fillColor: [239, 229, 207], textColor: 15 },
+        columnStyles: { 5: { halign: "right" } },
+        margin: { left: 28, right: 28 },
+      });
     });
-    const tableEndY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 92;
-    let summaryY = tableEndY + 18;
-    if (summaryY > doc.internal.pageSize.getHeight() - 24) { doc.addPage(); summaryY = 28; }
-    doc.setFont("helvetica", "bold"); doc.setFontSize(8);
-    doc.text(`Gesamt brutto: ${eur(totals.gesamt)} · enthaltene MwSt. 19 %: ${eur(totalVat)} · Gesamt netto: ${eur(totalNet)}`, 28, summaryY);
-    doc.save(`kassenbuch-${month}${mobile ? "-mobil" : ""}.pdf`);
+    doc.save("kassenbuch-" + month + (mobile ? "-mobil" : "") + ".pdf");
     return true;
   }
 
