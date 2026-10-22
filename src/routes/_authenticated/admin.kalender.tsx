@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import {
   createSlot,
+  createVacation,
   deleteSlot,
   getCalendarFeedUrl,
   updateSlotBuffer,
@@ -37,6 +38,7 @@ import {
   Scissors,
   Combine,
   Plus,
+  Plane,
 } from "lucide-react";
 import { exportCalendarImage } from "@/lib/download-image.client";
 import { format } from "date-fns";
@@ -56,6 +58,7 @@ export const Route = createFileRoute("/_authenticated/admin/kalender")({
 function AdminKalenderPage() {
   const qc = useQueryClient();
   const createSlotFn = useServerFn(createSlot);
+  const createVacationFn = useServerFn(createVacation);
   const deleteSlotFn = useServerFn(deleteSlot);
   const updateSlotTimesFn = useServerFn(updateSlotTimes);
   const splitCalendarSlotFn = useServerFn(splitCalendarSlot);
@@ -115,6 +118,12 @@ function AdminKalenderPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-slots"] }),
   });
 
+  const vacationMut = useMutation({
+    mutationFn: (input: { starts_at: string; ends_at: string }) =>
+      createVacationFn({ data: input }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-slots"] }),
+  });
+
   const deleteMut = useMutation({
     mutationFn: (id: string) => deleteSlotFn({ data: { id } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-slots"] }),
@@ -168,8 +177,12 @@ function AdminKalenderPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-slots"] }),
   });
 
+  const allSlots = slotsQ.data ?? [];
+  const vacationSlots = allSlots.filter((slot) => slot.location === "__URLAUB__");
+  const regularSlots = allSlots.filter((slot) => slot.location !== "__URLAUB__");
+
   const slotsByDay = new Map<string, Slot[]>();
-  for (const slot of slotsQ.data ?? []) {
+  for (const slot of regularSlots) {
     const dayKey = format(new Date(slot.starts_at), "yyyy-MM-dd");
     slotsByDay.set(dayKey, [...(slotsByDay.get(dayKey) ?? []), slot]);
   }
@@ -203,6 +216,13 @@ function AdminKalenderPage() {
             <CalendarSubscribeButton />
           </div>
 
+          <VacationForm
+            vacations={vacationSlots}
+            pending={vacationMut.isPending || deleteMut.isPending}
+            onCreate={(v) => vacationMut.mutateAsync(v)}
+            onDelete={(id) => deleteMut.mutateAsync(id)}
+          />
+
           <NewSlotForm
             onCreate={(v) => createMut.mutateAsync(v)}
             pending={createMut.isPending}
@@ -210,7 +230,7 @@ function AdminKalenderPage() {
           />
 
           <FreeSlotImageExport
-            slots={slotsQ.data ?? []}
+            slots={regularSlots}
             loading={slotsQ.isLoading}
           />
 
@@ -218,7 +238,7 @@ function AdminKalenderPage() {
             {slotsQ.isLoading && (
               <p className="text-vanilla/50 text-sm">Lade…</p>
             )}
-            {slotsQ.data?.length === 0 && (
+            {regularSlots.length === 0 && (
               <p className="text-vanilla/50 text-sm border border-dashed border-champagne/20 p-6 text-center">
                 Noch keine Zeitfenster angelegt.
               </p>
@@ -787,6 +807,117 @@ function FreeSlotImageExport({
         <p className="mt-3 text-xs text-vanilla/50">
           Aktuell sind keine offenen, sichtbaren Termine vorhanden.
         </p>
+      )}
+    </section>
+  );
+}
+
+function VacationForm({
+  vacations,
+  pending,
+  onCreate,
+  onDelete,
+}: {
+  vacations: Slot[];
+  pending: boolean;
+  onCreate: (value: { starts_at: string; ends_at: string }) => Promise<unknown>;
+  onDelete: (id: string) => Promise<unknown>;
+}) {
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!from || !to) return;
+    if (to < from) {
+      alert("Das Bis-Datum darf nicht vor dem Von-Datum liegen.");
+      return;
+    }
+    const endExclusive = new Date(`${to}T00:00:00.000Z`);
+    endExclusive.setUTCDate(endExclusive.getUTCDate() + 1);
+    await onCreate({
+      starts_at: `${from}T00:00:00.000Z`,
+      ends_at: endExclusive.toISOString(),
+    });
+    setFrom("");
+    setTo("");
+  }
+
+  return (
+    <section className="mb-8 border border-champagne/25 bg-card p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <Plane size={17} className="text-champagne" />
+        <div>
+          <div className="eyebrow text-champagne">Urlaub</div>
+          <p className="text-xs text-vanilla/50 mt-1">
+            Der Zeitraum wird im öffentlichen Kalender als Urlaub markiert und ist nicht buchbar.
+          </p>
+        </div>
+      </div>
+
+      <form onSubmit={submit} className="grid sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
+        <label className="text-xs text-vanilla/65">
+          <span className="block mb-1 uppercase tracking-[0.16em] text-[0.6rem]">Von</span>
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            className="w-full bg-anthracite/40 border border-champagne/20 px-3 py-2 text-vanilla"
+            required
+          />
+        </label>
+        <label className="text-xs text-vanilla/65">
+          <span className="block mb-1 uppercase tracking-[0.16em] text-[0.6rem]">Bis</span>
+          <input
+            type="date"
+            value={to}
+            min={from || undefined}
+            onChange={(e) => setTo(e.target.value)}
+            className="w-full bg-anthracite/40 border border-champagne/20 px-3 py-2 text-vanilla"
+            required
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={pending || !from || !to}
+          className="btn-gold !py-2.5 !px-4 !text-[0.65rem] disabled:opacity-40"
+        >
+          <Plane size={13} /> Urlaub eintragen
+        </button>
+      </form>
+
+      {vacations.length > 0 && (
+        <div className="mt-5 space-y-2 border-t border-champagne/15 pt-4">
+          <div className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45">
+            Eingetragene Urlaubszeiten
+          </div>
+          {vacations.map((vacation) => {
+            const inclusiveEnd = new Date(new Date(vacation.ends_at).getTime() - 24 * 60 * 60_000);
+            return (
+              <div
+                key={vacation.id}
+                className="flex items-center justify-between gap-3 border border-champagne/15 bg-anthracite/25 px-3 py-2"
+              >
+                <span className="text-sm text-vanilla/80">
+                  {format(new Date(vacation.starts_at), "dd.MM.yyyy", { locale: de })}
+                  {" – "}
+                  {format(inclusiveEnd, "dd.MM.yyyy", { locale: de })}
+                </span>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => {
+                    if (confirm("Diesen Urlaubszeitraum löschen?")) void onDelete(vacation.id);
+                  }}
+                  className="text-vanilla/45 hover:text-bordeaux p-2 disabled:opacity-40"
+                  aria-label="Urlaub löschen"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
       )}
     </section>
   );
