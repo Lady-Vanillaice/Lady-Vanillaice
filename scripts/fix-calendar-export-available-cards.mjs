@@ -3,7 +3,10 @@ import fs from "node:fs";
 const path = "src/lib/download-image.client/calendar-image-export.ts";
 let source = fs.readFileSync(path, "utf8");
 
-const returnAnchor = "  return { slots, availabilityByDay };";
+const returnAnchors = [
+  "  return { slots, availabilityByDay };",
+  "  return { slots, availabilityByDay, vacations };",
+];
 const returnReplacement = `  const displaySlots: SlotRow[] = [];
   const statusByDay = new Map<string, string>();
 
@@ -69,15 +72,20 @@ const returnReplacement = `  const displaySlots: SlotRow[] = [];
     statusByDay.set(dayKey, status);
   }
 
-  return { slots: displaySlots, availabilityByDay, statusByDay };`;
+  return { slots: displaySlots, availabilityByDay, statusByDay, vacations };`;
 
-if (source.includes(returnAnchor)) {
+const returnAnchor = returnAnchors.find((anchor) => source.includes(anchor));
+if (returnAnchor) {
   source = source.replace(returnAnchor, returnReplacement);
 }
 
 source = source.replace(
   "  const { slots, availabilityByDay } = await loadData(mode);",
   "  const { slots, availabilityByDay, statusByDay } = await loadData(mode);",
+);
+source = source.replace(
+  "  const { slots, availabilityByDay, vacations } = await loadData(mode);",
+  "  const { slots, availabilityByDay, statusByDay, vacations } = await loadData(mode);",
 );
 source = source.replace("  const appointmentRowHeight = 150;", "  const appointmentRowHeight = 190;");
 source = source.replace(
@@ -124,8 +132,11 @@ const oldPatchedTag = `      const tag = slot.is_duo ? "DUO VERFÜGBAR" : "NUR E
 source = source.replace(oldTag, "      const tag = \"\";");
 source = source.replace(oldPatchedTag, "      const tag = \"\";");
 
-if (!source.includes("statusByDay")) {
+if (!source.includes("const statusByDay = new Map<string, string>()")) {
   throw new Error("Export day-status patch could not be applied");
+}
+if (!source.includes("statusByDay, vacations")) {
+  throw new Error("Export day-status/vacation return patch could not be applied");
 }
 if (!source.includes("const isDuoDay = daySlots.some")) {
   throw new Error("Export duo-day label condition could not be applied");
