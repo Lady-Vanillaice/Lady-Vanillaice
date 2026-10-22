@@ -710,6 +710,49 @@ export const listUpcomingSlots = createServerFn({ method: "GET" }).handler(async
   const supabase = publicClient();
   const now = new Date().toISOString();
   const nowMs = Date.now();
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+  const { data: vacationRows, error: vacationError } = await supabaseAdmin
+    .from("availability_slots")
+    .select("id, starts_at, ends_at")
+    .eq("location", "__URLAUB__")
+    .eq("status", "booked")
+    .gt("ends_at", now)
+    .order("starts_at", { ascending: true });
+
+  if (vacationError) {
+    console.error("Vacation calendar read failed", vacationError.message);
+  }
+
+  const vacationEntries = (vacationRows ?? []).flatMap((vacation) => {
+    const entries = [];
+    const startKey = vacation.starts_at.slice(0, 10);
+    const endExclusiveKey = vacation.ends_at.slice(0, 10);
+    let cursor = new Date(`${startKey}T00:00:00.000Z`);
+    const endExclusive = new Date(`${endExclusiveKey}T00:00:00.000Z`);
+    while (cursor < endExclusive) {
+      const dayKey = cursor.toISOString().slice(0, 10);
+      entries.push({
+        id: `vacation-${vacation.id}-${dayKey}`,
+        starts_at: `${dayKey}T12:00:00.000Z`,
+        ends_at: `${dayKey}T13:00:00.000Z`,
+        location: "Urlaub",
+        buffer_minutes: null,
+        status: "booked",
+        is_duo: false,
+        is_content_shoot: false,
+        duo_partner: null,
+        is_fully_booked: true,
+        has_booking: false,
+        is_reserved: false,
+        reserved_until: null as string | null,
+        is_vacation: true,
+      });
+      cursor = new Date(cursor.getTime() + 24 * 60 * 60_000);
+    }
+    return entries;
+  });
+
   const { data, error } = await supabase
     .from("availability_slots")
     .select("id, starts_at, ends_at, location, buffer_minutes, status, is_duo, is_content_shoot, duo_partner")
@@ -736,7 +779,7 @@ export const listUpcomingSlots = createServerFn({ method: "GET" }).handler(async
   }
 
   const slots = data ?? [];
-  if (slots.length === 0) return [];
+  if (slots.length === 0) return vacationEntries;
 
   const openSlots = slots;
   const dayKeys = Array.from(new Set(slots.map((s) => new Date(s.starts_at).toISOString().slice(0, 10))));
@@ -744,7 +787,6 @@ export const listUpcomingSlots = createServerFn({ method: "GET" }).handler(async
   const rangeEnd = new Date(`${dayKeys[dayKeys.length - 1]}T00:00:00.000Z`);
   rangeEnd.setUTCDate(rangeEnd.getUTCDate() + 1);
 
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const slotIds = openSlots.map((s) => s.id);
 
   const { data: closedSlots } = await supabaseAdmin
@@ -840,7 +882,7 @@ export const listUpcomingSlots = createServerFn({ method: "GET" }).handler(async
     }
   }
 
-  return [...byDay.entries()].map(([dayKey, slot]) => {
+  const regularDays = [...byDay.entries()].map(([dayKey, slot]) => {
     const daySlots = enrichedSlots.filter((s) => new Date(s.starts_at).toISOString().slice(0, 10) === dayKey);
     const starts = daySlots.map((s) => new Date(s.starts_at).getTime());
     const ends = daySlots.map((s) => new Date(s.ends_at).getTime());
@@ -869,4 +911,8 @@ export const listUpcomingSlots = createServerFn({ method: "GET" }).handler(async
       is_reserved: false,
     };
   });
+
+  return [...regularDays, ...vacationEntries].sort(
+    (a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime(),
+  );
 });

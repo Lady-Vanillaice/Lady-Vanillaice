@@ -31,6 +31,7 @@ type Slot = {
   has_booking?: boolean;
   is_reserved?: boolean;
   reserved_until?: string | null;
+  is_vacation?: boolean;
   windows?: Array<{
     id: string;
     starts_at: string;
@@ -217,6 +218,7 @@ function KalenderPage() {
                   const has = slotByDay.has(key);
                   const slot = slotByDay.get(key);
                   const isFullyBooked = slot?.is_fully_booked ?? false;
+                  const isVacation = slot?.is_vacation ?? false;
                   const hasBooking = slot?.has_booking ?? false;
                   const partiallyBooked = hasBooking && !isFullyBooked;
                   const isOther = !isSameMonth(day, cursor);
@@ -225,11 +227,13 @@ function KalenderPage() {
                   return (
                     <button
                       key={key}
-                      onClick={() => has && !isFullyBooked && setSelectedDay(day)}
-                      disabled={!has || isPast || isFullyBooked}
+                      onClick={() => has && !isFullyBooked && !isVacation && setSelectedDay(day)}
+                      disabled={!has || isPast || isFullyBooked || isVacation}
                       className={`aspect-square flex flex-col items-center justify-center border text-sm transition relative ${
                         isSel
                           ? "border-champagne bg-champagne/20 text-vanilla"
+                          : isVacation && !isPast
+                          ? "border-vanilla/20 bg-anthracite/80 text-vanilla/60 cursor-default"
                           : isFullyBooked
                           ? "border-bordeaux/50 bg-bordeaux/30 text-vanilla/80 cursor-default"
                           : partiallyBooked && !isPast
@@ -240,7 +244,11 @@ function KalenderPage() {
                       } ${isOther ? "opacity-40" : ""}`}
                     >
                       <span>{format(day, "d")}</span>
-                      {isFullyBooked && !isPast ? (
+                      {isVacation && !isPast ? (
+                        <span className="absolute bottom-1.5 text-[0.46rem] uppercase tracking-[0.1em] text-champagne/80">
+                          {tr("Urlaub", "Away")}
+                        </span>
+                      ) : isFullyBooked && !isPast ? (
                         <span className="absolute bottom-1.5 text-[0.48rem] uppercase tracking-[0.12em] text-vanilla/90">
                           {tr("belegt", "booked")}
                         </span>
@@ -255,7 +263,7 @@ function KalenderPage() {
                           Content
                         </span>
                       )}
-                      {has && !isPast && !isFullyBooked && (
+                      {has && !isPast && !isFullyBooked && !isVacation && (
                         <span className="absolute bottom-1.5 w-1 h-1 rounded-full bg-champagne" />
                       )}
                     </button>
