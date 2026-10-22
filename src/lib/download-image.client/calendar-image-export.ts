@@ -50,6 +50,8 @@ const COLORS = {
   booked: "rgba(127,36,56,0.60)",
   reserved: "rgba(110,110,115,0.95)",
   unavailable: "rgba(62,59,55,0.80)",
+  vacation: "rgba(249,115,22,0.78)",
+  vacationSoft: "rgba(124,45,18,0.55)",
   tick: "rgba(244,234,216,0.10)",
 };
 
@@ -246,14 +248,24 @@ function drawTimeline(
 
 async function loadData(mode: CalendarExportMode) {
   const nowIso = new Date().toISOString();
-  const { data: slotRows, error } = await supabase
-    .from("availability_slots")
-    .select("id, starts_at, ends_at, location, is_duo, is_content_shoot, duo_partner")
-    .eq("status", "open")
-    .eq("is_hidden", false)
-    .gt("ends_at", nowIso)
-    .order("starts_at", { ascending: true });
+  const [{ data: slotRows, error }, { data: vacationRows, error: vacationError }] = await Promise.all([
+    supabase
+      .from("availability_slots")
+      .select("id, starts_at, ends_at, location, is_duo, is_content_shoot, duo_partner")
+      .eq("status", "open")
+      .eq("is_hidden", false)
+      .gt("ends_at", nowIso)
+      .order("starts_at", { ascending: true }),
+    supabase
+      .from("availability_slots")
+      .select("id, starts_at, ends_at, location, is_duo, is_content_shoot, duo_partner")
+      .eq("status", "booked")
+      .eq("location", "__URLAUB__")
+      .gt("ends_at", nowIso)
+      .order("starts_at", { ascending: true }),
+  ]);
   if (error) throw error;
+  if (vacationError) throw vacationError;
 
   const allSlots = (slotRows ?? []) as SlotRow[];
   const slots = allSlots.filter((slot) => {
@@ -281,11 +293,19 @@ async function loadData(mode: CalendarExportMode) {
     availabilityEntries.filter((entry): entry is readonly [string, AvailabilityData] => Boolean(entry[1])),
   );
 
-  return { slots, availabilityByDay };
+  const vacations = ((vacationRows ?? []) as SlotRow[]).filter((slot) => {
+    const parts = dateParts(slot.starts_at);
+    if (mode.type === "day") return parts.dayKey === mode.dayKey;
+    if (mode.type === "month") return parts.monthKey === mode.monthKey;
+    if (mode.type === "year") return parts.year === String(mode.year);
+    return true;
+  });
+
+  return { slots, availabilityByDay, vacations };
 }
 
 export async function exportCalendarImage(mode: CalendarExportMode) {
-  const { slots, availabilityByDay } = await loadData(mode);
+  const { slots, availabilityByDay, vacations } = await loadData(mode);
   const width = 1080;
   const outer = 52;
   const headerHeight = 285;
@@ -293,6 +313,8 @@ export async function exportCalendarImage(mode: CalendarExportMode) {
   const timelineRowHeight = 104;
   const appointmentRowHeight = 150;
   const monthHeaderHeight = 86;
+  const vacationHeaderHeight = vacations.length > 0 ? 82 : 0;
+  const vacationRowHeight = 116;
   const footerHeight = 100;
 
   const dayEntries = [...availabilityByDay.entries()].sort(([a], [b]) => a.localeCompare(b));
@@ -307,7 +329,8 @@ export async function exportCalendarImage(mode: CalendarExportMode) {
     (total, [, monthSlots]) => total + monthHeaderHeight + monthSlots.length * appointmentRowHeight,
     0,
   );
-  const height = headerHeight + legendHeight + dayEntries.length * timelineRowHeight + appointmentHeight + footerHeight;
+  const vacationHeight = vacationHeaderHeight + vacations.length * vacationRowHeight;
+  const height = headerHeight + legendHeight + dayEntries.length * timelineRowHeight + appointmentHeight + vacationHeight + footerHeight;
 
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -341,6 +364,7 @@ export async function exportCalendarImage(mode: CalendarExportMode) {
   drawLegendItem(ctx, 90, y + 58, COLORS.available, "verfügbar");
   drawLegendItem(ctx, 226, y + 58, COLORS.booked, "belegt");
   drawLegendItem(ctx, 330, y + 58, COLORS.reserved, "reserviert");
+  drawLegendItem(ctx, 458, y + 58, COLORS.vacation, "Urlaub");
   y += legendHeight;
 
   for (const [dayKey, availability] of dayEntries) {
@@ -392,6 +416,43 @@ export async function exportCalendarImage(mode: CalendarExportMode) {
         ctx.fillText(tag, cardX + cardWidth - 30, y + 100);
       }
       y += appointmentRowHeight;
+    }
+  }
+
+  if (vacations.length > 0) {
+    ctx.fillStyle = COLORS.vacationSoft;
+    ctx.fillRect(outer + 28, y, width - (outer + 28) * 2, vacationHeaderHeight - 10);
+    ctx.textAlign = "center";
+    ctx.fillStyle = COLORS.vacation;
+    ctx.font = 'bold 32px Georgia, "Times New Roman", serif';
+    ctx.fillText("URLAUB", width / 2, y + 50);
+    y += vacationHeaderHeight;
+
+    for (const vacation of vacations) {
+      const cardX = outer + 28;
+      const cardWidth = width - cardX * 2;
+      const inclusiveEnd = new Date(new Date(vacation.ends_at).getTime() - 24 * 60 * 60_000);
+
+      ctx.fillStyle = "rgba(124,45,18,0.22)";
+      ctx.fillRect(cardX, y, cardWidth, vacationRowHeight - 18);
+      ctx.strokeStyle = COLORS.vacation;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(cardX, y, cardWidth, vacationRowHeight - 18);
+
+      ctx.textAlign = "left";
+      ctx.fillStyle = COLORS.vacation;
+      ctx.font = 'bold 18px Arial, sans-serif';
+      ctx.fillText("URLAUB · NICHT VERFÜGBAR", cardX + 30, y + 34);
+
+      ctx.fillStyle = COLORS.vanilla;
+      ctx.font = '30px Georgia, "Times New Roman", serif';
+      ctx.fillText(
+        `${dateLabel(vacation.starts_at)} – ${dateLabel(inclusiveEnd)}`,
+        cardX + 30,
+        y + 76,
+      );
+
+      y += vacationRowHeight;
     }
   }
 
