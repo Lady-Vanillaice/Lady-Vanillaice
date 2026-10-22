@@ -233,7 +233,7 @@ function KalenderPage() {
                         isSel
                           ? "border-champagne bg-champagne/20 text-vanilla"
                           : isVacation && !isPast
-                          ? "border-vanilla/20 bg-anthracite/80 text-vanilla/60 cursor-default"
+                          ? "border-orange-500/75 bg-orange-950/30 text-vanilla shadow-[inset_0_0_0_1px_rgba(249,115,22,0.14)] cursor-default"
                           : isFullyBooked
                           ? "border-bordeaux/50 bg-bordeaux/30 text-vanilla/80 cursor-default"
                           : partiallyBooked && !isPast
@@ -245,7 +245,7 @@ function KalenderPage() {
                     >
                       <span>{format(day, "d")}</span>
                       {isVacation && !isPast ? (
-                        <span className="absolute bottom-1.5 text-[0.46rem] uppercase tracking-[0.1em] text-champagne/80">
+                        <span className="absolute bottom-1.5 rounded-sm border border-orange-500/70 bg-orange-950/55 px-1.5 py-0.5 text-[0.46rem] font-semibold uppercase tracking-[0.12em] text-vanilla">
                           {tr("Urlaub", "Away")}
                         </span>
                       ) : isFullyBooked && !isPast ? (
