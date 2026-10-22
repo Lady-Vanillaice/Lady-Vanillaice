@@ -121,6 +121,39 @@ export const createSlot = createServerFn({ method: "POST" })
     return row;
   });
 
+const vacationInput = z.object({
+  starts_at: z.string().datetime(),
+  ends_at: z.string().datetime(),
+}).superRefine((value, ctx) => {
+  if (new Date(value.ends_at).getTime() <= new Date(value.starts_at).getTime()) {
+    ctx.addIssue({ code: "custom", message: "Das Urlaubsende muss nach dem Beginn liegen." });
+  }
+});
+
+export const createVacation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => vacationInput.parse(d))
+  .handler(async ({ data, context }) => {
+    await ensureAdmin(context.supabase, context.userId);
+    const { data: row, error } = await context.supabase
+      .from("availability_slots")
+      .insert({
+        starts_at: data.starts_at,
+        ends_at: data.ends_at,
+        location: "__URLAUB__",
+        status: "booked",
+        buffer_minutes: 0,
+        is_duo: false,
+        is_content_shoot: false,
+        duo_partner: null,
+        is_hidden: false,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return row;
+  });
+
 export const updateSlotBuffer = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
