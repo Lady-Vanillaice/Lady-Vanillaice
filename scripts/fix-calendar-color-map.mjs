@@ -115,8 +115,9 @@ image = replaceOnce(
 image = replaceOnce(image, '  const legendHeight = 78;', '  const legendHeight = 112;');
 
 const oldExportLegend = `  drawLegendItem(ctx, 90, y + 58, COLORS.available, "verfügbar");\n  drawLegendItem(ctx, 226, y + 58, COLORS.booked, "belegt");\n  drawLegendItem(ctx, 330, y + 58, COLORS.reserved, "reserviert");`;
-const newExportLegend = `  drawLegendItem(ctx, 90, y + 58, COLORS.reserved, "reserviert");\n  drawLegendItem(ctx, 225, y + 58, COLORS.singleAvailable, "nur Einzel verfügbar");\n  drawLegendItem(ctx, 480, y + 58, COLORS.singleBooked, "nur Einzel belegt");\n  drawLegendItem(ctx, 90, y + 92, COLORS.duoAvailable, "Duo verfügbar");\n  drawLegendItem(ctx, 275, y + 92, COLORS.duoBooked, "Duo belegt");`;
+const newExportLegend = `  drawLegendItem(ctx, 90, y + 58, COLORS.reserved, "reserviert");\n  drawLegendItem(ctx, 225, y + 58, COLORS.singleAvailable, "nur Einzel verfügbar");\n  drawLegendItem(ctx, 480, y + 58, COLORS.singleBooked, "nur Einzel belegt");\n  drawLegendItem(ctx, 90, y + 92, COLORS.duoAvailable, "Duo verfügbar");\n  drawLegendItem(ctx, 275, y + 92, COLORS.duoBooked, "Duo belegt");\n  drawLegendItem(ctx, 480, y + 92, COLORS.vacation, "Urlaub");`;
 image = replaceOnce(image, oldExportLegend, newExportLegend);
+image = image.replace('  drawLegendItem(ctx, 458, y + 58, COLORS.vacation, "Urlaub");\n', "");
 
 const currentExportLegend = `  drawLegendItem(ctx, 90, y + 58, COLORS.singleAvailable, "nur Einzel verfügbar");\n  drawLegendItem(ctx, 325, y + 58, COLORS.duoAvailable, "Duo verfügbar");\n  drawLegendItem(ctx, 500, y + 58, COLORS.duoBooked, "Duo belegt");\n  drawLegendItem(ctx, 90, y + 92, COLORS.singleBooked, "nur Einzel belegt");\n  drawLegendItem(ctx, 325, y + 92, COLORS.reserved, "reserviert");`;
 image = image.replace(currentExportLegend, newExportLegend);

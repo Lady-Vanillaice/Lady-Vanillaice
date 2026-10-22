@@ -293,13 +293,10 @@ async function loadData(mode: CalendarExportMode) {
     availabilityEntries.filter((entry): entry is readonly [string, AvailabilityData] => Boolean(entry[1])),
   );
 
-  const vacations = ((vacationRows ?? []) as SlotRow[]).filter((slot) => {
-    const parts = dateParts(slot.starts_at);
-    if (mode.type === "day") return parts.dayKey === mode.dayKey;
-    if (mode.type === "month") return parts.monthKey === mode.monthKey;
-    if (mode.type === "year") return parts.year === String(mode.year);
-    return true;
-  });
+  // Upcoming vacations are shown as a compact note at the very bottom of
+  // every export, independent of the selected month/year. The query already
+  // excludes vacations that have ended.
+  const vacations = (vacationRows ?? []) as SlotRow[];
 
   return { slots, availabilityByDay, vacations };
 }
@@ -313,9 +310,8 @@ export async function exportCalendarImage(mode: CalendarExportMode) {
   const timelineRowHeight = 104;
   const appointmentRowHeight = 150;
   const monthHeaderHeight = 86;
-  const vacationHeaderHeight = vacations.length > 0 ? 82 : 0;
-  const vacationRowHeight = 116;
-  const footerHeight = 100;
+  const vacationLineHeight = 38;
+  const footerHeight = 100 + vacations.length * vacationLineHeight;
 
   const dayEntries = [...availabilityByDay.entries()].sort(([a], [b]) => a.localeCompare(b));
 
@@ -329,8 +325,7 @@ export async function exportCalendarImage(mode: CalendarExportMode) {
     (total, [, monthSlots]) => total + monthHeaderHeight + monthSlots.length * appointmentRowHeight,
     0,
   );
-  const vacationHeight = vacationHeaderHeight + vacations.length * vacationRowHeight;
-  const height = headerHeight + legendHeight + dayEntries.length * timelineRowHeight + appointmentHeight + vacationHeight + footerHeight;
+  const height = headerHeight + legendHeight + dayEntries.length * timelineRowHeight + appointmentHeight + footerHeight;
 
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -419,47 +414,26 @@ export async function exportCalendarImage(mode: CalendarExportMode) {
     }
   }
 
-  if (vacations.length > 0) {
-    ctx.fillStyle = COLORS.vacationSoft;
-    ctx.fillRect(outer + 28, y, width - (outer + 28) * 2, vacationHeaderHeight - 10);
-    ctx.textAlign = "center";
-    ctx.fillStyle = COLORS.vacation;
-    ctx.font = 'bold 32px Georgia, "Times New Roman", serif';
-    ctx.fillText("URLAUB", width / 2, y + 50);
-    y += vacationHeaderHeight;
-
-    for (const vacation of vacations) {
-      const cardX = outer + 28;
-      const cardWidth = width - cardX * 2;
-      const inclusiveEnd = new Date(new Date(vacation.ends_at).getTime() - 24 * 60 * 60_000);
-
-      ctx.fillStyle = "rgba(124,45,18,0.22)";
-      ctx.fillRect(cardX, y, cardWidth, vacationRowHeight - 18);
-      ctx.strokeStyle = COLORS.vacation;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(cardX, y, cardWidth, vacationRowHeight - 18);
-
-      ctx.textAlign = "left";
-      ctx.fillStyle = COLORS.vacation;
-      ctx.font = 'bold 18px Arial, sans-serif';
-      ctx.fillText("URLAUB · NICHT VERFÜGBAR", cardX + 30, y + 34);
-
-      ctx.fillStyle = COLORS.vanilla;
-      ctx.font = '30px Georgia, "Times New Roman", serif';
-      ctx.fillText(
-        `${dateLabel(vacation.starts_at)} – ${dateLabel(inclusiveEnd)}`,
-        cardX + 30,
-        y + 76,
-      );
-
-      y += vacationRowHeight;
-    }
-  }
-
   ctx.textAlign = "center";
   ctx.fillStyle = COLORS.softGold;
   ctx.font = '18px Arial, sans-serif';
-  ctx.fillText("BUCHUNGSANFRAGE · LADY-VANILLAICE.COM", width / 2, height - 66);
+  const vacationFooterOffset = vacations.length * vacationLineHeight;
+  ctx.fillText(
+    "BUCHUNGSANFRAGE · LADY-VANILLAICE.COM",
+    width / 2,
+    height - 66 - vacationFooterOffset,
+  );
+
+  vacations.forEach((vacation, index) => {
+    const inclusiveEnd = new Date(new Date(vacation.ends_at).getTime() - 24 * 60 * 60_000);
+    ctx.fillStyle = COLORS.vacation;
+    ctx.font = 'bold 18px Arial, sans-serif';
+    ctx.fillText(
+      `${dateLabel(vacation.starts_at)} – ${dateLabel(inclusiveEnd)} · URLAUB`,
+      width / 2,
+      height - 28 - (vacations.length - 1 - index) * vacationLineHeight,
+    );
+  });
 
   const suffix = mode.type === "month"
     ? mode.monthKey
