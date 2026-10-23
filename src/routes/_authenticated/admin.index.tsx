@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { listAdminAccessRequests, decideAdminAccessRequest } from "@/lib/admin-access.functions";
 import { createStudio, deleteStudio, listStudios } from "@/lib/studio.functions";
 import { listCashBookEntries } from "@/lib/cashbook.functions";
+import { searchAdminData, type AdminSearchResult } from "@/lib/admin-search.functions";
 import {
   getPushConfiguration,
   removePushSubscription,
@@ -15,7 +16,7 @@ import { PageHeader } from "@/components/site/PageHeader";
 import {
   LogOut, Calendar, Mail, ShieldCheck, CheckCircle2, XCircle, MessageSquare, Quote,
   Camera, Sparkles, Wallet, RotateCcw, CalendarClock, Users, Clock3, BadgeEuro,
-  CircleAlert, ArrowRight, ChevronDown, Download, Share, Bell, BellOff, Send, Building2, Plus, Trash2,
+  CircleAlert, ArrowRight, ChevronDown, Download, Share, Bell, BellOff, Send, Building2, Plus, Trash2, Search, X,
 } from "lucide-react";
 import { endOfMonth, endOfWeek, format, isWithinInterval, startOfDay, startOfMonth, startOfWeek } from "date-fns";
 import { de } from "date-fns/locale";
@@ -98,6 +99,8 @@ function AdminHubPage() {
         <button onClick={onLogout} className="btn-outline-gold !py-2 !px-4 !text-[0.65rem]"><LogOut size={12} /> Abmelden</button>
       </div>
 
+      <GlobalAdminSearch />
+
       <InstallAdminApp />
       <PushNotificationsCard />
 
@@ -144,6 +147,80 @@ function AdminHubPage() {
       <AdminAccessRequestsPanel />
     </div></section>
   </>;
+}
+
+function GlobalAdminSearch() {
+  const searchFn = useServerFn(searchAdminData);
+  const [query, setQuery] = useState("");
+  const trimmed = query.trim();
+  const searchQuery = useQuery({
+    queryKey: ["admin-global-search", trimmed],
+    queryFn: () => searchFn({ data: { query: trimmed } }),
+    enabled: trimmed.length >= 2,
+    staleTime: 10_000,
+  });
+  const results = (searchQuery.data ?? []) as AdminSearchResult[];
+
+  return (
+    <section className="mb-8 border border-champagne/30 bg-card p-4 sm:p-5">
+      <div className="flex items-center gap-2 text-champagne mb-2">
+        <Search size={18} />
+        <h2 className="font-display text-xl">Admin durchsuchen</h2>
+      </div>
+      <p className="text-xs text-vanilla/55 mb-4">
+        Durchsucht Kunden, Buchungen, Zahlungen, Custom Content, Content-Dreh, Newsletter und Erfahrungsberichte.
+      </p>
+      <div className="relative">
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-vanilla/40" />
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Name, E-Mail, Telefonnummer, Zahlung, Custom …"
+          className="input-luxe !py-3 !pl-10 !pr-10 w-full"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
+            aria-label="Suche löschen"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-vanilla/45 hover:text-champagne"
+          >
+            <X size={16} />
+          </button>
+        )}
+      </div>
+
+      {trimmed.length === 1 && <p className="mt-3 text-xs text-vanilla/45">Bitte mindestens 2 Zeichen eingeben.</p>}
+      {searchQuery.isFetching && <p className="mt-3 text-xs text-vanilla/45">Suche läuft…</p>}
+      {searchQuery.error && <p className="mt-3 text-xs text-bordeaux">Suche konnte nicht geladen werden: {(searchQuery.error as Error).message}</p>}
+      {trimmed.length >= 2 && !searchQuery.isFetching && !searchQuery.error && results.length === 0 && (
+        <p className="mt-3 text-xs text-vanilla/45">Keine passenden Einträge gefunden.</p>
+      )}
+
+      {results.length > 0 && (
+        <div className="mt-4 grid gap-2 max-h-[28rem] overflow-y-auto">
+          {results.map((result) => (
+            <Link
+              key={result.key}
+              to={result.href as any}
+              className="group border border-champagne/15 bg-anthracite/25 p-3 hover:border-champagne/50 transition"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[0.58rem] uppercase tracking-[0.16em] text-champagne">{result.kind}</span>
+                    <strong className="text-vanilla group-hover:text-champagne transition">{result.title}</strong>
+                  </div>
+                  {result.subtitle && <p className="mt-1 text-xs text-vanilla/55 break-words">{result.subtitle}</p>}
+                </div>
+                <ArrowRight size={15} className="mt-1 shrink-0 text-champagne/70" />
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </section>
+  );
 }
 
 function StudioManagement() {
