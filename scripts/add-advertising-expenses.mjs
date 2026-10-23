@@ -84,7 +84,7 @@ if (!ui.includes("Ausgabe – Werbung")) {
 }
 ui = replaceOnce(
   ui,
-  '["Datum", "Ausgabe", "Studio", "Zahlungsart", "Betrag", ""]',
+  '["Datum", "Ausgabe", "Studio", "Zahlungsart", "Notiz", "Betrag", ""]',
   '["Datum", "Ausgabe", "Studio / Anbieter", "Zahlungsart", "Betrag", ""]',
   "expense table heading",
 );
