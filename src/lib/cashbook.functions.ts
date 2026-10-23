@@ -146,7 +146,7 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
       const cashDate = dateOnly(b.cash_received_at) ?? (b.fully_paid ? dateOnly(b.completed_at) : null);
       const onsiteMethodFromNote = typeof b.admin_note === "string" ? b.admin_note.match(/(?:^|\n)Vor Ort Zahlungsmethode:\s*([^\n]+)/)?.[1]?.trim() ?? null : null;
       const exemptionFromNote = typeof b.admin_note === "string" && /(?:^|\n)Anzahlungsregel: Spontaner Termin(?:\n|$)/.test(b.admin_note) ? "spontaneous" : b.deposit_exemption_reason ?? null;
-      const status: CashBookEntry["status"] = b.status === "cancelled" ? "cancelled" : b.status === "rescheduling" ? "rescheduling" : b.fully_paid || b.completed_at ? "completed" : "open";
+      const status: CashBookEntry["status"] = b.status === "cancelled" ? "cancelled" : b.status === "rescheduling" || /(?:^|\n)\s*(?:status\s*:\s*)?(?:umplanen|umplanung|rescheduling)(?:\s|$)/i.test(b.admin_note ?? "") ? "rescheduling" : b.fully_paid || b.completed_at ? "completed" : "open";
       const art = slot?.is_duo ? (slot?.is_content_shoot ? "Duo + Content" : "Duo") : (slot?.is_content_shoot ? "Single + Content" : "Single");
       const common = {
         source: "booking" as const, entry_type: "income" as const, expense_category: null,
