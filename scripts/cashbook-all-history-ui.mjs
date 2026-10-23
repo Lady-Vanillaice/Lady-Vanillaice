@@ -13,6 +13,7 @@ if (!source.includes(marker)) {
   const headings = [
     "Vergangene / stornierte Termine ({completedIncomeEntries.length})",
     "Vergangene Termine ({completedIncomeEntries.length})",
+    "Vergangene Termine ohne Zahlung im gewählten Monat ({completedIncomeEntries.length})",
   ];
   const heading = headings.find(value => source.includes(value));
   if (!heading) throw new Error("Cashbook all-history final patch: archive heading missing");
@@ -21,6 +22,7 @@ if (!source.includes(marker)) {
   let after = source.slice(split).replaceAll("completedIncomeEntries", "allPastIncomeEntries");
   after = after.replace("Vergangene / stornierte Termine ({allPastIncomeEntries.length})", "Alle vergangenen / stornierten Termine ({allPastIncomeEntries.length})");
   after = after.replace("Vergangene Termine ({allPastIncomeEntries.length})", "Alle vergangenen / stornierten Termine ({allPastIncomeEntries.length})");
+  after = after.replace("Vergangene Termine ohne Zahlung im gewählten Monat ({allPastIncomeEntries.length})", "Alle vergangenen / stornierten Termine ({allPastIncomeEntries.length})");
   source = before + after;
   writeFileSync(path, source);
 }
