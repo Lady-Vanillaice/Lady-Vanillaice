@@ -190,15 +190,15 @@ function KassenbuchPage() {
 
   function exportPdf(mobile = false) {
     if (!canExport()) return false;
-    type Receipt = { date: string; customer: string; kind: string; method: string; amount: number; appointment: string };
+    type Receipt = { date: string; customer: string; kind: string; method: string; amount: number; appointment: string; status: CashBookEntry["status"] };
     const receipts: Receipt[] = [];
     for (const entry of filtered) {
       if (entry.entry_type !== "income") continue;
       const appointment = dateLabel(entry.termin_datum);
       if (entry.anzahlung > 0 && entry.anzahlung_datum?.startsWith(month))
-        receipts.push({ date: entry.anzahlung_datum, customer: entry.kunde, kind: "Anzahlung", method: entry.anzahlung_method || "Nicht angegeben", amount: entry.anzahlung, appointment });
+        receipts.push({ date: entry.anzahlung_datum, customer: entry.kunde, kind: "Anzahlung", method: entry.anzahlung_method || "Nicht angegeben", amount: entry.anzahlung, appointment, status: entry.status });
       if (entry.bar > 0 && entry.bar_datum?.startsWith(month))
-        receipts.push({ date: entry.bar_datum, customer: entry.kunde, kind: "Rest-/Vor-Ort-Zahlung", method: restMethodFor(entry) || "Nicht angegeben", amount: entry.bar, appointment });
+        receipts.push({ date: entry.bar_datum, customer: entry.kunde, kind: "Rest-/Vor-Ort-Zahlung", method: restMethodFor(entry) || "Nicht angegeben", amount: entry.bar, appointment, status: entry.status });
     }
     receipts.sort((a, b) => a.date.localeCompare(b.date) || a.customer.localeCompare(b.customer) || a.kind.localeCompare(b.kind));
     if (!receipts.length) { alert("Keine datierten Zahlungseingänge in diesem Monat vorhanden."); return false; }
@@ -219,15 +219,24 @@ function KassenbuchPage() {
       const sum = section.entries.reduce((total, e) => total + e.amount, 0);
       autoTable(doc, {
         startY: 94,
-        head: [["Zahlungseingang", "Kunde", "Vorgang", "Zahlungsart", "Termin am", "Betrag"]],
+        head: [["Zahlungseingang", "Kunde", "Vorgang", "Zahlungsart", "Termin am", "Status", "Betrag"]],
         body: section.entries.length
-          ? section.entries.map(e => [dateLabel(e.date), e.customer, e.kind, e.method, e.appointment, eur(e.amount)])
-          : [["—", "Keine Zahlungseingänge", "", "", "", ""]],
-        foot: [["SUMME", "", "", "", "", eur(sum)]],
+          ? section.entries.map(e => [dateLabel(e.date), e.customer, e.kind, e.method, e.appointment, statusLabel[e.status], eur(e.amount)])
+          : [["—", "Keine Zahlungseingänge", "", "", "", "", ""]],
+        foot: [["SUMME", "", "", "", "", "", eur(sum)]],
         styles: { fontSize: mobile ? 8 : 9, cellPadding: 5, overflow: "linebreak" },
         headStyles: { fillColor: [15, 15, 15] },
         footStyles: { fillColor: [239, 229, 207], textColor: 15 },
-        columnStyles: { 5: { halign: "right" } },
+        columnStyles: { 6: { halign: "right" } },
+        didDrawCell: (cell) => {
+          if (cell.section !== "body" || cell.column.index !== 4) return;
+          const receipt = section.entries[cell.row.index];
+          if (!receipt || (receipt.status !== "cancelled" && receipt.status !== "rescheduling")) return;
+          const { x, y, width, height } = cell.cell;
+          doc.setDrawColor(90, 90, 90);
+          doc.setLineWidth(0.7);
+          doc.line(x + 4, y + height / 2, x + width - 4, y + height / 2);
+        },
         margin: { left: 28, right: 28 },
       });
     });
