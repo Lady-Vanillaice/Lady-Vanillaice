@@ -112,8 +112,8 @@ function KassenbuchPage() {
   }), [data, month, studioFilter, methodFilter, statusFilter, search, restPaymentMethods, hiddenBookingSet]);
 
   const incomeEntries = filtered.filter(e => e.entry_type === "income");
-  const activeIncomeEntries = incomeEntries.filter(e => e.status === "open" || e.status === "rescheduling");
-  const completedIncomeEntries = incomeEntries.filter(e => e.status === "completed" || e.status === "cancelled");
+  const activeIncomeEntries = incomeEntries.filter(e => e.status !== "completed" || (e.anzahlung_datum?.startsWith(month) && e.anzahlung > 0) || (e.bar_datum?.startsWith(month) && e.bar > 0));
+  const completedIncomeEntries = incomeEntries.filter(e => e.status === "completed" && !activeIncomeEntries.includes(e));
   const receivedIncomeEntries = incomeEntries.filter(e => e.source === "manual" ? Boolean(e.payment_date?.startsWith(month) && e.gesamt > 0) : Boolean((e.anzahlung_datum?.startsWith(month) && e.anzahlung > 0) || (e.bar_datum?.startsWith(month) && e.bar > 0)));
   const expenseEntries = filtered.filter(e => e.entry_type === "expense");
   const totals = receivedIncomeEntries.reduce((a, e) => { const deposit = e.source === "manual" || e.anzahlung_datum?.startsWith(month) ? e.anzahlung : 0; const cash = e.source === "manual" || e.bar_datum?.startsWith(month) ? e.bar : 0; a.anzahlung += deposit; a.bar += cash; a.gesamt += deposit + cash; if (e.status === "cancelled") a.storno += deposit; return a; }, { anzahlung: 0, bar: 0, gesamt: 0, storno: 0 });
@@ -371,7 +371,7 @@ function KassenbuchPage() {
       {completedIncomeEntries.length > 0 && (
         <details className="bg-card border border-champagne/20">
           <summary className="cursor-pointer px-4 py-4 text-sm uppercase tracking-[0.16em] text-champagne hover:bg-champagne/5">
-            Vergangene / stornierte Termine ({completedIncomeEntries.length})
+            Vergangene Termine ohne Zahlung in diesem Monat ({completedIncomeEntries.length})
           </summary>
           <div className="border-t border-champagne/15">
             <div className="md:hidden space-y-3 p-3">
