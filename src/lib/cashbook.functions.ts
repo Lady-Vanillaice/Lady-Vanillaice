@@ -90,7 +90,7 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
       db.from("cash_book_entries").select("id, studio, datum, kunde, anzahlung, anzahlung_method, bar, gesamt, notiz, created_at"),
       db.from("bookings")
         .select("id, guest_name, duration, duration_minutes, status, anzahlung, anzahlung_method, anzahlung_paid, anzahlung_paid_at, deposit_exemption_reason, deposit_guarantor, bar, completed_at, cash_received_at, fully_paid, admin_note, created_at, requested_start, studio_override, studio_address_override, availability_slots(starts_at, ends_at, location, location_address, is_duo, is_content_shoot)")
-        .in("status", ["confirmed", "cancelled", "rescheduling"]),
+        .in("status", ["pending", "waiting_deposit", "open", "confirmed", "cancelled", "rescheduling"]),
     ]);
     if (manualRes.error) throw new Error(manualRes.error.message);
     if (bookingRes.error) throw new Error(bookingRes.error.message);
