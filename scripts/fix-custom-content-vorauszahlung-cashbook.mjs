@@ -30,7 +30,7 @@ patch(cashbook, (source) => {
   let s = source;
   s = s.replace(
     'const isPureCustomContent = b.duration === "Custom Content" && /Custom-Content-(?:Vorauszahlung|Zahlung)/i.test(b.admin_note ?? "");',
-    'const isPureCustomContent = String(b.duration ?? "").trim().toLowerCase().includes("custom content");',
+    'const isPureCustomContent = String(b.duration ?? "").trim().toLowerCase().includes("custom content") && /Custom-Content-(?:Vorauszahlung|Zahlung)/i.test(b.admin_note ?? "");',
   );
   s = s.replace(
     'const art = isPureCustomContent ? "Custom" : slot?.is_duo ? (hasCustomAddon ? "Duo + Custom" : "Duo") : (hasCustomAddon ? "Single + Custom" : "Single");',
@@ -39,6 +39,12 @@ patch(cashbook, (source) => {
   s = s.replace(
     'const art = slot?.is_duo ? (slot?.is_content_shoot ? "Duo + Content" : "Duo") : (slot?.is_content_shoot ? "Single + Content" : "Single");',
     'const isPureCustomContent = String(b.duration ?? "").trim().toLowerCase().includes("custom content");\n      const art = isPureCustomContent ? "Custom Content" : slot?.is_duo ? (slot?.is_content_shoot ? "Duo + Content" : "Duo") : (slot?.is_content_shoot ? "Single + Content" : "Single");',
+  );
+  // A legacy session may have duration "Custom Content" without being a prepaid
+  // Custom order. Only an explicit Custom payment marker classifies it as such.
+  s = s.replace(
+    'const isPureCustomContent = String(b.duration ?? "").trim().toLowerCase().includes("custom content");',
+    'const isPureCustomContent = String(b.duration ?? "").trim().toLowerCase().includes("custom content") && /Custom-Content-(?:Vorauszahlung|Zahlung)/i.test(b.admin_note ?? "");',
   );
   return s;
 });
