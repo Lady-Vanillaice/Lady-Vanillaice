@@ -3,6 +3,11 @@ import { readFileSync, writeFileSync } from "node:fs";
 const path = "src/routes/_authenticated/admin.index.tsx";
 let text = readFileSync(path, "utf8");
 
+if (text.includes("function GlobalAdminSearch()")) {
+  console.log("Connected GlobalAdminSearch detected; legacy admin hub redesign skipped.");
+  process.exit(0);
+}
+
 if (!text.includes(" Search,")) {
   text = text.replace(
     "  CircleAlert, ArrowRight, ChevronDown, Download, Share, Bell, BellOff, Send, Building2, Plus, Trash2,",
