@@ -101,11 +101,16 @@ function KassenbuchPage() {
 
   const filtered = useMemo(() => data.filter((e) => {
     if (e.source === "booking" && e.booking_id && hiddenBookingSet.has(e.booking_id) && e.status !== "rescheduling" && e.status !== "cancelled") return false;
+    // Only actual received money belongs in the income ledger, irrespective of booking status.
+    const hasPayment = e.entry_type === "expense" || (
+      (e.anzahlung > 0 && Boolean(e.anzahlung_datum)) ||
+      (e.bar > 0 && Boolean(e.bar_datum))
+    );
+    if (!hasPayment) return false;
     const matchesMonth = !month || (e.entry_type === "expense"
       ? Boolean((e.payment_date ?? e.termin_datum).startsWith(month))
-      : e.source === "manual"
-        ? Boolean((e.payment_date ?? e.anzahlung_datum ?? e.bar_datum ?? e.termin_datum).startsWith(month))
-        : Boolean((e.anzahlung > 0 && e.anzahlung_datum?.startsWith(month)) || (e.bar > 0 && e.bar_datum?.startsWith(month))));
+      : Boolean((e.anzahlung > 0 && e.anzahlung_datum?.startsWith(month)) ||
+        (e.bar > 0 && e.bar_datum?.startsWith(month))));
     const restMethod = e.source === "booking" && e.booking_id ? restPaymentMethods[e.booking_id] ?? (e.restbetrag_vorgemerkt > 0 ? "Bar" : null) : null;
     const haystack = `${e.kunde} ${e.studio} ${e.studio_address ?? ""} ${e.art} ${e.dauer ?? ""} ${e.expense_category ?? ""} ${e.payment_method ?? ""} ${e.anzahlung_method ?? ""} ${restMethod ?? ""}`.toLowerCase();
     const methodsForEntry = e.entry_type === "expense" ? [e.payment_method] : e.source === "booking" ? [e.anzahlung_method, restMethod] : [e.anzahlung_method];
