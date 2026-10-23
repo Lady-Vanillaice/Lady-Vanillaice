@@ -200,9 +200,9 @@ function GlobalAdminSearch() {
       {results.length > 0 && (
         <div className="mt-4 grid gap-2 max-h-[28rem] overflow-y-auto">
           {results.map((result) => (
-            <Link
+            <a
               key={result.key}
-              to={result.href as any}
+              href={result.href}
               className="group border border-champagne/15 bg-anthracite/25 p-3 hover:border-champagne/50 transition"
             >
               <div className="flex items-start justify-between gap-3">
@@ -215,7 +215,7 @@ function GlobalAdminSearch() {
                 </div>
                 <ArrowRight size={15} className="mt-1 shrink-0 text-champagne/70" />
               </div>
-            </Link>
+            </a>
           ))}
         </div>
       )}
