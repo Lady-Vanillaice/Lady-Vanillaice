@@ -22,7 +22,7 @@ export function matchesAppointmentFilter(booking: InboxBooking, filter: Appointm
   if (filter === "alle") return booking.status !== "confirmed";
   switch (filter) {
     case "neu": return booking.status === "pending";
-    case "umplanen": return booking.status === "rescheduling" || booking.status === "open";
+    case "umplanen": return booking.status === "rescheduling";
     case "storniert": return booking.status === "cancelled";
     case "wartend": return booking.status === "waiting_deposit";
     case "abgelehnt": return booking.status === "declined";
