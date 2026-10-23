@@ -66,22 +66,15 @@ if (!fs.readFileSync(customerRoute, "utf8").includes("Deine Kunden, ihre Session
 replace(customerRoute, `placeholder="Suchen (Name, E-Mail, Vorlieben…)"`, `placeholder="Kunde suchen: Name, E-Mail, Telefon …"`, "customer search placeholder");
 replace(customerRoute, `Noch keine bestätigten Kunden.`, `Keine passenden Kunden oder Buchungen gefunden.`, "customer empty state");
 
-// 4) Legacy Admin-Hub-Patch: nur noch auf alten Admin-Hub-Versionen anwenden.
-// Sobald die neue verbundene GlobalAdminSearch vorhanden ist, darf der Build
-// weder an alten Markup-Mustern scheitern noch die neue Suche überschreiben.
+// 4) Legacy Admin-Hub-Patch bleibt aus Kompatibilitätsgründen bestehen; das neue A-Z-Layout wird danach angewandt.
 const admin = "src/routes/_authenticated/admin.index.tsx";
-const adminSource = fs.readFileSync(admin, "utf8");
-if (!adminSource.includes("function GlobalAdminSearch()")) {
-  regex(
-    admin,
-    /      <div className="space-y-9 mb-12">\{HUB_GROUPS\.map\(group => <div key=\{group\.label\}>[\s\S]*?<\/div>\)\}<\/div>\n      <StudioManagement \/>/,
-    `      <details className="mb-10 border border-champagne/15 bg-card/40">\n        <summary className="cursor-pointer p-4 sm:p-5 flex items-center justify-between gap-3 text-champagne uppercase tracking-[0.16em] text-xs">\n          Weitere Admin-Bereiche <ChevronDown size={16} />\n        </summary>\n        <div className="space-y-8 p-4 sm:p-5 pt-0">{HUB_GROUPS.map(group => <div key={group.label}>\n          <div className="flex items-baseline justify-between flex-wrap gap-2 mb-4 pb-2 border-b border-champagne/15">\n            <h2 className="font-display text-xl gold-text">{group.label}</h2>\n          </div>\n          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">{group.cards.map(({ to, title, description, Icon }) => <Link key={to} to={to} className="group bg-card border border-champagne/15 p-4 hover:border-champagne/50 transition grid grid-cols-[auto_1fr] items-start gap-x-3 gap-y-1">\n            <Icon size={18} className="text-champagne mt-0.5 row-span-2" /><div className="font-display text-base text-vanilla group-hover:text-champagne transition">{title}</div><p className="text-xs text-vanilla/50 leading-relaxed">{description}</p>\n          </Link>)}</div>\n        </div>)}</div>\n      </details>\n      <StudioManagement />`,
-    "collapse advanced admin areas",
-    "Weitere Admin-Bereiche",
-  );
-} else {
-  console.log("[admin-simple] connected GlobalAdminSearch detected; legacy admin hub collapse skipped.");
-}
+regex(
+  admin,
+  /      <div className="space-y-9 mb-12">\{HUB_GROUPS\.map\(group => <div key=\{group\.label\}>[\s\S]*?<\/div>\)\}<\/div>\n      <StudioManagement \/>/,
+  `      <details className="mb-10 border border-champagne/15 bg-card/40">\n        <summary className="cursor-pointer p-4 sm:p-5 flex items-center justify-between gap-3 text-champagne uppercase tracking-[0.16em] text-xs">\n          Weitere Admin-Bereiche <ChevronDown size={16} />\n        </summary>\n        <div className="space-y-8 p-4 sm:p-5 pt-0">{HUB_GROUPS.map(group => <div key={group.label}>\n          <div className="flex items-baseline justify-between flex-wrap gap-2 mb-4 pb-2 border-b border-champagne/15">\n            <h2 className="font-display text-xl gold-text">{group.label}</h2>\n          </div>\n          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">{group.cards.map(({ to, title, description, Icon }) => <Link key={to} to={to} className="group bg-card border border-champagne/15 p-4 hover:border-champagne/50 transition grid grid-cols-[auto_1fr] items-start gap-x-3 gap-y-1">\n            <Icon size={18} className="text-champagne mt-0.5 row-span-2" /><div className="font-display text-base text-vanilla group-hover:text-champagne transition">{title}</div><p className="text-xs text-vanilla/50 leading-relaxed">{description}</p>\n          </Link>)}</div>\n        </div>)}</div>\n      </details>\n      <StudioManagement />`,
+  "collapse advanced admin areas",
+  "Weitere Admin-Bereiche",
+);
 
 console.log("Payment methods, customer search and legacy admin compatibility patched.");
 await import("./terminart-custom-option.mjs");
