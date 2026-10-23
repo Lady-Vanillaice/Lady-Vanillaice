@@ -6,7 +6,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { listAdminAccessRequests, decideAdminAccessRequest } from "@/lib/admin-access.functions";
 import { createStudio, deleteStudio, listStudios } from "@/lib/studio.functions";
 import { listCashBookEntries } from "@/lib/cashbook.functions";
-import { searchAdminData, type AdminSearchResult } from "@/lib/admin-search.functions";
 import {
   getPushConfiguration,
   removePushSubscription,
@@ -56,6 +55,15 @@ type DashboardBooking = {
 type PaymentRow = { booking: DashboardBooking; start: string };
 type RevenueRow = { booking: DashboardBooking; kind: "Anzahlung" | "Barzahlung"; amount: number; paidAt: string };
 type DetailKind = "deposit" | "cash" | "revenue" | null;
+
+type AdminSearchResult = {
+  key: string;
+  kind: "Kunde" | "Zahlung" | "Buchung" | "Custom" | "Content-Dreh" | "Newsletter" | "Erfahrungsbericht";
+  title: string;
+  subtitle: string;
+  href: string;
+  date: string | null;
+};
 
 const HUB_GROUPS: HubGroup[] = [
   { label: "Termine & Kalender", hint: "Tagesgeschäft — Planung und Übersicht", cards: [
@@ -150,12 +158,29 @@ function AdminHubPage() {
 }
 
 function GlobalAdminSearch() {
-  const searchFn = useServerFn(searchAdminData);
   const [query, setQuery] = useState("");
   const trimmed = query.trim();
   const searchQuery = useQuery({
     queryKey: ["admin-global-search", trimmed],
-    queryFn: () => searchFn({ data: { query: trimmed } }),
+    queryFn: async (): Promise<AdminSearchResult[]> => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Bitte erneut anmelden.");
+
+      const response = await fetch("/api/admin/search", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ query: trimmed }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error || "Suche konnte nicht geladen werden.");
+      }
+      return payload as AdminSearchResult[];
+    },
     enabled: trimmed.length >= 2,
     staleTime: 10_000,
   });
