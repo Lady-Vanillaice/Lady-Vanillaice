@@ -37,18 +37,9 @@ if (bookingBlock.includes("isPureCustomContent") && !bookingBlock.includes(decla
 writeFileSync(cashbookPath, cashbook);
 
 let ui = readFileSync(uiPath, "utf8");
-const monthLine = '    const matchesMonth = !month || e.termin_datum.startsWith(month) || Boolean(e.anzahlung_datum?.startsWith(month)) || Boolean(e.bar_datum?.startsWith(month));';
-if (!ui.includes("const isUnfinishedBooking =")) {
-  if (!ui.includes(monthLine)) throw new Error("Cashbook stabilization: month filter marker missing");
-  ui = ui.replace(monthLine, `${monthLine}\n    const isUnfinishedBooking = e.source === "booking" && e.entry_type === "income" && e.status !== "completed";`);
+// Month selection is implemented directly in the UI. Do not rewrite it at build time:
+// older replacements made unfinished bookings appear in unrelated months.
+if (!ui.includes("const matchesMonth =")) {
+  throw new Error("Cashbook stabilization: month filter implementation missing");
 }
-ui = ui.replace(
-  '    return matchesMonth && (!studioFilter || e.studio === studioFilter)',
-  '    return (matchesMonth || isUnfinishedBooking) && (!studioFilter || e.studio === studioFilter)',
-);
-if (!ui.includes('return (matchesMonth || isUnfinishedBooking)')) {
-  throw new Error("Cashbook stabilization failed: unfinished bookings still depend on month");
-}
-writeFileSync(uiPath, ui);
-
-console.log("Cashbook stabilized: runtime guard active and unfinished bookings remain visible across months.");
+console.log("Cashbook stabilization: current month filter preserved.");
