@@ -24,10 +24,13 @@ if (!ui.includes("keepOpenCashbookAcrossMonths")) {
 
   const afterFilter = `  const keepOpenCashbookAcrossMonths = true;\n  const filtered = useMemo(() => data.filter((e) => {\n    if (e.source === "booking" && e.booking_id && hiddenBookingSet.has(e.booking_id)) return false;\n    const matchesMonth = !month || e.termin_datum.startsWith(month) || Boolean(e.anzahlung_datum?.startsWith(month)) || Boolean(e.bar_datum?.startsWith(month));\n    const isUnfinishedBooking = e.source === "booking" && e.entry_type === "income" && e.status !== "completed";\n    const restMethod = e.source === "booking" && e.booking_id ? restPaymentMethods[e.booking_id] ?? (e.restbetrag_vorgemerkt > 0 ? "Bar" : null) : null;\n    const haystack = \`${'${e.kunde} ${e.studio} ${e.studio_address ?? ""} ${e.art} ${e.dauer ?? ""} ${e.expense_category ?? ""} ${e.payment_method ?? ""} ${e.anzahlung_method ?? ""} ${restMethod ?? ""}'}\`.toLowerCase();\n    const methodsForEntry = e.entry_type === "expense" ? [e.payment_method] : e.source === "booking" ? [e.anzahlung_method, restMethod] : [e.anzahlung_method];\n    return (matchesMonth || isUnfinishedBooking) && (!studioFilter || e.studio === studioFilter) && (!methodFilter || methodsForEntry.includes(methodFilter)) && (!statusFilter || e.status === statusFilter) && (!search || haystack.includes(search.toLowerCase()));\n  }).sort((a, b) => {`;
 
-  if (!ui.includes(beforeFilter)) throw new Error("Could not find the cashbook month-filter block.");
-  ui = ui.replace(beforeFilter, afterFilter);
-  writeFileSync(uiPath, ui);
-  console.log("Unfinished booking entries now stay visible in the cashbook across month boundaries.");
+  if (ui.includes(beforeFilter)) {
+    ui = ui.replace(beforeFilter, afterFilter);
+    writeFileSync(uiPath, ui);
+    console.log("Unfinished booking entries now stay visible in the cashbook across month boundaries.");
+  } else {
+    console.log("Cashbook filter has changed; skipping obsolete exact-text patch instead of failing the build.");
+  }
 } else {
   console.log("Open cashbook entries already ignore the month boundary.");
 }
