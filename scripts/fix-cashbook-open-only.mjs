@@ -18,15 +18,29 @@ const replacements = [
     before: '            Vergangene Termine ({completedIncomeEntries.length})',
     after: '            Vergangene / stornierte Termine ({completedIncomeEntries.length})',
     label: "archive heading",
+    alternatives: [
+      {
+        before: '            Vergangene Termine ({visibleCompletedIncomeEntries.length})',
+        after: '            Vergangene / stornierte Termine ({visibleCompletedIncomeEntries.length})',
+      },
+    ],
   },
 ];
 
-for (const { before, after, label } of replacements) {
+for (const { before, after, label, alternatives = [] } of replacements) {
   if (source.includes(before)) {
     source = source.replace(before, after);
-  } else if (!source.includes(after)) {
-    throw new Error(`Cashbook patch could not apply ${label}`);
+    continue;
   }
+  if (source.includes(after)) continue;
+
+  const alternative = alternatives.find((item) => source.includes(item.before) || source.includes(item.after));
+  if (alternative) {
+    if (source.includes(alternative.before)) source = source.replace(alternative.before, alternative.after);
+    continue;
+  }
+
+  throw new Error(`Cashbook patch could not apply ${label}`);
 }
 
 fs.writeFileSync(path, source);
