@@ -13,16 +13,12 @@ if (!source.includes(marker)) {
   const headings = [
     "Vergangene / stornierte Termine ({completedIncomeEntries.length})",
     "Vergangene Termine ({completedIncomeEntries.length})",
-    "Vergangene / stornierte Termine ({visibleCompletedIncomeEntries.length})",
-    "Vergangene Termine ({visibleCompletedIncomeEntries.length})",
   ];
   const heading = headings.find(value => source.includes(value));
   if (!heading) throw new Error("Cashbook all-history final patch: archive heading missing");
   const split = source.indexOf(heading);
   const before = source.slice(0, split);
-  let after = source.slice(split)
-    .replaceAll("visibleCompletedIncomeEntries", "allPastIncomeEntries")
-    .replaceAll("completedIncomeEntries", "allPastIncomeEntries");
+  let after = source.slice(split).replaceAll("completedIncomeEntries", "allPastIncomeEntries");
   after = after.replace("Vergangene / stornierte Termine ({allPastIncomeEntries.length})", "Alle vergangenen / stornierten Termine ({allPastIncomeEntries.length})");
   after = after.replace("Vergangene Termine ({allPastIncomeEntries.length})", "Alle vergangenen / stornierten Termine ({allPastIncomeEntries.length})");
   source = before + after;
