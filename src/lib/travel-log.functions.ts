@@ -71,3 +71,21 @@ export const calculateStudioDistances = createServerFn({ method: "POST" })
     }));
     return { homeAddress: HOME_ADDRESS, distances };
   });
+
+export const calculateTravelLegs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({
+    legs: z.array(z.object({
+      key: z.string().min(1).max(200),
+      from: z.string().min(5).max(500),
+      to: z.string().min(5).max(500),
+    })).min(1).max(30),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    await ensureAdmin(context.supabase, context.userId);
+    const results = await Promise.all(data.legs.map(async leg => ({
+      key: leg.key,
+      kilometres: await drivingKilometres(await geocode(leg.from), await geocode(leg.to)),
+    })));
+    return { distances: results };
+  });
