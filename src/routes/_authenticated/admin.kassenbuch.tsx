@@ -255,7 +255,7 @@ function KassenbuchPage() {
     download(`kassenbuch-${month}.csv`, `\uFEFF${csv}`, "text/csv;charset=utf-8");
   }
 
-  function exportMonthPackage() { if (!exportPdf(false)) return; window.setTimeout(() => exportCsv(), 250); }
+  function exportMonthPackage() { exportPdf(false); }
   function exportExcel() {
     if (!canExport()) return;
     const table = [["Zahlungseingang", "Vorgang", "Betrag", "Zahlungsart", "Kunde", "Session am", "Uhrzeit", "Art", "Studio", "Adresse", "Dauer", "Status"], ...rows()].map(r => `<tr>${r.map(v => `<td>${String(v).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll("\n", "<br>")}</td>`).join("")}</tr>`).join("");
