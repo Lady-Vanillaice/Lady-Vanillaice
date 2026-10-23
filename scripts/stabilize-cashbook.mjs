@@ -23,15 +23,11 @@ const bookingsEnd = bookingsStart >= 0 ? cashbook.indexOf('    return [...manual
 if (bookingsStart < 0 || bookingsEnd < 0) throw new Error("Cashbook stabilization: booking mapper missing");
 let bookingBlock = cashbook.slice(bookingsStart, bookingsEnd);
 const declaration = '      const isPureCustomContent = b.duration === "Custom Content" && /Custom-Content-(?:Vorauszahlung|Zahlung)/i.test(b.admin_note ?? "");';
-if (bookingBlock.includes("isPureCustomContent") && !bookingBlock.includes(declaration)) {
-  const statusMarker = '      const status: CashBookEntry["status"] = b.status === "cancelled" ? "cancelled" : b.status === "rescheduling" ? "rescheduling" : b.fully_paid || b.completed_at ? "completed" : "open";';
-  if (!cashbook.includes(statusMarker)) throw new Error("Cashbook stabilization: status marker missing");
-  cashbook = cashbook.replace(statusMarker, `${statusMarker}\n${declaration}`);
-}
-
-bookingBlock = cashbook.slice(bookingsStart, cashbook.indexOf('    return [...manual, ...bookings]', bookingsStart));
-if (bookingBlock.includes("isPureCustomContent") && !bookingBlock.includes(declaration)) {
-  throw new Error("Cashbook stabilization failed: isPureCustomContent is still undefined");
+// The mapper owns the Custom Content classification. Build-time scripts must
+// not depend on an exact status expression: it changes when status handling
+// is fixed (for example, when recognizing rescheduling requests).
+if (bookingBlock.includes("isPureCustomContent") && !bookingBlock.includes("const isPureCustomContent =")) {
+  throw new Error("Cashbook stabilization: pure Custom classification is referenced without a declaration");
 }
 
 writeFileSync(cashbookPath, cashbook);
