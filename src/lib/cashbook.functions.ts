@@ -159,7 +159,11 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
         bar_datum: cashDate, durchgefuehrt_datum: dateOnly(b.completed_at),
         status, notiz: b.admin_note ?? null, created_at: b.created_at,
       };
-      const receivedDeposit = b.anzahlung_paid && depositDate ? plannedDeposit : 0;
+      // For the cash book, the dated payment is the source of truth.
+      // A rescheduling workflow may leave/reset the legacy boolean flag even
+      // though the deposit was actually received. If a payment date exists,
+      // the deposit belongs to that payment month regardless of appointment status.
+      const receivedDeposit = depositDate && plannedDeposit > 0 ? plannedDeposit : 0;
       const receivedCash = cashDate ? plannedCash : 0;
       return {
         ...common, id: `booking:${b.id}`, payment_kind: "booking", payment_date: cashDate ?? depositDate,
