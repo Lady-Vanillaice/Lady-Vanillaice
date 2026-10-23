@@ -30,7 +30,7 @@ const appointmentTime = (entry: CashBookEntry) => {
 const bookingAmount = (received: number, planned: number) => received > 0
   ? eur(received)
   : planned > 0 ? `${eur(planned)} vorgemerkt` : eur(0);
-type TravelLeg = { id: string; date: string; from: string; to: string; category: string; kilometres: number };
+type TravelLeg = { id: string; date: string; from: string; to: string; category: string; kilometres: number; startTime?: string; endTime?: string };
 const HOME_TRAVEL_ADDRESS = "Tiefendoblstraße 24, 94508 Schöllnach";
 const PAYMENT_METHODS = ["Bar", "PayPal", "Überweisung", "Karte", "Sonstige"] as const;
 function addPdfLogo(doc: jsPDF) {
@@ -97,6 +97,8 @@ function KassenbuchPage() {
   const [travelLegs, setTravelLegs] = useState<TravelLeg[]>([]);
   const [travelReady, setTravelReady] = useState(false);
   const [travelDate, setTravelDate] = useState(today());
+  const [travelStartTime, setTravelStartTime] = useState("");
+  const [travelEndTime, setTravelEndTime] = useState("");
   const [travelFrom, setTravelFrom] = useState(HOME_TRAVEL_ADDRESS);
   const [travelTo, setTravelTo] = useState("");
   const [travelCategory, setTravelCategory] = useState("Studio");
@@ -113,14 +115,18 @@ function KassenbuchPage() {
   }, [travelLegs, travelReady]);
   async function addTravelLeg() {
     if (!travelDate || !travelFrom.trim() || !travelTo.trim()) { alert("Bitte Datum, Start- und Zieladresse eingeben."); return; }
+    if (!travelStartTime || !travelEndTime) { alert("Bitte Abfahrts- und Ankunftszeit eingeben."); return; }
+    if (travelEndTime <= travelStartTime) { alert("Die Ankunftszeit muss nach der Abfahrtszeit liegen. Bei Fahrten über Mitternacht bitte zwei Einträge erfassen."); return; }
     if (travelFrom.trim() === travelTo.trim()) { alert("Start und Ziel müssen unterschiedlich sein."); return; }
     setTravelSaving(true);
     try {
       const result = await calculateLegs({ data: { legs: [{ key: "manual", from: travelFrom.trim(), to: travelTo.trim() }] } });
       const kilometres = result.distances[0]?.kilometres;
       if (kilometres === undefined) throw new Error("Keine Fahrstrecke gefunden.");
-      setTravelLegs(previous => [...previous, { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, date: travelDate, from: travelFrom.trim(), to: travelTo.trim(), category: travelCategory, kilometres }]);
+      setTravelLegs(previous => [...previous, { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, date: travelDate, from: travelFrom.trim(), to: travelTo.trim(), category: travelCategory, kilometres, startTime: travelStartTime, endTime: travelEndTime }]);
       setTravelFrom(travelTo.trim());
+      setTravelStartTime(travelEndTime);
+      setTravelEndTime("");
       setTravelTo("");
     } catch (error) { alert(error instanceof Error ? error.message : "Kilometer konnten nicht berechnet werden."); }
     finally { setTravelSaving(false); }
@@ -365,9 +371,9 @@ function KassenbuchPage() {
         index = lastIndex + 1;
       }
       for (const leg of travelLegs.filter(leg => leg.date.startsWith(month))) {
-        travelRows.push([dateLabel(leg.date), "Manuell erfasst", `${leg.from} - ${leg.to}`, leg.category, leg.to, "Bestätigte Fahrt", leg.kilometres]);
+        travelRows.push([dateLabel(leg.date), leg.startTime && leg.endTime ? `${leg.startTime} – ${leg.endTime} Uhr` : "Zeit nicht erfasst", `${leg.from} - ${leg.to}`, leg.category, leg.to, "Bestätigte Fahrt", leg.kilometres]);
       }
-      travelRows.sort((a, b) => a[0].split(".").reverse().join("-").localeCompare(b[0].split(".").reverse().join("-")));
+      travelRows.sort((a, b) => a[0].split(".").reverse().join("-").localeCompare(b[0].split(".").reverse().join("-") ) || a[1].localeCompare(b[1]));
       const totalKm = travelRows.reduce((sum, row) => sum + row[6], 0);
       const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" }); addPdfLogo(doc);
       const monthLabel = format(parseISO(`${month}-01`), "LLLL yyyy", { locale: de });
@@ -421,8 +427,10 @@ function KassenbuchPage() {
       <div className="bg-card border border-champagne/20 p-4 space-y-4">
         <h2 className="eyebrow">Fahrtenbuch – Fahrt hinzufügen</h2>
         <p className="text-xs text-vanilla/60">Start und Ziel frei wählen. Nach dem Speichern wird die Zieladresse als Start der nächsten Fahrt vorgeschlagen. Unterkünfte für jede Reise neu eingeben. Die Kilometer werden anhand der Straßenroute berechnet.</p>
-        <div className="grid sm:grid-cols-2 xl:grid-cols-5 gap-3 items-end">
+        <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
           <Field label="Fahrtdatum"><input type="date" className="luxe-input" value={travelDate} onChange={e => setTravelDate(e.target.value)} /></Field>
+          <Field label="Uhrzeit von"><input type="time" required className="luxe-input" value={travelStartTime} onChange={e => setTravelStartTime(e.target.value)} /></Field>
+          <Field label="Uhrzeit bis"><input type="time" required className="luxe-input" value={travelEndTime} onChange={e => setTravelEndTime(e.target.value)} /></Field>
           <Field label="Von – Adresse"><input className="luxe-input" value={travelFrom} onChange={e => setTravelFrom(e.target.value)} /></Field>
           <Field label="Nach – Adresse"><input className="luxe-input" value={travelTo} onChange={e => setTravelTo(e.target.value)} /></Field>
           <Field label="Ziel / Anlass"><select className="luxe-input" value={travelCategory} onChange={e => setTravelCategory(e.target.value)}><option>Studio</option><option>Hotel/Airbnb</option><option>Content-Wohnung</option><option>Heimfahrt</option><option>Sonstiges</option></select></Field>
@@ -433,7 +441,7 @@ function KassenbuchPage() {
           <button type="button" className="export-btn" onClick={() => setTravelTo(HOME_TRAVEL_ADDRESS)}>Nach Hause</button>
           {travelLegs.length > 0 && <button type="button" className="export-btn" onClick={() => setTravelFrom(travelLegs[travelLegs.length - 1].to)}>Weiter vom letzten Ziel</button>}
         </div>
-        {travelLegs.filter(leg => leg.date.startsWith(month)).map(leg => <div key={leg.id} className="flex flex-wrap items-center justify-between gap-3 border-t border-champagne/15 py-2 text-sm"><span>{dateLabel(leg.date)} · {leg.from} → {leg.to} · {leg.category} · <strong>{leg.kilometres} km</strong></span><button type="button" aria-label="Fahrt löschen" onClick={() => setTravelLegs(previous => previous.filter(item => item.id !== leg.id))}><Trash2 size={15} /></button></div>)}
+        {travelLegs.filter(leg => leg.date.startsWith(month)).map(leg => <div key={leg.id} className="flex flex-wrap items-center justify-between gap-3 border-t border-champagne/15 py-2 text-sm"><span>{dateLabel(leg.date)} · {leg.startTime && leg.endTime ? `${leg.startTime}–${leg.endTime} Uhr · ` : ""}{leg.from} → {leg.to} · {leg.category} · <strong>{leg.kilometres} km</strong></span><button type="button" aria-label="Fahrt löschen" onClick={() => setTravelLegs(previous => previous.filter(item => item.id !== leg.id))}><Trash2 size={15} /></button></div>)}
         <p className="text-xs text-vanilla/50">Manuelle Fahrten werden in diesem Browser gespeichert und im Fahrtenbuch-PDF berücksichtigt. Auf anderen Geräten sind sie nicht automatisch verfügbar. Bitte tatsächliche Fahrten vor dem Speichern prüfen.</p>
       </div>
       <FinancialSlaveEntryForm />
