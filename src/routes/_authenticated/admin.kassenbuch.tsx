@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { format, parseISO } from "date-fns";
@@ -14,7 +14,7 @@ import { createCashBookEntry, createStudioRentExpense, deleteCashBookEntry, list
 import { hideBookingFromCashbook, listHiddenCashbookBookings } from "@/lib/cashbook-visibility.functions";
 import { listBookingRestPaymentMethods } from "@/lib/rest-payment.functions";
 import { listPrivateBookingDestinations } from "@/lib/private-booking-location.functions";
-import { calculateStudioDistances } from "@/lib/travel-log.functions";
+import { calculateStudioDistances, calculateTravelLegs } from "@/lib/travel-log.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/kassenbuch")({ component: KassenbuchPage });
 
@@ -30,6 +30,8 @@ const appointmentTime = (entry: CashBookEntry) => {
 const bookingAmount = (received: number, planned: number) => received > 0
   ? eur(received)
   : planned > 0 ? `${eur(planned)} vorgemerkt` : eur(0);
+type TravelLeg = { id: string; date: string; from: string; to: string; category: string; kilometres: number };
+const HOME_TRAVEL_ADDRESS = "Tiefendoblstraße 24, 94508 Schöllnach";
 const PAYMENT_METHODS = ["Bar", "PayPal", "Überweisung", "Karte", "Sonstige"] as const;
 function addPdfLogo(doc: jsPDF) {
   const x = doc.internal.pageSize.getWidth() - 154;
@@ -73,6 +75,7 @@ function KassenbuchPage() {
   const updateManual = useServerFn(updateCashBookEntry);
   const createExpense = useServerFn(createStudioRentExpense);
   const calculateDistances = useServerFn(calculateStudioDistances);
+  const calculateLegs = useServerFn(calculateTravelLegs);
   const del = useServerFn(deleteCashBookEntry);
   const saveAccounting = useServerFn(updateBookingAccounting);
   const { data = [], isLoading, error } = useQuery({ queryKey: ["cashbook"], queryFn: () => list() });
@@ -91,6 +94,37 @@ function KassenbuchPage() {
   const [expenseAmount, setExpenseAmount] = useState(""); const [expenseMethod, setExpenseMethod] = useState(""); const [expenseNote, setExpenseNote] = useState("");
   const loadPrivateDestinations = useServerFn(listPrivateBookingDestinations);
   const [travelLogPending, setTravelLogPending] = useState(false);
+  const [travelLegs, setTravelLegs] = useState<TravelLeg[]>([]);
+  const [travelReady, setTravelReady] = useState(false);
+  const [travelDate, setTravelDate] = useState(today());
+  const [travelFrom, setTravelFrom] = useState(HOME_TRAVEL_ADDRESS);
+  const [travelTo, setTravelTo] = useState("");
+  const [travelCategory, setTravelCategory] = useState("Studio");
+  const [travelSaving, setTravelSaving] = useState(false);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem("lady-vanillaice-travel-legs-v1") || "[]");
+      if (Array.isArray(saved)) setTravelLegs(saved.filter((leg: TravelLeg) => leg && typeof leg.date === "string" && typeof leg.from === "string" && typeof leg.to === "string" && Number.isFinite(leg.kilometres)));
+    } catch { /* Ignore malformed local data. */ }
+    setTravelReady(true);
+  }, []);
+  useEffect(() => {
+    if (travelReady) window.localStorage.setItem("lady-vanillaice-travel-legs-v1", JSON.stringify(travelLegs));
+  }, [travelLegs, travelReady]);
+  async function addTravelLeg() {
+    if (!travelDate || !travelFrom.trim() || !travelTo.trim()) { alert("Bitte Datum, Start- und Zieladresse eingeben."); return; }
+    if (travelFrom.trim() === travelTo.trim()) { alert("Start und Ziel müssen unterschiedlich sein."); return; }
+    setTravelSaving(true);
+    try {
+      const result = await calculateLegs({ data: { legs: [{ key: "manual", from: travelFrom.trim(), to: travelTo.trim() }] } });
+      const kilometres = result.distances[0]?.kilometres;
+      if (kilometres === undefined) throw new Error("Keine Fahrstrecke gefunden.");
+      setTravelLegs(previous => [...previous, { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, date: travelDate, from: travelFrom.trim(), to: travelTo.trim(), category: travelCategory, kilometres }]);
+      setTravelFrom(travelTo.trim());
+      setTravelTo("");
+    } catch (error) { alert(error instanceof Error ? error.message : "Kilometer konnten nicht berechnet werden."); }
+    finally { setTravelSaving(false); }
+  }
   const [cashDay, setCashDay] = useState(today());
   const hiddenBookingSet = useMemo(() => new Set(hiddenBookingIds), [hiddenBookingIds]);
 
@@ -312,8 +346,8 @@ function KassenbuchPage() {
       const appointments = [...appointmentMap.values()].sort((a, b) => a.date.localeCompare(b.date) || a.studio.localeCompare(b.studio));
       const missingAddress = appointments.find(entry => !entry.address);
       if (missingAddress) { alert(`Für ${missingAddress.studio} am ${dateLabel(missingAddress.date)} fehlt die Studio-Adresse. Bitte den Termin zuerst im Kassenbuch bearbeiten.`); return; }
-      if (!appointments.length) { alert("Für den gewählten Monat gibt es keine Termine mit Fahrt."); return; }
-      const distanceResult = await calculateDistances({ data: { destinations: appointments.map(entry => ({ key: `${entry.studio}|${entry.address}`, address: entry.address })) } });
+      if (!appointments.length && !travelLegs.some(leg => leg.date.startsWith(month))) { alert("Für den gewählten Monat gibt es keine Fahrten."); return; }
+      const distanceResult = appointments.length ? await calculateDistances({ data: { destinations: appointments.map(entry => ({ key: `${entry.studio}|${entry.address}`, address: entry.address })) } }) : { homeAddress: HOME_TRAVEL_ADDRESS, distances: [] };
       const kilometres = new Map(distanceResult.distances.map(entry => [entry.key, entry.kilometres]));
       const travelRows: Array<[string, string, string, string, string, string, number]> = [];
       for (let index = 0; index < appointments.length;) {
@@ -330,6 +364,10 @@ function KassenbuchPage() {
         }
         index = lastIndex + 1;
       }
+      for (const leg of travelLegs.filter(leg => leg.date.startsWith(month))) {
+        travelRows.push([dateLabel(leg.date), "Manuell erfasst", `${leg.from} - ${leg.to}`, leg.category, leg.to, "Bestätigte Fahrt", leg.kilometres]);
+      }
+      travelRows.sort((a, b) => a[0].split(".").reverse().join("-").localeCompare(b[0].split(".").reverse().join("-")));
       const totalKm = travelRows.reduce((sum, row) => sum + row[6], 0);
       const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" }); addPdfLogo(doc);
       const monthLabel = format(parseISO(`${month}-01`), "LLLL yyyy", { locale: de });
@@ -379,6 +417,24 @@ function KassenbuchPage() {
           <button onClick={exportCsv} className="export-btn"><FileSpreadsheet size={14} /> CSV</button>
           <button onClick={exportExcel} className="export-btn"><FileSpreadsheet size={14} /> Excel</button>
         </div>
+      </div>
+      <div className="bg-card border border-champagne/20 p-4 space-y-4">
+        <h2 className="eyebrow">Fahrtenbuch – Fahrt hinzufügen</h2>
+        <p className="text-xs text-vanilla/60">Start und Ziel frei wählen. Nach dem Speichern wird die Zieladresse als Start der nächsten Fahrt vorgeschlagen. Unterkünfte für jede Reise neu eingeben. Die Kilometer werden anhand der Straßenroute berechnet.</p>
+        <div className="grid sm:grid-cols-2 xl:grid-cols-5 gap-3 items-end">
+          <Field label="Fahrtdatum"><input type="date" className="luxe-input" value={travelDate} onChange={e => setTravelDate(e.target.value)} /></Field>
+          <Field label="Von – Adresse"><input className="luxe-input" value={travelFrom} onChange={e => setTravelFrom(e.target.value)} /></Field>
+          <Field label="Nach – Adresse"><input className="luxe-input" value={travelTo} onChange={e => setTravelTo(e.target.value)} /></Field>
+          <Field label="Ziel / Anlass"><select className="luxe-input" value={travelCategory} onChange={e => setTravelCategory(e.target.value)}><option>Studio</option><option>Hotel/Airbnb</option><option>Content-Wohnung</option><option>Heimfahrt</option><option>Sonstiges</option></select></Field>
+          <button type="button" className="btn-gold" disabled={travelSaving} onClick={addTravelLeg}><Plus size={14} /> {travelSaving ? "Berechne…" : "Fahrt berechnen & speichern"}</button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="export-btn" onClick={() => setTravelFrom(HOME_TRAVEL_ADDRESS)}>Von Zuhause</button>
+          <button type="button" className="export-btn" onClick={() => setTravelTo(HOME_TRAVEL_ADDRESS)}>Nach Hause</button>
+          {travelLegs.length > 0 && <button type="button" className="export-btn" onClick={() => setTravelFrom(travelLegs[travelLegs.length - 1].to)}>Weiter vom letzten Ziel</button>}
+        </div>
+        {travelLegs.filter(leg => leg.date.startsWith(month)).map(leg => <div key={leg.id} className="flex flex-wrap items-center justify-between gap-3 border-t border-champagne/15 py-2 text-sm"><span>{dateLabel(leg.date)} · {leg.from} → {leg.to} · {leg.category} · <strong>{leg.kilometres} km</strong></span><button type="button" aria-label="Fahrt löschen" onClick={() => setTravelLegs(previous => previous.filter(item => item.id !== leg.id))}><Trash2 size={15} /></button></div>)}
+        <p className="text-xs text-vanilla/50">Manuelle Fahrten werden in diesem Browser gespeichert und im Fahrtenbuch-PDF berücksichtigt. Auf anderen Geräten sind sie nicht automatisch verfügbar. Bitte tatsächliche Fahrten vor dem Speichern prüfen.</p>
       </div>
       <FinancialSlaveEntryForm />
       <form onSubmit={e => { e.preventDefault(); createMut.mutate(); }} className="bg-card border border-champagne/20 p-4 space-y-4"><h2 className="eyebrow">Manueller Eintrag</h2><div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3"><Field label="Datum"><input required type="date" value={datum} onChange={e => setDatum(e.target.value)} className="luxe-input" /></Field><Field label="Kunde"><input required value={kunde} onChange={e => setKunde(e.target.value)} className="luxe-input" /></Field><Field label="Studio"><input required value={studio} onChange={e => setStudio(e.target.value)} className="luxe-input" /></Field><Field label="Anzahlungsregel"><select value={manualDepositReason} onChange={e => { const v = e.target.value as DepositExemptionReason | ""; setManualDepositReason(v); if (v) { setAnzahlung("0"); setAnzahlungDatum(""); } }} className="luxe-input"><option value="">Normale Anzahlung</option><option value="regular_customer">Keine Anzahlung – Stammkunde</option><option value="trust">Keine Anzahlung – Vertrauensbasis</option><option value="exception">Keine Anzahlung – Ausnahme</option><option value="colleague_guarantees">Keine Anzahlung – Kollegin bürgt</option><option value="spontaneous">Keine Anzahlung – Spontaner Termin</option></select></Field><Field label="Anzahlung Betrag (€)"><input disabled={Boolean(manualDepositReason)} value={anzahlung} onChange={e => setAnzahlung(e.target.value)} className="luxe-input disabled:opacity-40" /></Field><Field label="Anzahlung erhalten am"><input disabled={Boolean(manualDepositReason)} type="date" value={anzahlungDatum} onChange={e => setAnzahlungDatum(e.target.value)} className="luxe-input disabled:opacity-40" /></Field><Field label="Anzahlungsmethode"><select disabled={Boolean(manualDepositReason)} value={anzahlungMethod} onChange={e => setAnzahlungMethod(e.target.value)} className="luxe-input disabled:opacity-40">{PAYMENT_METHODS.map(v => <option key={v}>{v}</option>)}</select></Field><Field label="Vor Ort Betrag (€)"><input value={bar} onChange={e => setBar(e.target.value)} className="luxe-input" /></Field><Field label="Vor Ort erhalten am"><input type="date" value={manualRestDate} onChange={e => setManualRestDate(e.target.value)} className="luxe-input" /></Field><Field label="Vor Ort Zahlungsmethode"><select value={manualRestMethod} onChange={e => setManualRestMethod(e.target.value)} className="luxe-input">{PAYMENT_METHODS.map(v => <option key={v}>{v}</option>)}</select></Field><div className="md:col-span-2"><Field label="Notiz"><input value={notiz} onChange={e => setNotiz(e.target.value)} className="luxe-input" /></Field></div></div><button className="btn-gold inline-flex gap-2"><Plus size={15} /> Eintrag speichern</button></form>
