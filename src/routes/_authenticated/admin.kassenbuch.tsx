@@ -99,8 +99,9 @@ function KassenbuchPage() {
   const [travelDate, setTravelDate] = useState(today());
   const [travelStartTime, setTravelStartTime] = useState("");
   const [travelEndTime, setTravelEndTime] = useState("");
-  const [travelFrom, setTravelFrom] = useState(HOME_TRAVEL_ADDRESS);
+  const [travelFrom, setTravelFrom] = useState("");
   const [travelTo, setTravelTo] = useState("");
+  const [selectedTravelStudio, setSelectedTravelStudio] = useState("");
   const [travelCategory, setTravelCategory] = useState("Studio");
   const [travelSaving, setTravelSaving] = useState(false);
   useEffect(() => {
@@ -189,6 +190,8 @@ function KassenbuchPage() {
     const addressFromStudio = commaIndex >= 0 ? rawStudio.slice(commaIndex + 1).trim() : "";
     return { studio: studioName, address: storedAddress || addressFromStudio };
   };
+  const travelStudios = [...new Map(data.filter(e => e.source === "booking").map(e => studioParts(e)).filter(p => p.address).map(p => [`${p.studio}| ${p.address}`, p])).values()].sort((a, b) => a.studio.localeCompare(b.studio));
+  const selectedTravelStudioAddress = travelStudios.find(p => `${p.studio}| ${p.address}` === selectedTravelStudio)?.address ?? "";
   const studioText = (e: CashBookEntry) => {
     const parts = studioParts(e);
     return parts.address ? `${parts.studio}\n${parts.address}` : parts.studio;
@@ -439,6 +442,12 @@ function KassenbuchPage() {
         <div className="flex flex-wrap gap-2">
           <button type="button" className="export-btn" onClick={() => setTravelFrom(HOME_TRAVEL_ADDRESS)}>Von Zuhause</button>
           <button type="button" className="export-btn" onClick={() => setTravelTo(HOME_TRAVEL_ADDRESS)}>Nach Hause</button>
+          <select aria-label="Studio für Fahrten auswählen" className="luxe-input max-w-xs" value={selectedTravelStudio} onChange={e => setSelectedTravelStudio(e.target.value)}>
+            <option value="">Studio auswählen</option>
+            {travelStudios.map(p => <option key={`${p.studio}| ${p.address}`} value={`${p.studio}| ${p.address}`}>{p.studio} – {p.address}</option>)}
+          </select>
+          <button type="button" className="export-btn" disabled={!selectedTravelStudioAddress} onClick={() => setTravelFrom(selectedTravelStudioAddress)}>Von Studio</button>
+          <button type="button" className="export-btn" disabled={!selectedTravelStudioAddress} onClick={() => { setTravelTo(selectedTravelStudioAddress); setTravelCategory("Studio"); }}>Nach Studio</button>
           {travelLegs.length > 0 && <button type="button" className="export-btn" onClick={() => setTravelFrom(travelLegs[travelLegs.length - 1].to)}>Weiter vom letzten Ziel</button>}
         </div>
         {travelLegs.filter(leg => leg.date.startsWith(month)).map(leg => <div key={leg.id} className="flex flex-wrap items-center justify-between gap-3 border-t border-champagne/15 py-2 text-sm"><span>{dateLabel(leg.date)} · {leg.startTime && leg.endTime ? `${leg.startTime}–${leg.endTime} Uhr · ` : ""}{leg.from} → {leg.to} · {leg.category} · <strong>{leg.kilometres} km</strong></span><button type="button" aria-label="Fahrt löschen" onClick={() => setTravelLegs(previous => previous.filter(item => item.id !== leg.id))}><Trash2 size={15} /></button></div>)}
