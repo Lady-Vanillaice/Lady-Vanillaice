@@ -178,7 +178,13 @@ function Preise() {
                         <span className="shrink-0 font-display text-5xl leading-none">
                           {row.amount}
                         </span>
-                        <span className="whitespace-nowrap text-xs uppercase tracking-[0.16em] text-champagne/75">
+                        <span
+                          className={
+                            t.priceUnitBelow
+                              ? "mt-2 whitespace-nowrap text-xs uppercase tracking-[0.16em] leading-none text-champagne/75"
+                              : "whitespace-nowrap text-xs uppercase tracking-[0.16em] text-champagne/75"
+                          }
+                        >
                           {row.unit}
                         </span>
                       </div>
