@@ -2,7 +2,7 @@ import fs from "node:fs";
 
 function patch(path, before, after, label) {
   let source = fs.readFileSync(path, "utf8");
-  if (source.includes(after)) return;
+  // Newer source versions already synchronize customer names centrally.\n  if (source.includes("await syncCustomerName(context.supabase") || source.includes(after)) return;
   if (!source.includes(before)) throw new Error(`${path}: ${label} target not found`);
   source = source.replace(before, after);
   fs.writeFileSync(path, source);
