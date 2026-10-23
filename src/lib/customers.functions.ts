@@ -12,6 +12,65 @@ async function assertAdmin(ctx: { supabase: any; userId: string }) {
   if (!data) throw new Error("Forbidden");
 }
 
+async function syncCustomerName(
+  supabase: any,
+  email: string,
+  newName: string | null | undefined,
+  previousName?: string | null,
+) {
+  const cleanName = newName?.trim();
+  if (!cleanName) return;
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  // Cashbook-only customers use a synthetic address that contains the
+  // original cash_book_entries id. Update that exact archived row.
+  const cashbookOnlyMatch = normalizedEmail.match(/^cashbook\+([0-9a-f-]{36})@intern\.local$/i);
+  if (cashbookOnlyMatch?.[1]) {
+    const { error } = await supabase
+      .from("cash_book_entries")
+      .update({ kunde: cleanName })
+      .eq("id", cashbookOnlyMatch[1]);
+    if (error) throw new Error(error.message);
+    return;
+  }
+
+  if (normalizedEmail.endsWith("@intern.local")) return;
+
+  const { data: bookings, error: bookingLookupError } = await supabase
+    .from("bookings")
+    .select("id")
+    .ilike("guest_email", normalizedEmail);
+  if (bookingLookupError) throw new Error(bookingLookupError.message);
+
+  const bookingIds = (bookings ?? []).map((booking: { id: string }) => booking.id);
+
+  const { error: bookingNameError } = await supabase
+    .from("bookings")
+    .update({ guest_name: cleanName })
+    .ilike("guest_email", normalizedEmail);
+  if (bookingNameError) throw new Error(bookingNameError.message);
+
+  if (bookingIds.length > 0) {
+    const { error: cashbookIdError } = await supabase
+      .from("cash_book_entries")
+      .update({ kunde: cleanName })
+      .in("id", bookingIds);
+    if (cashbookIdError) throw new Error(cashbookIdError.message);
+  }
+
+  // Older archived rows may predate the id-based archive link. If the old
+  // pseudonym is known, keep those historical rows in sync as well.
+  const oldName = previousName?.trim();
+  if (oldName && oldName !== cleanName) {
+    const { error: legacyCashbookError } = await supabase
+      .from("cash_book_entries")
+      .update({ kunde: cleanName })
+      .eq("kunde", oldName);
+    if (legacyCashbookError) throw new Error(legacyCashbookError.message);
+  }
+}
+
 export type CustomerRow = {
   email: string;
   names: string[];
@@ -258,7 +317,7 @@ export const upsertCustomerNote = createServerFn({ method: "POST" })
 
     const { data: existing } = await context.supabase
       .from("customer_notes")
-      .select("id")
+      .select("id, pseudonym")
       .ilike("email", emailLower)
       .maybeSingle();
 
@@ -295,6 +354,7 @@ export const upsertCustomerNote = createServerFn({ method: "POST" })
         error = retry.error;
       }
       if (error) throw new Error(error.message);
+      await syncCustomerName(context.supabase, emailLower, data.pseudonym, existing.pseudonym ?? null);
       return { ok: true, id: existing.id };
     }
 
@@ -309,6 +369,7 @@ export const upsertCustomerNote = createServerFn({ method: "POST" })
       error = retry.error;
     }
     if (error) throw new Error(error.message);
+    await syncCustomerName(context.supabase, emailLower, data.pseudonym, null);
     return { ok: true, id: inserted.id };
   });
 
