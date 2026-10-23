@@ -27,7 +27,19 @@ const declaration = '      const isPureCustomContent = b.duration === "Custom Co
 // not depend on an exact status expression: it changes when status handling
 // is fixed (for example, when recognizing rescheduling requests).
 if (bookingBlock.includes("isPureCustomContent") && !bookingBlock.includes("const isPureCustomContent =")) {
-  throw new Error("Cashbook stabilization: pure Custom classification is referenced without a declaration");
+  // Earlier build transforms can introduce the reference without its declaration.
+  // Insert the missing declaration inside the mapper, independently of status syntax.
+  const mapperStart = cashbook.indexOf('    const bookings: CashBookEntry[] = (bookingRes.data ?? []).map((b: any) => {');
+  const insertAt = cashbook.indexOf('      const art =', mapperStart);
+  const mapperEnd = cashbook.indexOf('    return [...manual, ...bookings]', mapperStart);
+  if (insertAt < 0 || insertAt >= mapperEnd) {
+    throw new Error("Cashbook stabilization: cannot locate Custom classification insertion point");
+  }
+  cashbook = cashbook.slice(0, insertAt) + declaration + "\n" + cashbook.slice(insertAt);
+  bookingBlock = cashbook.slice(mapperStart, cashbook.indexOf('    return [...manual, ...bookings]', mapperStart));
+  if (!bookingBlock.includes("const isPureCustomContent =")) {
+    throw new Error("Cashbook stabilization: Custom classification declaration still missing");
+  }
 }
 
 writeFileSync(cashbookPath, cashbook);
