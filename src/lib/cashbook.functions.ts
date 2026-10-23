@@ -174,6 +174,26 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
       };
     });
 
+    // A rescheduling request can coexist with an older confirmed/open booking row.
+    // Reconcile the displayed status with the request, but never manufacture or
+    // duplicate a payment. The actual booking row remains the payment source.
+    const reschedulingByName = new Map<string, typeof bookings>();
+    for (const entry of bookings) {
+      if (entry.status !== "rescheduling") continue;
+      const key = entry.kunde.trim().toLocaleLowerCase("de");
+      reschedulingByName.set(key, [...(reschedulingByName.get(key) ?? []), entry]);
+    }
+    for (const entry of bookings) {
+      if (entry.status !== "open") continue;
+      const matches = reschedulingByName.get(entry.kunde.trim().toLocaleLowerCase("de")) ?? [];
+      // Only reconcile a uniquely matching request with the same deposit
+      // amount and payment date; unrelated bookings for repeat clients stay intact.
+      if (matches.length !== 1) continue;
+      const request = matches[0];
+      if (entry.anzahlung <= 0 || entry.anzahlung !== request.anzahlung ||
+          !entry.anzahlung_datum || entry.anzahlung_datum !== request.anzahlung_datum) continue;
+      entry.status = "rescheduling";
+    }
     for (const entry of manual) { if (entry.studio === "Telefon-Session") entry.art = "Telefon-Session"; }
     return [...manual, ...bookings].sort((a, b) => {
       const ad = a.payment_date || a.termin_start || a.termin_datum;
