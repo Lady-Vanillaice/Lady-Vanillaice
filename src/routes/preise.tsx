@@ -23,7 +23,7 @@ function Preise() {
   const tiers = [
     {
       duration: tr("30 Minuten", "30 minutes"),
-      price: tr("ab 200 €", "from € 200"),
+      price: tr("200 €", "€ 200"),
       desc: tr(
         "Ein kurzer, fokussierter Einstieg — ideal für ein klar umrissenes Anliegen.",
         "A short, focused entry — ideal for a clearly defined wish."
@@ -36,7 +36,7 @@ function Preise() {
     },
     {
       duration: tr("60 Minuten", "60 minutes"),
-      price: tr("ab 300 €", "from € 300"),
+      price: tr("300 €", "€ 300"),
       desc: tr(
         "Eine erste, intensive Begegnung — ideal für einen klar umrissenen Wunsch.",
         "A first, intense encounter — ideal for a clearly defined wish."
@@ -49,7 +49,7 @@ function Preise() {
     },
     {
       duration: tr("90 Minuten", "90 minutes"),
-      price: tr("ab 450 €", "from € 450"),
+      price: tr("500 €", "€ 500"),
       desc: tr(
         "Mehr Raum für Aufbau, Atmosphäre und einen ruhigen Nachklang.",
         "More space for build-up, atmosphere and a calm aftermath."
@@ -63,7 +63,7 @@ function Preise() {
     },
     {
       duration: tr("120 Minuten", "120 minutes"),
-      price: tr("ab 600 €", "from € 600"),
+      price: tr("600 €", "€ 600"),
       desc: tr(
         "Die volle Bühne — für komplexere Wünsche und intensive Erlebnisse.",
         "The full stage — for more complex wishes and intense experiences."
@@ -79,7 +79,7 @@ function Preise() {
       price: tr("300 € pro Stunde pro Domina", "€ 300 per hour per domina"),
       priceRows: [
         {
-          amount: tr("ab 300 €", "from € 300"),
+          amount: tr("300 €", "€ 300"),
           unit: tr("je Stunde & Domina", "per hour & domina"),
         },
       ],
@@ -105,11 +105,11 @@ function Preise() {
       ),
       priceRows: [
         {
-          amount: tr("ab 10 €", "from € 10"),
+          amount: tr("10 €", "€ 10"),
           unit: tr("pro Bild", "per image"),
         },
         {
-          amount: tr("ab 30 €", "from € 30"),
+          amount: tr("30 €", "€ 30"),
           unit: tr("pro Minute Video", "per video minute"),
         },
       ],
