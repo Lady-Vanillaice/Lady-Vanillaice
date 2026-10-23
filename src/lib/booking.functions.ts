@@ -325,7 +325,7 @@ export const updateBookingStatus = createServerFn({ method: "POST" })
       admin_note: data.admin_note ?? null,
       confirmation_note: data.confirmation_note ?? null,
     };
-    if (data.status === "confirmed" || data.status === "waiting_deposit") {
+    if (["confirmed", "waiting_deposit", "cancelled", "rescheduling"].includes(data.status)) {
       if (typeof data.anzahlung === "number") updatePayload.anzahlung = data.anzahlung;
       if (typeof data.bar === "number") updatePayload.bar = data.bar;
       if (data.anzahlung_paid_at) {
@@ -474,7 +474,7 @@ export const deleteBooking = createServerFn({ method: "POST" })
     // nachträglich verändert werden.
     const { data: booking, error: fetchErr } = await supabaseAdmin
       .from("bookings")
-      .select("id, slot_id, status, guest_name, duration, duration_minutes, anzahlung, anzahlung_method, anzahlung_paid, bar, cash_received_at, fully_paid, completed_at, requested_start, studio_override, admin_note, created_at, availability_slots(starts_at, ends_at, location, is_duo, is_content_shoot)")
+      .select("id, slot_id, status, guest_name, duration, duration_minutes, anzahlung, anzahlung_method, anzahlung_paid, anzahlung_paid_at, bar, cash_received_at, fully_paid, completed_at, requested_start, studio_override, admin_note, created_at, availability_slots(starts_at, ends_at, location, is_duo, is_content_shoot)")
       .eq("id", data.id)
       .maybeSingle();
 
@@ -501,7 +501,8 @@ export const deleteBooking = createServerFn({ method: "POST" })
           is_content_shoot?: boolean;
         } | null;
       const appointmentStart = booking.requested_start ?? slot?.starts_at ?? booking.created_at;
-      const deposit = booking.anzahlung_paid ? Number(booking.anzahlung ?? 0) : 0;
+      const depositDate = booking.anzahlung_paid_at ? String(booking.anzahlung_paid_at).slice(0, 10) : null;
+      const deposit = depositDate && Number(booking.anzahlung ?? 0) > 0 ? Number(booking.anzahlung ?? 0) : 0;
       const cash = booking.cash_received_at || booking.fully_paid ? Number(booking.bar ?? 0) : 0;
       const bookingType = slot?.is_duo
         ? slot.is_content_shoot ? "Duo + Content" : "Duo"
@@ -524,7 +525,10 @@ export const deleteBooking = createServerFn({ method: "POST" })
         .upsert({
           id: booking.id,
           studio: booking.studio_override?.trim() || slot?.location || "—",
-          datum: String(appointmentStart).slice(0, 10),
+          // A received deposit belongs to the month in which it was paid,
+          // not to the appointment month. Fall back to the appointment date
+          // only when there is no dated payment to archive.
+          datum: depositDate ?? String(appointmentStart).slice(0, 10),
           kunde: booking.guest_name,
           anzahlung: deposit,
           anzahlung_method: booking.anzahlung_method?.trim() || null,
