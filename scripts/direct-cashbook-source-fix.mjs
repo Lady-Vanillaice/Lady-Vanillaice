@@ -24,13 +24,7 @@ if (!backend.includes("cashbookBookingFallback")) {
 
 writeFileSync(backendPath, backend);
 
-const uiPath = "src/routes/_authenticated/admin.kassenbuch.tsx";
-let ui = readFileSync(uiPath, "utf8");
-ui = ui.replace(
-'    return matchesMonth && (!studioFilter || e.studio === studioFilter) && (!methodFilter || methodsForEntry.includes(methodFilter)) && (!statusFilter || e.status === statusFilter) && (!search || haystack.includes(search.toLowerCase()));',
-'    const isUnfinishedBooking = e.source === "booking" && e.entry_type === "income" && e.status !== "completed";\n    return (matchesMonth || isUnfinishedBooking) && (!studioFilter || e.studio === studioFilter) && (!methodFilter || methodsForEntry.includes(methodFilter)) && (!statusFilter || e.status === statusFilter) && (!search || haystack.includes(search.toLowerCase()));'
-);
-writeFileSync(uiPath, ui);
-
+// The cashbook month filter lives in the route. Never broaden it to include
+// unfinished bookings from other months: that makes July appear in September.
 await import("./fix-custom-content-consistency.mjs");
 console.log("Direct cashbook source fix applied.");
