@@ -139,7 +139,10 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
       const termin = dateOnly(appointmentStart) ?? dateOnly(b.created_at)!;
       const plannedDeposit = Number(b.anzahlung ?? 0);
       const plannedCash = Number(b.bar ?? 0);
-      const depositDate = dateOnly(b.anzahlung_paid_at);
+      // Older bookings can have a confirmed paid flag without a payment timestamp.
+      // Use the original booking record date only as a legacy fallback, never the session date.
+      const depositDate = dateOnly(b.anzahlung_paid_at) ??
+        (b.anzahlung_paid === true && plannedDeposit > 0 ? dateOnly(b.created_at) : null);
       const cashDate = dateOnly(b.cash_received_at) ?? (b.fully_paid ? dateOnly(b.completed_at) : null);
       const onsiteMethodFromNote = typeof b.admin_note === "string" ? b.admin_note.match(/(?:^|\n)Vor Ort Zahlungsmethode:\s*([^\n]+)/)?.[1]?.trim() ?? null : null;
       const exemptionFromNote = typeof b.admin_note === "string" && /(?:^|\n)Anzahlungsregel: Spontaner Termin(?:\n|$)/.test(b.admin_note) ? "spontaneous" : b.deposit_exemption_reason ?? null;
