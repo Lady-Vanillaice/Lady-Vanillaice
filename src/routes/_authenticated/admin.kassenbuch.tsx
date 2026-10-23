@@ -96,6 +96,7 @@ function KassenbuchPage() {
   const [travelLogPending, setTravelLogPending] = useState(false);
   const [travelLegs, setTravelLegs] = useState<TravelLeg[]>([]);
   const [travelReady, setTravelReady] = useState(false);
+  const [odometerStart, setOdometerStart] = useState("");
   const [travelDate, setTravelDate] = useState(today());
   const [travelStartTime, setTravelStartTime] = useState("");
   const [travelEndTime, setTravelEndTime] = useState("");
@@ -109,8 +110,12 @@ function KassenbuchPage() {
       const saved = JSON.parse(window.localStorage.getItem("lady-vanillaice-travel-legs-v1") || "[]");
       if (Array.isArray(saved)) setTravelLegs(saved.filter((leg: TravelLeg) => leg && typeof leg.date === "string" && typeof leg.from === "string" && typeof leg.to === "string" && Number.isFinite(leg.kilometres)));
     } catch { /* Ignore malformed local data. */ }
+    setOdometerStart(window.localStorage.getItem("lady-vanillaice-odometer-start") || "");
     setTravelReady(true);
   }, []);
+  useEffect(() => {
+    if (travelReady) window.localStorage.setItem("lady-vanillaice-odometer-start", odometerStart);
+  }, [odometerStart, travelReady]);
   useEffect(() => {
     if (travelReady) window.localStorage.setItem("lady-vanillaice-travel-legs-v1", JSON.stringify(travelLegs));
   }, [travelLegs, travelReady]);
@@ -190,7 +195,8 @@ function KassenbuchPage() {
     const addressFromStudio = commaIndex >= 0 ? rawStudio.slice(commaIndex + 1).trim() : "";
     return { studio: studioName, address: storedAddress || addressFromStudio };
   };
-  const travelStudios = [...new Map(data.filter(e => e.source === "booking").map(e => studioParts(e)).filter(p => p.address).map(p => [`${p.studio}| ${p.address}`, p])).values()].sort((a, b) => a.studio.localeCompare(b.studio));
+  const cleanTravelLocation = (value: string) => value.replace(/\s*[—–-]\s*(?:Raum|Room|Zimmer|Suite|VIP(?:\s+Lounge)?)\b.*$/iu, "").replace(/,\s*(?:Raum|Room|Zimmer|Suite|VIP(?:\s+Lounge)?)\b.*$/iu, "").trim();
+  const travelStudios = [...new Map(data.filter(e => e.source === "booking").map(e => studioParts(e)).map(p => ({ studio: cleanTravelLocation(p.studio), address: cleanTravelLocation(p.address) })).filter(p => p.address).map(p => [`${p.studio.toLowerCase()}|${p.address.toLowerCase()}`, p])).values()].sort((a, b) => a.studio.localeCompare(b.studio));
   const selectedTravelStudioAddress = travelStudios.find(p => `${p.studio}| ${p.address}` === selectedTravelStudio)?.address ?? "";
   const studioText = (e: CashBookEntry) => {
     const parts = studioParts(e);
@@ -353,21 +359,23 @@ function KassenbuchPage() {
         }
       }
       const appointments = [...appointmentMap.values()].sort((a, b) => a.date.localeCompare(b.date) || a.studio.localeCompare(b.studio));
+      // Group each date/address once: several bookings at the same studio must not interrupt an overnight stay.
+      const distinctAppointments = [...new Map(appointments.map(entry => [`${entry.date}|${entry.address.trim().toLowerCase()}`, entry])).values()].sort((a, b) => a.date.localeCompare(b.date) || a.address.localeCompare(b.address));
       const missingAddress = appointments.find(entry => !entry.address);
       if (missingAddress) { alert(`Für ${missingAddress.studio} am ${dateLabel(missingAddress.date)} fehlt die Studio-Adresse. Bitte den Termin zuerst im Kassenbuch bearbeiten.`); return; }
       if (!appointments.length && !travelLegs.some(leg => leg.date.startsWith(month))) { alert("Für den gewählten Monat gibt es keine Fahrten."); return; }
       const distanceResult = appointments.length ? await calculateDistances({ data: { destinations: appointments.map(entry => ({ key: `${entry.studio}|${entry.address}`, address: entry.address })) } }) : { homeAddress: HOME_TRAVEL_ADDRESS, distances: [] };
       const kilometres = new Map(distanceResult.distances.map(entry => [entry.key, entry.kilometres]));
       const travelRows: Array<[string, string, string, string, string, string, number]> = [];
-      for (let index = 0; index < appointments.length;) {
-        const first = appointments[index]; let lastIndex = index;
-        while (lastIndex + 1 < appointments.length && appointments[lastIndex + 1].date === addDays(appointments[lastIndex].date, 1) && appointments[lastIndex + 1].address.trim().toLowerCase() === first.address.trim().toLowerCase()) lastIndex += 1;
+      for (let index = 0; index < distinctAppointments.length;) {
+        const first = distinctAppointments[index]; let lastIndex = index;
+        while (lastIndex + 1 < distinctAppointments.length && distinctAppointments[lastIndex + 1].date === addDays(distinctAppointments[lastIndex].date, 1) && distinctAppointments[lastIndex + 1].address.trim().toLowerCase() === first.address.trim().toLowerCase()) lastIndex += 1;
         const km = kilometres.get(`${first.studio}|${first.address}`) ?? 0;
         if (lastIndex === index) {
           const period = `${clock(awayStart(first.firstStart))} – ${clock(awayEnd(first.lastEnd, first.lastStart))}`;
           travelRows.push([dateLabel(first.date), period, `${distanceResult.homeAddress} - ${first.address} - ${distanceResult.homeAddress}`, first.studio, first.address, "Hin- und Rückfahrt", km * 2]);
         } else {
-          const last = appointments[lastIndex];
+          const last = distinctAppointments[lastIndex];
           travelRows.push([dateLabel(first.date), `${clock(awayStart(first.firstStart))} – Übernachtung vor Ort`, `${distanceResult.homeAddress} - ${first.address}`, first.studio, first.address, "Hinfahrt, Übernachtung vor Ort", km]);
           travelRows.push([dateLabel(last.date), `Übernachtung vor Ort – ${clock(awayEnd(last.lastEnd, last.lastStart))}`, `${last.address} - ${distanceResult.homeAddress}`, last.studio, last.address, "Rückfahrt nach mehrtägigem Aufenthalt", km]);
         }
@@ -378,11 +386,14 @@ function KassenbuchPage() {
       }
       travelRows.sort((a, b) => a[0].split(".").reverse().join("-").localeCompare(b[0].split(".").reverse().join("-") ) || a[1].localeCompare(b[1]));
       const totalKm = travelRows.reduce((sum, row) => sum + row[6], 0);
+      const initialKm = odometerStart.trim() === "" ? null : Number(odometerStart);
+      if (initialKm !== null && (!Number.isFinite(initialKm) || initialKm < 0)) { alert("Bitte einen gültigen Kilometerstand eingeben."); return; }
       const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" }); addPdfLogo(doc);
       const monthLabel = format(parseISO(`${month}-01`), "LLLL yyyy", { locale: de });
       doc.setFont("helvetica", "bold"); doc.setFontSize(20); doc.text("FAHRTENBUCH", 28, 40); doc.setFontSize(11); doc.text(monthLabel, 28, 58); doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.text(`Ausgangspunkt: ${distanceResult.homeAddress}`, 28, 74);
       autoTable(doc, { startY: 90, head: [["Datum", "Von–bis", "Fahrtstrecke", "Studio", "Adresse", "Anlass / Art der Fahrt", "Kilometer"]], body: travelRows.map(row => [row[0], row[1], row[2], row[3], row[4], row[5], `${row[6]} km`]), foot: [["SUMME", "", "", "", "", "", `${totalKm} km`]], styles: { fontSize: 7.2, cellPadding: 4, overflow: "linebreak" }, columnStyles: { 0: { cellWidth: 58 }, 1: { cellWidth: 120 }, 2: { cellWidth: 215 }, 3: { cellWidth: 75 }, 4: { cellWidth: 145 }, 5: { cellWidth: 125 }, 6: { cellWidth: 58, halign: "right" } }, headStyles: { fillColor: [15, 15, 15] }, footStyles: { fillColor: [239, 229, 207], textColor: 15, fontStyle: "bold" } });
       const finalY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 90;
+      if (initialKm !== null) { doc.setFontSize(8); doc.text(`Kilometerstand Beginn: ${initialKm.toLocaleString("de-DE")} km | Rechnerischer Endstand: ${(initialKm + totalKm).toLocaleString("de-DE")} km (nur bei lückenlos erfassten Fahrten)`, 28, Math.min(finalY + 12, 550)); }
       doc.setFontSize(8); doc.text("Zeitregel: bei Terminen ab 12 Uhr Abfahrt 10:00 Uhr, sonst 3 Stunden vor dem ersten Termin; Rückkehr ca. 4 Stunden nach dem letzten Termin.", 28, Math.min(finalY + 24, 560)); doc.save(`fahrtenbuch-${month}.pdf`);
     } catch (error) { alert(error instanceof Error ? error.message : "Das Fahrtenbuch konnte nicht erstellt werden."); }
     finally { setTravelLogPending(false); }
@@ -429,6 +440,7 @@ function KassenbuchPage() {
       </div>
       <div className="bg-card border border-champagne/20 p-4 space-y-4">
         <h2 className="eyebrow">Fahrtenbuch – Fahrt hinzufügen</h2>
+        <Field label="Kilometerstand zu Beginn (optional)"><input type="number" min="0" step="1" className="luxe-input max-w-xs" value={odometerStart} onChange={e => setOdometerStart(e.target.value)} placeholder="z. B. 45200" /></Field>
         <p className="text-xs text-vanilla/60">Start und Ziel frei wählen. Nach dem Speichern wird die Zieladresse als Start der nächsten Fahrt vorgeschlagen. Unterkünfte für jede Reise neu eingeben. Die Kilometer werden anhand der Straßenroute berechnet.</p>
         <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
           <Field label="Fahrtdatum"><input type="date" className="luxe-input" value={travelDate} onChange={e => setTravelDate(e.target.value)} /></Field>
