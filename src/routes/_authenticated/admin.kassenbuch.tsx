@@ -352,7 +352,7 @@ function KassenbuchPage() {
       const travelRows: Array<[string, string, string, string, string, string, number]> = [];
       for (let index = 0; index < appointments.length;) {
         const first = appointments[index]; let lastIndex = index;
-        while (lastIndex + 1 < appointments.length && appointments[lastIndex + 1].date === addDays(appointments[lastIndex].date, 1) && appointments[lastIndex + 1].studio === first.studio && appointments[lastIndex + 1].address === first.address) lastIndex += 1;
+        while (lastIndex + 1 < appointments.length && appointments[lastIndex + 1].date === addDays(appointments[lastIndex].date, 1) && appointments[lastIndex + 1].address.trim().toLocaleLowerCase("de-DE") === first.address.trim().toLocaleLowerCase("de-DE")) lastIndex += 1;
         const km = kilometres.get(`${first.studio}|${first.address}`) ?? 0;
         if (lastIndex === index) {
           const period = `${clock(awayStart(first.firstStart))} – ${clock(awayEnd(first.lastEnd, first.lastStart))}`;
