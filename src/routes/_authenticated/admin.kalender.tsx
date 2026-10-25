@@ -649,7 +649,7 @@ function SlotSplitEditor({
   );
 }
 
-type ExportChoice = "day" | "month" | "year" | "all";
+type ExportChoice = "day" | "month" | "year" | "all" | "calendar";
 
 function FreeSlotImageExport({
   slots,
@@ -690,11 +690,74 @@ function FreeSlotImageExport({
   const daysForMonth = dayKeys.filter((day) => day.startsWith(`${activeMonth}-`));
   const activeDay = daysForMonth.includes(dayKey) ? dayKey : (daysForMonth[0] ?? "");
 
+  function downloadCalendarGrid() {
+    if (!activeMonth) throw new Error("Bitte einen Monat auswählen.");
+    const [selectedYear, selectedMonth] = activeMonth.split("-").map(Number);
+    const firstWeekday = (new Date(selectedYear, selectedMonth - 1, 1).getDay() + 6) % 7;
+    const monthDays = new Date(selectedYear, selectedMonth, 0).getDate();
+    const rows = Math.ceil((firstWeekday + monthDays) / 7);
+    const canvas = document.createElement("canvas");
+    canvas.width = 1120;
+    canvas.height = 290 + rows * 134 + 80;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Bild konnte nicht erstellt werden.");
+    ctx.fillStyle = "#17120f";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = "#514237";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(32, 32, canvas.width - 64, canvas.height - 64);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#e5c48c";
+    ctx.font = "58px Georgia, serif";
+    ctx.fillText(format(new Date(selectedYear, selectedMonth - 1, 15), "LLLL yyyy", { locale: de }), 560, 152);
+    const labels = ["MO", "DI", "MI", "DO", "FR", "SA", "SO"];
+    ctx.font = "23px Arial, sans-serif";
+    ctx.fillStyle = "#9c9188";
+    labels.forEach((label, index) => ctx.fillText(label, 84 + index * 136 + 68, 245));
+    const today = format(new Date(), "yyyy-MM-dd");
+    for (let day = 1; day <= monthDays; day++) {
+      const key = activeMonth + "-" + String(day).padStart(2, "0");
+      const index = firstWeekday + day - 1;
+      const x = 84 + (index % 7) * 136;
+      const y = 290 + Math.floor(index / 7) * 134;
+      const daySlots = slots.filter((slot) => format(new Date(slot.starts_at), "yyyy-MM-dd") === key && !slot.is_hidden);
+      const booked = daySlots.some((slot) => slot.status === "booked");
+      const available = daySlots.some((slot) => slot.status === "open" && new Date(slot.ends_at).getTime() > Date.now());
+      const past = key < today;
+      if (!past && (booked || available)) {
+        ctx.fillStyle = booked && !available ? "#371b23" : "#27231d";
+        ctx.fillRect(x + 5, y + 5, 126, 124);
+        ctx.strokeStyle = booked && !available ? "#70313f" : "#b89b6b";
+        ctx.strokeRect(x + 5, y + 5, 126, 124);
+      }
+      ctx.fillStyle = past ? "#4c4642" : "#e7d5bd";
+      ctx.font = "40px Georgia, serif";
+      ctx.fillText(String(day), x + 68, y + 65);
+      if (!past && booked && !available) {
+        ctx.font = "18px Arial, sans-serif";
+        ctx.fillText("BELEGT", x + 68, y + 100);
+      } else if (!past && available) {
+        ctx.fillStyle = "#e5c48c";
+        ctx.beginPath();
+        ctx.arc(x + 68, y + 100, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    const link = document.createElement("a");
+    link.href = canvas.toDataURL("image/png");
+    link.download = "lady-vanilla-ice-monatskalender-" + activeMonth + ".png";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+
   async function downloadImage() {
     if (freeSlots.length === 0) return;
     setExporting(true);
     try {
-      if (choice === "day") {
+      if (choice === "calendar") {
+        downloadCalendarGrid();
+      } else if (choice === "day") {
         if (!activeDay) throw new Error("Für diesen Monat gibt es keinen offenen Tag.");
         await exportCalendarImage({ type: "day", dayKey: activeDay });
       } else if (choice === "month") {
@@ -739,6 +802,7 @@ function FreeSlotImageExport({
         >
           <option value="day">Einzelner Tag</option>
           <option value="month">Einzelner Monat</option>
+          <option value="calendar">Monatskalender als Bild (wie auf der Webseite)</option>
           <option value="year">Ganzes Jahr</option>
           <option value="all">Alle offenen Termine</option>
         </select>
@@ -766,7 +830,7 @@ function FreeSlotImageExport({
           </select>
         )}
 
-        {(choice === "month" || choice === "day") && (
+        {(choice === "month" || choice === "day" || choice === "calendar") && (
           <select
             className="input-luxe"
             value={activeMonth}
