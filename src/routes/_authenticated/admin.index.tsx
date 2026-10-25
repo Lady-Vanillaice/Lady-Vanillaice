@@ -88,7 +88,7 @@ const eur = (value: number) => value.toLocaleString("de-DE", { style: "currency"
 const statusLabel = (status: string) => ({ confirmed: "Bestätigt", pending: "Anfrage", cancelled: "Storniert", rescheduling: "Umplanen" }[status] ?? status);
 
 
-const REVIEW_WHATSAPP_TEXT = "Ich gehe davon aus, dass unsere gemeinsame Zeit einen bleibenden Eindruck hinterlassen hat.\n\nJetzt erfüllst du noch eine kleine Aufgabe für mich: Verfasse einen ehrlichen und ausführlichen Erfahrungsbericht über deine Session. Beschreibe, wie du sie erlebt hast, welche Momente dich besonders beeindruckt haben und was dir in Erinnerung geblieben ist.\n\nDeinen Bericht hinterlässt du hier:\nhttps://www.lady-vanillaice.com/erfahrungsberichte\n\nNimm dir dafür ein paar Minuten Zeit. Ich lese jeden einzelnen Bericht persönlich.\n\nIch erwarte deinen Bericht. 🖤";
+const REVIEW_WHATSAPP_TEXT = "Ich gehe davon aus, dass unsere gemeinsame Zeit einen bleibenden Eindruck hinterlassen hat.\\n\\nJetzt erfüllst du noch eine kleine Aufgabe für mich: Verfasse einen ehrlichen und ausführlichen Erfahrungsbericht über deine Session. Beschreibe, wie du sie erlebt hast, welche Momente dich besonders beeindruckt haben und was dir in Erinnerung geblieben ist.\\n\\nDeinen Bericht hinterlässt du hier:\\nhttps://www.lady-vanillaice.com/erfahrungsberichte\\n\\nNimm dir dafür ein paar Minuten Zeit. Ich lese jeden einzelnen Bericht persönlich.\\n\\nIch erwarte deinen Bericht. 🖤";
 
 type WhatsAppFollowupBooking = {
   id: string;
