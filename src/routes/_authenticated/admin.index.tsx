@@ -87,6 +87,71 @@ function bookingStart(booking: DashboardBooking) {
 const eur = (value: number) => value.toLocaleString("de-DE", { style: "currency", currency: "EUR" });
 const statusLabel = (status: string) => ({ confirmed: "Bestätigt", pending: "Anfrage", cancelled: "Storniert", rescheduling: "Umplanen" }[status] ?? status);
 
+
+const REVIEW_WHATSAPP_TEXT = "Ich gehe davon aus, dass unsere gemeinsame Zeit einen bleibenden Eindruck hinterlassen hat.\\n\\nJetzt erfüllst du noch eine kleine Aufgabe für mich: Verfasse einen ehrlichen und ausführlichen Erfahrungsbericht über deine Session. Beschreibe, wie du sie erlebt hast, welche Momente dich besonders beeindruckt haben und was dir in Erinnerung geblieben ist.\\n\\nDeinen Bericht hinterlässt du hier:\\nhttps://www.lady-vanillaice.com/erfahrungsberichte\\n\\nNimm dir dafür ein paar Minuten Zeit. Ich lese jeden einzelnen Bericht persönlich.\\n\\nIch erwarte deinen Bericht. 🖤";
+
+type WhatsAppFollowupBooking = {
+  id: string;
+  guest_name: string;
+  guest_phone: string | null;
+  requested_start: string | null;
+  duration_minutes: number | null;
+  status: string;
+};
+
+function PostSessionWhatsApp() {
+  const [dismissed, setDismissed] = useState<string[]>([]);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    try { setDismissed(JSON.parse(localStorage.getItem("lvi-whatsapp-review-done") || "[]")); } catch { /* no saved state */ }
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const q = useQuery({
+    queryKey: ["admin-post-session-whatsapp"],
+    queryFn: async (): Promise<WhatsAppFollowupBooking[]> => {
+      const { data, error } = await supabase.from("bookings")
+        .select("id, guest_name, guest_phone, requested_start, duration_minutes, status")
+        .eq("status", "confirmed")
+        .not("guest_phone", "is", null)
+        .gte("requested_start", new Date(Date.now() - 8 * 24 * 60 * 60_000).toISOString())
+        .lte("requested_start", new Date().toISOString())
+        .limit(150);
+      if (error) throw error;
+      return (data ?? []) as WhatsAppFollowupBooking[];
+    },
+    refetchInterval: 60_000,
+  });
+  const ready = (q.data ?? []).filter(b => {
+    if (!b.requested_start || !b.guest_phone || dismissed.includes(b.id)) return false;
+    const end = new Date(b.requested_start).getTime() + Math.max(0, b.duration_minutes ?? 0) * 60_000;
+    return end <= now && now - end <= 7 * 24 * 60 * 60_000;
+  }).sort((a, b) => new Date(b.requested_start!).getTime() - new Date(a.requested_start!).getTime());
+  if (!ready.length) return null;
+  const markDone = (id: string) => {
+    const next = [...dismissed, id];
+    setDismissed(next);
+    localStorage.setItem("lvi-whatsapp-review-done", JSON.stringify(next));
+  };
+  return (
+    <section className="mb-8 border border-green-500/40 bg-card p-4 sm:p-5">
+      <h2 className="font-display text-xl text-champagne mb-2">WhatsApp · Erfahrungsbericht anfragen</h2>
+      <p className="text-xs text-vanilla/60 mb-4">Nach Sessionende direkt bereit. WhatsApp öffnet den fertigen Text; bitte dort noch auf Senden tippen.</p>
+      <div className="space-y-3">
+        {ready.map(b => (
+          <div key={b.id} className="flex flex-wrap items-center justify-between gap-3 border-t border-champagne/15 pt-3">
+            <div className="text-sm text-vanilla">{b.guest_name}<div className="text-xs text-vanilla/50">{format(new Date(b.requested_start!), "dd.MM.yyyy · HH:mm", { locale: de })} Uhr</div></div>
+            <div className="flex flex-wrap gap-2">
+              <a href={`https://wa.me/${b.guest_phone!.replace(/\\D/g, "")}?text=${encodeURIComponent(REVIEW_WHATSAPP_TEXT)}`} target="_blank" rel="noreferrer" className="btn-gold !py-2 !px-3 !text-[0.65rem]"><MessageSquare size={13}/> WhatsApp öffnen</a>
+              <button type="button" onClick={() => markDone(b.id)} className="btn-outline-gold !py-2 !px-3 !text-[0.65rem]">Erledigt</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function AdminHubPage() {
   const navigate = useNavigate();
   async function onLogout() { await supabase.auth.signOut(); navigate({ to: "/" }); }
@@ -101,6 +166,7 @@ function AdminHubPage() {
       <InstallAdminApp />
       <PushNotificationsCard />
 
+      <PostSessionWhatsApp />
       <DashboardOverview />
 
       <section className="mb-10">
