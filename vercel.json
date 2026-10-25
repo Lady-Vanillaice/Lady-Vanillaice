@@ -21,7 +21,7 @@
   "crons": [
     {
       "path": "/api/cron/booking-emails",
-      "schedule": "0 * * * *"
+      "schedule": "*/10 * * * *"
     }
   ]
 }
