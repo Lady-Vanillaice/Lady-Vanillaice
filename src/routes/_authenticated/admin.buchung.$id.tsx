@@ -867,6 +867,16 @@ const depositDateMut = useMutation({
                   >
                     <MessageSquare size={12} /> WhatsApp öffnen
                   </a>
+                  {booking.status === "confirmed" && booking.requested_start && (
+                    <a
+                      href={`https://wa.me/${booking.guest_phone.replace(/\\D/g, "")}?text=${encodeURIComponent("Ich gehe davon aus, dass unsere gemeinsame Zeit einen bleibenden Eindruck hinterlassen hat.\\n\\nJetzt erfüllst du noch eine kleine Aufgabe für mich: Verfasse einen ehrlichen und ausführlichen Erfahrungsbericht über deine Session. Beschreibe, wie du sie erlebt hast, welche Momente dich besonders beeindruckt haben und was dir in Erinnerung geblieben ist.\\n\\nDeinen Bericht hinterlässt du hier:\\nhttps://www.lady-vanillaice.com/erfahrungsberichte\\n\\nNimm dir dafür ein paar Minuten Zeit. Ich lese jeden einzelnen Bericht persönlich.\\n\\nIch erwarte deinen Bericht. 🖤")}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex items-center gap-2 border border-green-500/50 px-3 py-2 text-sm text-green-300 hover:bg-green-500/10"
+                    >
+                      <MessageSquare size={14} /> Erfahrungsbericht per WhatsApp anfragen
+                    </a>
+                  )}
                 </div>
               )}
             </div>
