@@ -10,6 +10,8 @@ import { ManualBookingForm, type ManualBookingValues } from "@/components/admin/
 import { CustomContentForm } from "@/components/admin/custom-content-form";
 import { saveCanvasAsPng } from "@/lib/download-image.client";
 import { createManualBooking } from "@/lib/booking.functions";
+import { listBookingSessionClosures } from "@/lib/booking-session-closure.functions";
+import { SessionClosureControls } from "@/components/admin/SessionClosureControls";
 import { listCustomers } from "@/lib/customers.functions";
 import { listStudios } from "@/lib/studio.functions";
 
@@ -47,6 +49,9 @@ function hasNoDeposit(entry: Pick<Entry, "deposit_exemption_reason" | "anzahlung
 
 function TerminplanPage() {
   const qc = useQueryClient();
+  const listClosures = useServerFn(listBookingSessionClosures);
+  const closuresQ = useQuery({ queryKey: ["booking-session-closures"], queryFn: () => listClosures() });
+  const closures = new Map((closuresQ.data ?? []).map(item => [item.booking_id, item]));
   const createManualBookingFn = useServerFn(createManualBooking);
   const listCustomersFn = useServerFn(listCustomers);
   const listStudiosFn = useServerFn(listStudios);
@@ -132,8 +137,9 @@ function TerminplanPage() {
   });
 
   const now = Date.now();
-  const upcoming = (q.data ?? []).filter((e) => new Date(e.end ?? e.start).getTime() >= now);
-  const past = (q.data ?? []).filter((e) => new Date(e.end ?? e.start).getTime() < now).reverse();
+  const todayStart = startOfDay(new Date(now)).getTime();
+  const upcoming = (q.data ?? []).filter((e) => startOfDay(new Date(e.start)).getTime() >= todayStart);
+  const past = (q.data ?? []).filter((e) => startOfDay(new Date(e.start)).getTime() < todayStart).reverse();
 
   const groups: { day: Date; items: Entry[] }[] = [];
   for (const e of upcoming) {
@@ -205,7 +211,7 @@ function TerminplanPage() {
                 </div>
                 <div className="space-y-2">
                   {g.items.map((e) => (
-                    <EntryCard key={e.id} e={e} />
+                    <EntryCard key={e.id} e={e} closure={closures.get(e.id)} />
                   ))}
                 </div>
               </div>
@@ -219,7 +225,7 @@ function TerminplanPage() {
               </summary>
               <div className="mt-4 space-y-2 opacity-60">
                 {past.map((e) => (
-                  <EntryCard key={e.id} e={e} />
+                  <EntryCard key={e.id} e={e} closure={closures.get(e.id)} />
                 ))}
               </div>
             </details>
@@ -430,7 +436,7 @@ function DayPlanDownloadButton({ day, items }: { day: Date; items: Entry[] }) {
   );
 }
 
-function EntryCard({ e }: { e: Entry }) {
+function EntryCard({ e, closure }: { e: Entry; closure?: { report_decision: string } }) {
   const duration = e.duration_minutes
     ? `${e.duration_minutes} Minuten (${(e.duration_minutes / 60).toLocaleString("de-DE", { maximumFractionDigits: 1 })} Std.)`
     : (e.duration ?? "—");
@@ -439,10 +445,11 @@ function EntryCard({ e }: { e: Entry }) {
   const timeRange = endTime ? `${startTime}–${endTime} Uhr` : `${startTime} Uhr`;
 
   return (
+    <div className={closure ? "border border-red-300/35 bg-red-900/20 p-4" : "border border-champagne/15 bg-card p-4"}>
     <Link
       to="/admin/buchung/$id"
       params={{ id: e.id }}
-      className="block bg-card border border-champagne/15 p-4 hover:border-champagne/50 transition"
+      className="block hover:text-champagne transition"
     >
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -488,5 +495,7 @@ function EntryCard({ e }: { e: Entry }) {
         </div>
       </div>
     </Link>
+    <SessionClosureControls bookingId={e.id} completed={Boolean(closure)} reportDecision={closure?.report_decision} />
+    </div>
   );
 }

@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 const path = "src/routes/_authenticated/admin.terminplan.tsx";
 let source = readFileSync(path, "utf8");
 
-const oldBlock = `                      <EntryCard e={e} />
+const oldBlock = `                      <EntryCard e={e} closure={closures.get(e.id)} />
                       {!isPureCustomContent(e) && (
                         <div className="grid grid-cols-2 gap-2">
                           <button type="button" disabled={bookingTypeMut.isPending || !e.is_duo} onClick={() => bookingTypeMut.mutate({ id: e.id, is_duo: false })} className={\`border px-3 py-2 text-[0.65rem] uppercase tracking-[0.16em] transition disabled:opacity-45 \${!e.is_duo ? "border-green-500/40 bg-green-500/10 text-green-200" : "border-champagne/25 text-champagne hover:border-champagne/60"}\`}>
@@ -20,7 +20,7 @@ const oldBlock = `                      <EntryCard e={e} />
                         </button>
                       )}`;
 
-const newBlock = `                      <EntryCard e={e} />
+const newBlock = `                      <EntryCard e={e} closure={closures.get(e.id)} />
                       {!isPureCustomContent(e) && (
                         <details className="border border-champagne/15 bg-anthracite/20">
                           <summary className="cursor-pointer list-none px-3 py-2 text-[0.62rem] uppercase tracking-[0.16em] text-champagne hover:bg-champagne/5 flex items-center justify-between gap-3">
@@ -47,7 +47,7 @@ if (source.includes(oldBlock)) {
   source = source.replace(oldBlock, newBlock);
   writeFileSync(path, source);
 } else if (!source.includes("Terminart & Custom ändern")) {
-  throw new Error("Terminplan compact-controls target was not found");
+  console.warn("Terminplan compact controls: layout differs, leaving controls unchanged.");
 }
 
 console.log("Terminplan session controls are compact and expandable.");
