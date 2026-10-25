@@ -40,7 +40,8 @@ import {
   Plus,
   Plane,
 } from "lucide-react";
-import { exportCalendarImage } from "@/lib/download-image.client";
+import { exportCalendarImage, saveCanvasAsPng } from "@/lib/download-image.client";
+import { listUpcomingSlots } from "@/lib/public-booking.functions";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { listStudios } from "@/lib/studio.functions";
@@ -683,6 +684,8 @@ function FreeSlotImageExport({
   const [monthKey, setMonthKey] = useState<string>(monthKeys[0] ?? "");
   const [dayKey, setDayKey] = useState<string>(dayKeys[0] ?? "");
   const [exporting, setExporting] = useState(false);
+  const listPublicSlots = useServerFn(listUpcomingSlots);
+  const publicCalendarQ = useQuery({ queryKey: ["public-slots", "admin-image-export"], queryFn: () => listPublicSlots(), enabled: choice === "calendar" });
 
   const activeMonth = monthsForYear.includes(monthKey)
     ? monthKey
@@ -690,11 +693,14 @@ function FreeSlotImageExport({
   const daysForMonth = dayKeys.filter((day) => day.startsWith(`${activeMonth}-`));
   const activeDay = daysForMonth.includes(dayKey) ? dayKey : (daysForMonth[0] ?? "");
 
-  function downloadCalendarGrid() {
+  async function downloadCalendarGrid() {
     if (!activeMonth) throw new Error("Bitte einen Monat auswählen.");
     const [selectedYear, selectedMonth] = activeMonth.split("-").map(Number);
     const firstWeekday = (new Date(selectedYear, selectedMonth - 1, 1).getDay() + 6) % 7;
     const monthDays = new Date(selectedYear, selectedMonth, 0).getDate();
+    const publicSlots = publicCalendarQ.data ?? [];
+    if (publicCalendarQ.isLoading || publicCalendarQ.isError) throw new Error("Kalenderdaten sind noch nicht verfügbar.");
+    const publicByDay = new Map(publicSlots.map((slot) => [format(new Date(slot.starts_at), "yyyy-MM-dd"), slot]));
     const rows = Math.ceil((firstWeekday + monthDays) / 7);
     const canvas = document.createElement("canvas");
     canvas.width = 1120;
@@ -720,43 +726,41 @@ function FreeSlotImageExport({
       const index = firstWeekday + day - 1;
       const x = 84 + (index % 7) * 136;
       const y = 290 + Math.floor(index / 7) * 134;
-      const daySlots = slots.filter((slot) => format(new Date(slot.starts_at), "yyyy-MM-dd") === key && !slot.is_hidden);
-      const booked = daySlots.some((slot) => slot.status === "booked");
-      const available = daySlots.some((slot) => slot.status === "open" && new Date(slot.ends_at).getTime() > Date.now());
+      const daySlot = publicByDay.get(key);
+      const booked = Boolean(daySlot?.is_fully_booked && !daySlot?.is_vacation);
+      const vacation = Boolean(daySlot?.is_vacation);
+      const available = Boolean(daySlot && !booked && !vacation);
       const past = key < today;
-      if (!past && (booked || available)) {
-        ctx.fillStyle = booked && !available ? "#371b23" : "#27231d";
+      if (!past && (booked || vacation || available)) {
+        ctx.fillStyle = vacation ? "#3c281c" : booked ? "#371b23" : "#27231d";
         ctx.fillRect(x + 5, y + 5, 126, 124);
-        ctx.strokeStyle = booked && !available ? "#70313f" : "#b89b6b";
+        ctx.strokeStyle = vacation ? "#9b6133" : booked ? "#70313f" : "#b89b6b";
         ctx.strokeRect(x + 5, y + 5, 126, 124);
       }
       ctx.fillStyle = past ? "#4c4642" : "#e7d5bd";
       ctx.font = "40px Georgia, serif";
       ctx.fillText(String(day), x + 68, y + 65);
-      if (!past && booked && !available) {
+      if (!past && (booked || vacation)) {
         ctx.font = "18px Arial, sans-serif";
-        ctx.fillText("BELEGT", x + 68, y + 100);
+        ctx.fillText(vacation ? "URLAUB" : "BELEGT", x + 68, y + 100);
       } else if (!past && available) {
+        if (daySlot?.is_duo) { ctx.font = "15px Arial, sans-serif"; ctx.fillStyle = "#e5c48c"; ctx.fillText("DUO", x + 105, y + 28); }
+        if (daySlot?.is_content_shoot) { ctx.font = "14px Arial, sans-serif"; ctx.fillStyle = "#e5c48c"; ctx.fillText("CONTENT", x + 53, y + 28); }
         ctx.fillStyle = "#e5c48c";
         ctx.beginPath();
         ctx.arc(x + 68, y + 100, 5, 0, Math.PI * 2);
         ctx.fill();
       }
     }
-    const link = document.createElement("a");
-    link.href = canvas.toDataURL("image/png");
-    link.download = "lady-vanilla-ice-monatskalender-" + activeMonth + ".png";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+    await saveCanvasAsPng(canvas, "lady-vanilla-ice-monatskalender-" + activeMonth + ".png");
   }
 
   async function downloadImage() {
-    if (freeSlots.length === 0) return;
+    if (freeSlots.length === 0 && choice !== "calendar") return;
     setExporting(true);
     try {
       if (choice === "calendar") {
-        downloadCalendarGrid();
+        await downloadCalendarGrid();
       } else if (choice === "day") {
         if (!activeDay) throw new Error("Für diesen Monat gibt es keinen offenen Tag.");
         await exportCalendarImage({ type: "day", dayKey: activeDay });
@@ -859,7 +863,7 @@ function FreeSlotImageExport({
         <button
           type="button"
           onClick={downloadImage}
-          disabled={loading || exporting || freeSlots.length === 0}
+          disabled={loading || exporting || (choice === "calendar" ? publicCalendarQ.isLoading : freeSlots.length === 0)}
           className="btn-gold w-full !py-3 !text-[0.65rem] disabled:opacity-40"
         >
           <Download size={14} />
