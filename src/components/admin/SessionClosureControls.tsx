@@ -20,7 +20,7 @@ export function SessionClosureControls({ bookingId, completed, reportDecision }:
       await qc.invalidateQueries({ queryKey: ["booking-session-closures"] });
     },
   });
-  if (completed) return <p className="mt-3 text-xs text-red-200">✓ Erledigt · CRM gespeichert · Erfahrungsbericht {reportDecision === "sent" ? "vorhanden" : "übersprungen"}</p>;
+  if (completed) return <p className="mt-3 text-xs text-red-200">✓ Erledigt · CRM gespeichert · Erfahrungsbericht {reportDecision === "sent" ? "als vorhanden markiert" : "übersprungen"}</p>;
   return <div className="mt-3 border-t border-champagne/20 pt-3 space-y-3">
     <button type="button" className="btn-outline-gold !py-2 !px-3 !text-xs" onClick={() => setOpen(value => !value)}>CRM / Session-Dokumentation</button>
     {open && <>
@@ -28,7 +28,7 @@ export function SessionClosureControls({ bookingId, completed, reportDecision }:
       <textarea id={`session-crm-${bookingId}`} rows={4} maxLength={6000} value={notes} onChange={event => setNotes(event.target.value)} className="w-full bg-background border border-champagne/30 p-3 text-vanilla" />
       <p className="text-xs text-vanilla/60">Restzahlung vorher im Buchungsdetail erfassen. Erfahrungsbericht freiwillig.</p>
       <div className="flex flex-wrap gap-2">
-        <button type="button" disabled={!notes.trim() || mutation.isPending} className="btn-outline-gold !py-2 !px-3 !text-xs disabled:opacity-40" onClick={() => mutation.mutate("sent")}>Mit Erfahrungsbericht abschließen</button>
+        <button type="button" disabled={!notes.trim() || mutation.isPending} className="btn-outline-gold !py-2 !px-3 !text-xs disabled:opacity-40" onClick={() => mutation.mutate("sent")}>Erfahrungsbericht vorhanden – abschließen</button>
         <button type="button" disabled={!notes.trim() || mutation.isPending} className="btn-outline-gold !py-2 !px-3 !text-xs disabled:opacity-40" onClick={() => mutation.mutate("skipped")}>Ohne Erfahrungsbericht abschließen</button>
       </div>
       {mutation.isError && <p role="alert" className="text-xs text-red-300">{mutation.error instanceof Error ? mutation.error.message : "Abschluss fehlgeschlagen."}</p>}
