@@ -175,6 +175,69 @@ function KalenderPage() {
 
   const selectedSlot = selectedDay ? slotByDay.get(format(selectedDay, "yyyy-MM-dd")) ?? null : null;
 
+  function downloadMonthCalendar() {
+    const canvas = document.createElement("canvas");
+    const width = 1120;
+    const cell = 136;
+    const left = 84;
+    const top = 280;
+    const rows = Math.ceil(days.length / 7);
+    canvas.width = width;
+    canvas.height = top + rows * cell + 110;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.fillStyle = "#17120f";
+    ctx.fillRect(0, 0, width, canvas.height);
+    ctx.strokeStyle = "#514237";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(34, 34, width - 68, canvas.height - 68);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#e5c48c";
+    ctx.font = "58px Georgia, serif";
+    ctx.fillText(format(cursor, "LLLL yyyy", { locale: lang === "en" ? enUS : de }), width / 2, 150);
+    const week = lang === "en" ? ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"] : ["MO", "DI", "MI", "DO", "FR", "SA", "SO"];
+    ctx.font = "24px Arial, sans-serif";
+    ctx.fillStyle = "#9c9188";
+    week.forEach((name, index) => ctx.fillText(name, left + index * cell + cell / 2, 235));
+    days.forEach((day, index) => {
+      const x = left + (index % 7) * cell;
+      const y = top + Math.floor(index / 7) * cell;
+      const slot = slotByDay.get(format(day, "yyyy-MM-dd"));
+      const past = day < new Date(new Date().toDateString());
+      const other = !isSameMonth(day, cursor);
+      const booked = Boolean(slot?.is_fully_booked && !past);
+      const vacation = Boolean(slot?.is_vacation && !past);
+      const available = Boolean(slot && !booked && !vacation && !past);
+      if (booked || vacation || available) {
+        ctx.fillStyle = booked ? "#371b23" : vacation ? "#3c281c" : "#27231d";
+        ctx.fillRect(x + 5, y + 5, cell - 10, cell - 10);
+        ctx.strokeStyle = booked ? "#70313f" : vacation ? "#9b6133" : "#b89b6b";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x + 5, y + 5, cell - 10, cell - 10);
+      }
+      ctx.fillStyle = other || past ? "#4c4642" : "#e7d5bd";
+      ctx.font = "40px Georgia, serif";
+      ctx.fillText(String(day.getDate()), x + cell / 2, y + 66);
+      if (booked || vacation) {
+        ctx.fillStyle = "#e7d5bd";
+        ctx.font = "18px Arial, sans-serif";
+        ctx.fillText(vacation ? (lang === "en" ? "AWAY" : "URLAUB") : (lang === "en" ? "BOOKED" : "BELEGT"), x + cell / 2, y + 100);
+      } else if (available) {
+        ctx.fillStyle = "#e5c48c";
+        ctx.beginPath();
+        ctx.arc(x + cell / 2, y + 100, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+    const link = document.createElement("a");
+    link.href = canvas.toDataURL("image/png");
+    link.download = `lady-vanilla-ice-kalender-${format(cursor, "yyyy-MM")}.png`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+
+
   return (
     <>
       <PageHeader
@@ -207,6 +270,15 @@ function KalenderPage() {
                   <ChevronRight size={16} />
                 </button>
               </div>
+
+              <button
+                type="button"
+                onClick={downloadMonthCalendar}
+                disabled={slotsQ.isLoading}
+                className="mb-5 inline-flex items-center gap-2 border border-champagne/40 px-4 py-2 text-xs text-champagne hover:bg-champagne/10 disabled:opacity-40"
+              >
+                {tr("Monatskalender als PNG herunterladen", "Download monthly calendar as PNG")}
+              </button>
 
               <div className="grid grid-cols-7 gap-1 text-center text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/40 mb-2">
                 {(lang === "en" ? ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] : ["Mo","Di","Mi","Do","Fr","Sa","So"]).map((d) => <div key={d}>{d}</div>)}
