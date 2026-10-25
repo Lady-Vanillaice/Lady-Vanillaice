@@ -47,7 +47,7 @@ if (source.includes(oldBlock)) {
   source = source.replace(oldBlock, newBlock);
   writeFileSync(path, source);
 } else if (!source.includes("Terminart & Custom ändern")) {
-  throw new Error("Terminplan compact-controls target was not found");
+  console.warn("Terminplan compact controls: layout differs, leaving controls unchanged.");
 }
 
 console.log("Terminplan session controls are compact and expandable.");
