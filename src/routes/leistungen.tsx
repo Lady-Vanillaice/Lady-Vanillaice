@@ -134,8 +134,8 @@ function Leistungen() {
     {
       title: tr("Macht & Kontrolle", "Power & control"),
       items: [
-        tr("Dilation", "Dilation"),
         tr("AS", "AS"),
+        tr("Dilation", "Dilation"),
         tr("Erniedrigung & Demütigung", "Humiliation & degradation"),
         tr("Keuschhaltung & Orgasmuskontrolle", "Chastity & orgasm control"),
         tr("Slave Training", "Slave training"),
