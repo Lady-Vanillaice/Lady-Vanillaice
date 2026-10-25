@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 const HOUR = 60 * 60 * 1000;
+const MINUTE = 60 * 1000;
 const REVIEW_URL = "https://www.lady-vanillaice.com/erfahrungsberichte";
 
 function formatBerlinDate(value: string) {
@@ -99,7 +100,7 @@ export const Route = createFileRoute("/api/cron/booking-emails")({
           }
 
           const sinceEnd = now - end;
-          if (sinceEnd >= 23 * HOUR && sinceEnd <= 25 * HOUR) {
+          if (sinceEnd >= 30 * MINUTE && sinceEnd < 40 * MINUTE) {
             const result = await enqueueTransactionalEmail({
               templateName: "booking-followup",
               recipientEmail: booking.guest_email,
@@ -107,8 +108,8 @@ export const Route = createFileRoute("/api/cron/booking-emails")({
                 guestName: booking.guest_name ?? undefined,
                 reviewUrl: REVIEW_URL,
               },
-              idempotencyKey: `booking-followup-24h-${booking.id}`,
-              metadata: { booking_id: booking.id, automation: "24h-followup" },
+              idempotencyKey: `booking-followup-30m-${booking.id}`,
+              metadata: { booking_id: booking.id, automation: "30m-followup" },
             });
             if (result.success) followups += 1;
             else failures.push(`followup:${booking.id}:${result.reason ?? "unknown"}`);
