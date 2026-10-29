@@ -497,7 +497,7 @@ function EntryCard({ e, closure }: { e: Entry; closure?: { report_decision: stri
         </div>
       </div>
     </Link>
-    <SessionClosureControls bookingId={e.id} completed={Boolean(closure)} reportDecision={closure?.report_decision} amount={e.bar ?? 0} paidAt={e.cash_received_at} />
+    <SessionClosureControls bookingId={e.id} completed={Boolean(closure)} reportDecision={closure?.report_decision} amount={e.bar ?? 0} paidAt={e.cash_received_at} guestEmail={e.guest_email} sessionStart={e.start} sessionPlace={e.studio_override} />
     </div>
   );
 }
