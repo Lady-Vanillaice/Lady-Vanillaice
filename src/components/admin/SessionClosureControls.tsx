@@ -30,6 +30,7 @@ export function SessionClosureControls({ bookingId, completed, reportDecision, a
   const [notes, setNotes] = useState(crmNotes);
   const [crmSaved, setCrmSaved] = useState(Boolean(crmNotes));
   const [crmOpen, setCrmOpen] = useState(false);
+  const [closingOpen, setClosingOpen] = useState(false);
   const [crmLoaded, setCrmLoaded] = useState(false);
   const [crmLoading, setCrmLoading] = useState(false);
   const [session, setSession] = useState<CustomerSession>({
@@ -71,7 +72,9 @@ export function SessionClosureControls({ bookingId, completed, reportDecision, a
     onSuccess: async () => qc.invalidateQueries({ queryKey: ["booking-session-closures"] }),
   });
   if (completed) return <p className="mt-3 text-xs text-red-200">✓ Abgeschlossen · CRM gespeichert · Erfahrungsbericht {reportDecision === "sent" ? "vorhanden" : "übersprungen"}</p>;
-  return <div className="mt-4 border-t border-champagne/20 pt-4 space-y-5">
+  return <div className="mt-4 border-t border-champagne/20 pt-3">
+    <button type="button" aria-expanded={closingOpen} onClick={() => setClosingOpen(open => !open)} className="btn-outline-gold !py-2 !px-3 !text-xs">Session abschließen {closingOpen ? "▲" : "▼"}</button>
+    {closingOpen && <div className="mt-4 space-y-5">
     <div className="space-y-2">
       <h3 className="text-sm font-medium text-champagne">1. Restzahlung</h3>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -100,5 +103,6 @@ export function SessionClosureControls({ bookingId, completed, reportDecision, a
       </div>
       {finish.isError && <p className="text-xs text-red-300">{String(finish.error)}</p>}
     </div>
+    </div>}
   </div>;
 }
