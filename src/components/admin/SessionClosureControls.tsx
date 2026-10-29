@@ -57,7 +57,13 @@ export function SessionClosureControls({ bookingId, completed, reportDecision, a
     },
   });
   const crm = useMutation({
-    mutationFn: () => saveCrm({ data: { bookingId, crmNotes: notes } }),
+    mutationFn: async () => {
+      if (!guestEmail) throw new Error("Kunden-E-Mail fehlt.");
+      if (!session.activities.trim()) throw new Error("Bitte den Ablauf ausfüllen.");
+      await saveSession({data:{email:guestEmail,entry:session}});
+      await saveCrm({data:{bookingId,crmNotes:session.activities}});
+      setNotes(session.activities);
+    },
     onSuccess: () => setCrmSaved(true),
   });
   const finish = useMutation({
@@ -77,10 +83,12 @@ export function SessionClosureControls({ bookingId, completed, reportDecision, a
       {payment.isError && <p className="text-xs text-red-300">{String(payment.error)}</p>}
     </div>
     <div className="space-y-2">
-      <h3 className="text-sm font-medium text-champagne">2. CRM / Session-Dokumentation</h3>
-      <label className="block text-xs text-vanilla/80" htmlFor={`session-crm-${bookingId}`}>Was wurde in der Session gemacht?</label>
-      <textarea id={`session-crm-${bookingId}`} rows={4} maxLength={6000} value={notes} onChange={e => { setNotes(e.target.value); setCrmSaved(false); }} className="w-full bg-background border border-champagne/30 p-3 text-vanilla" />
-      <button type="button" disabled={!paymentSaved || !notes.trim() || crm.isPending} onClick={() => crm.mutate()} className="btn-outline-gold !py-2 !px-3 !text-xs disabled:opacity-40">{crm.isPending ? "Speichert…" : crmSaved ? "✓ CRM gespeichert" : "CRM speichern"}</button>
+      <button type="button" onClick={() => void toggleCrm()} className="btn-outline-gold !py-2 !px-3 !text-xs">2. CRM / Session-Dokumentation {crmOpen ? "▲" : "▼"}</button>
+      {crmOpen && <div className="space-y-3">
+        {crmLoading && <p className="text-xs">Kundenakte wird geladen…</p>}
+        {fields.map(([key,label,max]) => <label key={key} className="block text-xs text-vanilla/80">{label}<textarea rows={key === "activities" ? 4 : 2} maxLength={max} value={session[key]} onChange={e => {setSession({...session,[key]:e.target.value});setCrmSaved(false);}} className="mt-1 w-full bg-background border border-champagne/30 p-3 text-vanilla" /></label>)}
+        <button type="button" disabled={!paymentSaved || !guestEmail || crmLoading || !session.activities.trim() || crm.isPending} onClick={() => crm.mutate()} className="btn-outline-gold !py-2 !px-3 !text-xs disabled:opacity-40">{crm.isPending ? "Speichert…" : crmSaved ? "✓ CRM gespeichert" : "CRM speichern"}</button>
+      </div>}
       {crm.isError && <p className="text-xs text-red-300">{String(crm.error)}</p>}
     </div>
     <div className="space-y-2">
