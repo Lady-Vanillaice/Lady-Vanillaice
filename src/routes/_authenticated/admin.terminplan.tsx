@@ -40,6 +40,7 @@ type Entry = {
   deposit_exemption_reason: string | null;
   anzahlung: number | null;
   bar: number | null;
+  cash_received_at: string | null;
   is_liegezeit_only: boolean;
 };
 
@@ -81,7 +82,7 @@ function TerminplanPage() {
       const { data, error } = await supabase
         .from("bookings")
         .select(
-          "id, guest_name, guest_email, guest_phone, duration, duration_minutes, requested_start, admin_note, anzahlung_paid, deposit_exemption_reason, anzahlung, bar, message, studio_override, studio_address_override, availability_slots(starts_at, ends_at, location, location_address, is_duo, duo_partner, is_content_shoot)",
+          "id, guest_name, guest_email, guest_phone, duration, duration_minutes, requested_start, admin_note, anzahlung_paid, deposit_exemption_reason, anzahlung, bar, cash_received_at, message, studio_override, studio_address_override, availability_slots(starts_at, ends_at, location, location_address, is_duo, duo_partner, is_content_shoot)",
         )
         .eq("status", "confirmed");
       if (error) throw error;
@@ -128,6 +129,7 @@ function TerminplanPage() {
           deposit_exemption_reason: b.deposit_exemption_reason,
           anzahlung: b.anzahlung != null ? Number(b.anzahlung) : null,
           bar: b.bar != null ? Number(b.bar) : null,
+          cash_received_at: b.cash_received_at,
         } as Entry;
       });
       return rows
@@ -445,7 +447,7 @@ function EntryCard({ e, closure }: { e: Entry; closure?: { report_decision: stri
   const timeRange = endTime ? `${startTime}–${endTime} Uhr` : `${startTime} Uhr`;
 
   return (
-    <div className={closure ? "border border-red-300/35 bg-red-900/20 p-4" : "border border-champagne/15 bg-card p-4"}>
+    <div className={closure || (e.end ? new Date(e.end).getTime() <= Date.now() : new Date(e.start).getTime() < Date.now()) ? "border border-red-400/60 bg-red-950/45 p-4" : "border border-champagne/15 bg-card p-4"}>
     <Link
       to="/admin/buchung/$id"
       params={{ id: e.id }}
@@ -495,7 +497,7 @@ function EntryCard({ e, closure }: { e: Entry; closure?: { report_decision: stri
         </div>
       </div>
     </Link>
-    <SessionClosureControls bookingId={e.id} completed={Boolean(closure)} reportDecision={closure?.report_decision} />
+    <SessionClosureControls bookingId={e.id} completed={Boolean(closure)} reportDecision={closure?.report_decision} amount={e.bar ?? 0} paidAt={e.cash_received_at} />
     </div>
   );
 }
