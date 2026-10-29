@@ -446,8 +446,14 @@ function EntryCard({ e, closure }: { e: Entry; closure?: { report_decision: stri
   const endTime = e.end ? format(new Date(e.end), "HH:mm") : null;
   const timeRange = endTime ? `${startTime}–${endTime} Uhr` : `${startTime} Uhr`;
 
+  // Sessions vor dem 29.10.2026 gelten als bereits abgeschlossen (Altbestand).
+  const berlinDay = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(e.start));
+  const isLegacyCompleted = berlinDay < "2026-10-29";
+  const isCompleted = Boolean(closure) || isLegacyCompleted;
+  const isPastSession = (e.end ? new Date(e.end).getTime() : new Date(e.start).getTime()) <= Date.now();
+
   return (
-    <div className={closure || (e.end ? new Date(e.end).getTime() <= Date.now() : new Date(e.start).getTime() < Date.now()) ? "border border-red-400/60 bg-red-950/45 p-4" : "border border-champagne/15 bg-card p-4"}>
+    <div className={isCompleted ? "border border-green-500/60 bg-green-950/35 p-4" : isPastSession ? "border border-red-400/60 bg-red-950/45 p-4" : "border border-champagne/15 bg-card p-4"}>
     <Link
       to="/admin/buchung/$id"
       params={{ id: e.id }}
@@ -497,7 +503,7 @@ function EntryCard({ e, closure }: { e: Entry; closure?: { report_decision: stri
         </div>
       </div>
     </Link>
-    <SessionClosureControls bookingId={e.id} completed={Boolean(closure)} reportDecision={closure?.report_decision} amount={e.bar ?? 0} paidAt={e.cash_received_at} guestEmail={e.guest_email} sessionStart={e.start} sessionPlace={e.location} />
+    <SessionClosureControls bookingId={e.id} completed={isCompleted} reportDecision={closure?.report_decision ?? (isLegacyCompleted ? "without_report" : undefined)} amount={e.bar ?? 0} paidAt={e.cash_received_at} guestEmail={e.guest_email} sessionStart={e.start} sessionPlace={e.location} />
     </div>
   );
 }
