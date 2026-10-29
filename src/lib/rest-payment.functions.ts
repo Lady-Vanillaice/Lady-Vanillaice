@@ -122,7 +122,7 @@ export const updateBookingOnsitePayment = createServerFn({ method: "POST" })
       .from("bookings")
       .update({
         ...onsiteUpdate(data),
-        ...(isNoDepositBooking(booking) ? { anzahlung_method: data.amount > 0 ? data.method?.trim() || null : null } : {}),
+        restzahlung_method: data.method?.trim() || null,
         ...(data.paid_at ? {
           fully_paid: Boolean(data.amount > 0 && (booking.anzahlung_paid || booking.deposit_exemption_reason)),
         } : {}),
