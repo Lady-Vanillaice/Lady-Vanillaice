@@ -503,7 +503,7 @@ function EntryCard({ e, closure }: { e: Entry; closure?: { report_decision: stri
         </div>
       </div>
     </Link>
-    <SessionClosureControls bookingId={e.id} completed={isCompleted} reportDecision={closure?.report_decision ?? (isLegacyCompleted ? "without_report" : undefined)} amount={e.bar ?? 0} paidAt={e.cash_received_at} guestEmail={e.guest_email} sessionStart={e.start} sessionPlace={e.location} />
+    <SessionClosureControls bookingId={e.id} completed={isCompleted} reportDecision={closure?.report_decision ?? (isLegacyCompleted ? "without_report" : undefined)} amount={e.bar ?? 0} paidAt={e.cash_received_at} guestEmail={e.guest_email} sessionStart={e.start} sessionPlace={e.location} isDuo={e.is_duo} duoPartner={e.duo_partner} />
     </div>
   );
 }
