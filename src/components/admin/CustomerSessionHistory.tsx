@@ -14,12 +14,13 @@ const fields = [
   ["liked", "Was kam gut an?", 3000],
   ["disliked", "Was mochte er nicht / welche Grenzen sind wichtig?", 3000],
   ["nextTime", "Für die nächste Session merken", 3000],
+  ["gifts", "Geschenke", 3000],
   ["notes", "Weitere persönliche Notizen", 6000],
 ] as const;
 function newEntry(booking?: { id: string; date: string; time: string; place: string }): CustomerSession {
   return { id: booking?.id ?? crypto.randomUUID(), bookingId: booking?.id ?? null,
     date: booking?.date || today(), time: booking?.time || "", place: booking?.place || "",
-    room: "", activities: "", liked: "", disliked: "", nextTime: "", notes: "" };
+    room: "", activities: "", liked: "", disliked: "", nextTime: "", gifts: "", notes: "" };
 }
 
 export function CustomerSessionHistory({ email }: { email: string }) {

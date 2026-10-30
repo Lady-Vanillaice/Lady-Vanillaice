@@ -15,6 +15,7 @@ export const customerSessionSchema = z.object({
   liked: z.string().trim().max(3000),
   disliked: z.string().trim().max(3000),
   nextTime: z.string().trim().max(3000),
+  gifts: z.string().trim().max(3000).default(""),
   notes: z.string().trim().max(6000),
 });
 export type CustomerSession = z.infer<typeof customerSessionSchema>;
