@@ -6,7 +6,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { saveBookingSessionCrm } from "@/lib/booking-session-closure.functions";
 import { updateBookingOnsitePayment } from "@/lib/rest-payment.functions";
 
-export function SessionClosureControls({ bookingId, completed, reportDecision, amount = 0, paidAt, crmNotes = "", guestEmail, sessionStart, sessionPlace }: {
+export function SessionClosureControls({ bookingId, completed, reportDecision, amount = 0, paidAt, crmNotes = "", guestEmail, sessionStart, sessionPlace, isDuo = false, duoPartner }: {
   bookingId: string;
   completed: boolean;
   reportDecision?: string;
@@ -16,6 +16,8 @@ export function SessionClosureControls({ bookingId, completed, reportDecision, a
   guestEmail?: string | null;
   sessionStart?: string;
   sessionPlace?: string | null;
+  isDuo?: boolean;
+  duoPartner?: string | null;
 }) {
   const qc = useQueryClient();
   const savePayment = useServerFn(updateBookingOnsitePayment);
@@ -35,9 +37,9 @@ export function SessionClosureControls({ bookingId, completed, reportDecision, a
   const [session, setSession] = useState<CustomerSession>({
     id: bookingId, bookingId, date: sessionStart ? new Intl.DateTimeFormat("sv-SE",{timeZone:"Europe/Berlin",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(sessionStart)) : new Date().toISOString().slice(0,10),
     time: sessionStart ? new Intl.DateTimeFormat("de-DE",{timeZone:"Europe/Berlin",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(new Date(sessionStart)) : "",
-    place: sessionPlace ?? "", room:"", activities:crmNotes, liked:"", disliked:"", nextTime:"", notes:"",
+    place: sessionPlace ?? "", room:"", colleague: duoPartner?.trim() ?? "", activities:crmNotes, liked:"", disliked:"", nextTime:"", notes:"",
   });
-  const fields = [["room","Raum",200],["activities","Ablauf",6000],["liked","Was kam gut an?",3000],["disliked","Grenzen / Abneigungen",3000],["nextTime","Nächstes Mal",3000],["notes","Weitere Notizen",6000]] as const;
+  const fields = [["room","Raum",200],["colleague","Kollegin (Duo-Session)",200],["activities","Ablauf",6000],["liked","Was kam gut an?",3000],["disliked","Grenzen / Abneigungen",3000],["nextTime","Nächstes Mal",3000],["notes","Weitere Notizen",6000]] as const;
   const toggleCrm = async () => {
     setCrmOpen(!crmOpen);
     if (crmOpen || crmLoaded || !guestEmail) return;
@@ -45,7 +47,7 @@ export function SessionClosureControls({ bookingId, completed, reportDecision, a
     try {
       const result = await loadHistory({data:{email:guestEmail}});
       const existing = result.sessions.find(item => item.bookingId === bookingId);
-      if (existing) { setSession(existing); setNotes(existing.activities); setCrmSaved(Boolean(existing.activities)); }
+      if (existing) { setSession({ ...existing, colleague: existing.colleague?.trim() || duoPartner?.trim() || "" }); setNotes(existing.activities); setCrmSaved(Boolean(existing.activities)); }
       setCrmLoaded(true);
     } finally { setCrmLoading(false); }
   };
