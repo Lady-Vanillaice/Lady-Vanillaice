@@ -37,9 +37,9 @@ export function SessionClosureControls({ bookingId, completed, reportDecision, a
   const [session, setSession] = useState<CustomerSession>({
     id: bookingId, bookingId, date: sessionStart ? new Intl.DateTimeFormat("sv-SE",{timeZone:"Europe/Berlin",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(sessionStart)) : new Date().toISOString().slice(0,10),
     time: sessionStart ? new Intl.DateTimeFormat("de-DE",{timeZone:"Europe/Berlin",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).format(new Date(sessionStart)) : "",
-    place: sessionPlace ?? "", room:"", colleague: duoPartner?.trim() ?? "", activities:crmNotes, liked:"", disliked:"", nextTime:"", notes:"",
+    place: sessionPlace ?? "", room:"", colleague: duoPartner?.trim() ?? "", activities:crmNotes, liked:"", disliked:"", nextTime:"", gifts:"", notes:"",
   });
-  const fields = [["room","Raum",200],["colleague","Kollegin (Duo-Session)",200],["activities","Ablauf",6000],["liked","Was kam gut an?",3000],["disliked","Grenzen / Abneigungen",3000],["nextTime","Nächstes Mal",3000],["notes","Weitere Notizen",6000]] as const;
+  const fields = [["room","Raum",200],["colleague","Kollegin (Duo-Session)",200],["activities","Ablauf",6000],["liked","Was kam gut an?",3000],["disliked","Grenzen / Abneigungen",3000],["nextTime","Nächstes Mal",3000],["gifts","Geschenke",3000],["notes","Weitere Notizen",6000]] as const;
   const toggleCrm = async () => {
     setCrmOpen(!crmOpen);
     if (crmOpen || crmLoaded || !guestEmail) return;
