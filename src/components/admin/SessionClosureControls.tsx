@@ -3,7 +3,7 @@ import { getCustomerSessionHistory, saveCustomerSession } from "@/lib/customer-s
 import type { CustomerSession } from "@/lib/customer-session.schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { completeBookingSession, saveBookingSessionCrm } from "@/lib/booking-session-closure.functions";
+import { saveBookingSessionCrm } from "@/lib/booking-session-closure.functions";
 import { updateBookingOnsitePayment } from "@/lib/rest-payment.functions";
 
 export function SessionClosureControls({ bookingId, completed, reportDecision, amount = 0, paidAt, crmNotes = "", guestEmail, sessionStart, sessionPlace }: {
@@ -22,7 +22,6 @@ export function SessionClosureControls({ bookingId, completed, reportDecision, a
   const saveCrm = useServerFn(saveBookingSessionCrm);
   const loadHistory = useServerFn(getCustomerSessionHistory);
   const saveSession = useServerFn(saveCustomerSession);
-  const complete = useServerFn(completeBookingSession);
   const [value, setValue] = useState(String(amount));
   const [date, setDate] = useState(paidAt ? paidAt.slice(0, 10) : new Date().toLocaleDateString("sv-SE"));
   const [method, setMethod] = useState("Bar");
@@ -65,13 +64,9 @@ export function SessionClosureControls({ bookingId, completed, reportDecision, a
       await saveCrm({data:{bookingId,crmNotes:session.activities}});
       setNotes(session.activities);
     },
-    onSuccess: () => setCrmSaved(true),
+    onSuccess: async () => { setCrmSaved(true); await qc.invalidateQueries({ queryKey: ["booking-session-closures"] }); },
   });
-  const finish = useMutation({
-    mutationFn: (decision: "sent" | "skipped") => complete({ data: { bookingId, crmNotes: notes, reportDecision: decision } }),
-    onSuccess: async () => qc.invalidateQueries({ queryKey: ["booking-session-closures"] }),
-  });
-  if (completed) return <p className="mt-3 text-xs text-red-200">✓ Abgeschlossen · CRM gespeichert · Erfahrungsbericht {reportDecision === "sent" ? "vorhanden" : "übersprungen"}</p>;
+  if (completed) return <p className="mt-3 text-xs text-green-200">✓ Session abgeschlossen · CRM gespeichert</p>;
   return <div className="mt-4 border-t border-champagne/20 pt-3">
     <button type="button" aria-expanded={closingOpen} onClick={() => setClosingOpen(open => !open)} className="btn-outline-gold !py-2 !px-3 !text-xs">Session abschließen {closingOpen ? "▲" : "▼"}</button>
     {closingOpen && <div className="mt-4 space-y-5">
@@ -93,15 +88,6 @@ export function SessionClosureControls({ bookingId, completed, reportDecision, a
         <button type="button" disabled={!paymentSaved || !guestEmail || crmLoading || !session.activities.trim() || crm.isPending} onClick={() => crm.mutate()} className="btn-outline-gold !py-2 !px-3 !text-xs disabled:opacity-40">{crm.isPending ? "Speichert…" : crmSaved ? "✓ CRM gespeichert" : "CRM speichern"}</button>
       </div>}
       {crm.isError && <p className="text-xs text-red-300">{String(crm.error)}</p>}
-    </div>
-    <div className="space-y-2">
-      <h3 className="text-sm font-medium text-champagne">3. Erfahrungsbericht</h3>
-      <p className="text-xs text-vanilla/60">Erfahrungsbericht freiwillig. Nach deiner Auswahl wird die Session abgeschlossen.</p>
-      <div className="flex flex-wrap gap-2">
-        <button type="button" disabled={!crmSaved || finish.isPending} onClick={() => finish.mutate("sent")} className="btn-outline-gold !py-2 !px-3 !text-xs disabled:opacity-40">Bericht vorhanden – abschließen</button>
-        <button type="button" disabled={!crmSaved || finish.isPending} onClick={() => finish.mutate("skipped")} className="btn-outline-gold !py-2 !px-3 !text-xs disabled:opacity-40">Ohne Bericht abschließen</button>
-      </div>
-      {finish.isError && <p className="text-xs text-red-300">{String(finish.error)}</p>}
     </div>
     </div>}
   </div>;

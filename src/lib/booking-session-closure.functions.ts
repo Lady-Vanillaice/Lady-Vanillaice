@@ -73,9 +73,10 @@ export const saveBookingSessionCrm = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const db = await adminDb(context);
     const { data: booking, error } = await db.from("bookings")
-      .select("id,guest_email,requested_start,studio_override,availability_slots(starts_at,location)")
+      .select("id,guest_email,cash_received_at,requested_start,studio_override,availability_slots(starts_at,location)")
       .eq("id", data.bookingId).maybeSingle();
     if (error || !booking) throw new Error("Buchung nicht gefunden.");
+    if (!booking.cash_received_at) throw new Error("Bitte zuerst die Restzahlung speichern.");
     const email = String(booking.guest_email ?? "").trim().toLowerCase();
     if (!email) throw new Error("Für die CRM-Historie fehlt die Kunden-E-Mail.");
     const { readCustomerSessions, writeCustomerSession } = await import("./customer-session.server");
@@ -96,5 +97,7 @@ export const saveBookingSessionCrm = createServerFn({ method: "POST" })
       nextTime: previous?.nextTime || "",
       notes: previous?.notes || "",
     });
+    const { error: closureError } = await db.from("booking_session_closures").upsert({ booking_id: data.bookingId, crm_notes: data.crmNotes, report_decision: "skipped", completed_by: context.userId, completed_at: new Date().toISOString() }, { onConflict: "booking_id" });
+    if (closureError) throw new Error("CRM gespeichert, aber Abschluss fehlgeschlagen: " + closureError.message);
     return { ok: true };
   });

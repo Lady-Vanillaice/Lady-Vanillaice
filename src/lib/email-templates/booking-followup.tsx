@@ -10,18 +10,17 @@ interface Props {
 const Email = ({ guestName, reviewUrl = 'https://www.lady-vanillaice.com/erfahrungsberichte' }: Props) => (
   <Html lang="de" dir="ltr">
     <Head />
-    <Preview>Danke für dein Vertrauen und unsere gemeinsame Zeit.</Preview>
+    <Preview>Eine kleine Aufgabe nach unserer gemeinsamen Zeit.</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>Lady Vanilla Ice</Heading>
-        <Text style={lead}>{guestName ? `Hallo ${guestName},` : 'Hallo,'}</Text>
-        <Text style={p}>
-          Danke für dein Vertrauen und unsere gemeinsame Zeit. Ich hoffe, es hat dir gefallen und dass wir uns bald wiedersehen.
-        </Text>
-        <Text style={p}>
-          Wenn du möchtest, freue ich mich sehr, wenn du deine Erfahrung anonym mit einem Erfahrungsbericht teilst.
-        </Text>
-        <Button href={reviewUrl} style={button}>Erfahrungsbericht schreiben</Button>
+        
+        <Text style={p}>Ich gehe davon aus, dass unsere gemeinsame Zeit einen bleibenden Eindruck hinterlassen hat.</Text>
+        <Text style={p}>Jetzt erfüllst du noch eine kleine Aufgabe für mich: Verfasse einen ehrlichen und ausführlichen Erfahrungsbericht über deine Session. Beschreibe, wie du sie erlebt hast, welche Momente dich besonders beeindruckt haben und was dir in Erinnerung geblieben ist.</Text>
+        <Text style={p}>Deinen Bericht hinterlässt du hier:</Text>
+        <Text style={p}><a href={reviewUrl}>{reviewUrl}</a></Text>
+        <Text style={p}>Nimm dir dafür ein paar Minuten Zeit. Ich lese jeden einzelnen Bericht persönlich.</Text>
+        <Text style={p}>Ich erwarte deinen Bericht. 🖤</Text>
         <Text style={signature}>— Lady Vanilla Ice</Text>
       </Container>
     </Body>
@@ -30,7 +29,7 @@ const Email = ({ guestName, reviewUrl = 'https://www.lady-vanillaice.com/erfahru
 
 export const template = {
   component: Email,
-  subject: 'Danke für unsere gemeinsame Zeit — Lady Vanilla Ice',
+  subject: 'Deine Aufgabe nach unserer Session — Lady Vanilla Ice',
   displayName: 'Automatisches Danke danach',
   previewData: {
     guestName: 'M.',
