@@ -86,7 +86,7 @@ export function SessionClosureControls({ bookingId, completed, reportDecision, a
       <button type="button" onClick={() => void toggleCrm()} className="btn-outline-gold !py-2 !px-3 !text-xs">2. CRM / Session-Dokumentation {crmOpen ? "▲" : "▼"}</button>
       {crmOpen && <div className="space-y-3">
         {crmLoading && <p className="text-xs">Kundenakte wird geladen…</p>}
-        {fields.filter(([key]) => key !== "colleague" || isDuo || Boolean(session.colleague)).map(([key,label,max]) => <label key={key} className="block text-xs text-vanilla/80">{label}<textarea rows={key === "activities" ? 4 : 2} maxLength={max} value={session[key]} onChange={e => {setSession({...session,[key]:e.target.value});setCrmSaved(false);}} className="mt-1 w-full bg-background border border-champagne/30 p-3 text-vanilla" /></label>)}
+        {fields.map(([key,label,max]) => <label key={key} className="block text-xs text-vanilla/80">{label}<textarea rows={key === "activities" ? 4 : 2} maxLength={max} value={session[key]} onChange={e => {setSession({...session,[key]:e.target.value});setCrmSaved(false);}} className="mt-1 w-full bg-background border border-champagne/30 p-3 text-vanilla" /></label>)}
         <button type="button" disabled={!paymentSaved || !guestEmail || crmLoading || !session.activities.trim() || crm.isPending} onClick={() => crm.mutate()} className="btn-outline-gold !py-2 !px-3 !text-xs disabled:opacity-40">{crm.isPending ? "Speichert…" : crmSaved ? "✓ CRM gespeichert" : "CRM speichern"}</button>
       </div>}
       {crm.isError && <p className="text-xs text-red-300">{String(crm.error)}</p>}
