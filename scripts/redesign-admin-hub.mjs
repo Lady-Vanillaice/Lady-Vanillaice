@@ -41,8 +41,10 @@ const groups = `const HUB_GROUPS: HubGroup[] = [
 text = text.slice(0, groupsStart) + groups + text.slice(groupsEnd + 2);
 
 const hubStart = text.indexOf("function AdminHubPage() {");
+const visitorStatsMarker = "function HomepageVisitorStats() {";
 const studioMarker = "function StudioManagement() {";
-const hubEnd = text.indexOf(studioMarker, hubStart);
+const visitorStatsStart = text.indexOf(visitorStatsMarker, hubStart);
+const hubEnd = visitorStatsStart >= 0 ? visitorStatsStart : text.indexOf(studioMarker, hubStart);
 if (hubStart < 0 || hubEnd < 0) throw new Error("AdminHubPage not found");
 
 const hub = `function AdminHubPage() { /* Weitere Admin-Bereiche */
