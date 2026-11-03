@@ -224,57 +224,61 @@ function HomepageVisitorStats() {
   });
 
   if (q.isLoading) {
-    return <section className="mb-12 border border-champagne/20 bg-card p-5 sm:p-6"><p className="text-sm text-vanilla/50">Besucherstatistik wird geladen…</p></section>;
+    return <section className="mb-6 border border-champagne/20 bg-card p-4"><p className="text-xs text-vanilla/50">Besucherstatistik wird geladen…</p></section>;
   }
   if (q.isError || !q.data) {
-    return <section className="mb-12 border border-champagne/20 bg-card p-5 sm:p-6"><p className="text-sm text-bordeaux">Besucherstatistik konnte nicht geladen werden.</p></section>;
+    return <section className="mb-6 border border-champagne/20 bg-card p-4"><p className="text-xs text-bordeaux">Besucherstatistik konnte nicht geladen werden.</p></section>;
   }
 
   return (
-    <section className="mb-12 border border-champagne/25 bg-card p-5 sm:p-6">
-      <div className="flex items-center gap-3 mb-5">
-        <Users className="text-champagne" size={22} />
-        <div>
-          <h2 className="font-display text-2xl gold-text">Homepage-Besucher</h2>
-          <p className="text-xs text-vanilla/50">Eindeutige Besucher pro Browser – Mehrfachaufrufe am selben Tag werden nicht doppelt gezählt.</p>
+    <section className="mb-8 border border-champagne/25 bg-card p-4 sm:p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <Users className="text-champagne" size={17} />
+        <h2 className="font-display text-lg text-champagne">Homepage-Besucher</h2>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="border border-champagne/15 bg-anthracite/30 px-3 py-2.5">
+          <div className="font-display text-2xl text-vanilla">{q.data.today}</div>
+          <div className="mt-0.5 text-[0.55rem] uppercase tracking-[0.16em] text-vanilla/45">Heute</div>
+        </div>
+        <div className="border border-champagne/15 bg-anthracite/30 px-3 py-2.5">
+          <div className="font-display text-2xl text-vanilla">{q.data.thisMonth}</div>
+          <div className="mt-0.5 text-[0.55rem] uppercase tracking-[0.16em] text-vanilla/45">Dieser Monat</div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        <div className="border border-champagne/20 bg-anthracite/30 p-4">
-          <div className="font-display text-3xl text-vanilla">{q.data.today}</div>
-          <div className="mt-1 text-[0.6rem] uppercase tracking-[0.18em] text-vanilla/50">Heute</div>
-        </div>
-        <div className="border border-champagne/20 bg-anthracite/30 p-4">
-          <div className="font-display text-3xl text-vanilla">{q.data.thisMonth}</div>
-          <div className="mt-1 text-[0.6rem] uppercase tracking-[0.18em] text-vanilla/50">Dieser Monat</div>
-        </div>
-      </div>
+      <details className="mt-3 border-t border-champagne/10 pt-3">
+        <summary className="cursor-pointer list-none flex items-center justify-between gap-3 text-[0.6rem] uppercase tracking-[0.18em] text-champagne">
+          Verlauf anzeigen
+          <ChevronDown size={14} />
+        </summary>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        <div>
-          <h3 className="eyebrow text-champagne mb-3">Täglich · letzte 7 Tage</h3>
-          <div className="divide-y divide-champagne/10 border border-champagne/15">
-            {q.data.daily.map((row) => (
-              <div key={row.date} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
-                <span className="text-vanilla/60">{format(new Date(`${row.date}T12:00:00`), "dd.MM.yyyy", { locale: de })}</span>
-                <strong className="font-display text-lg text-champagne">{row.visitors}</strong>
-              </div>
-            ))}
+        <div className="grid md:grid-cols-2 gap-4 mt-4">
+          <div>
+            <h3 className="eyebrow text-champagne mb-2">Täglich · letzte 7 Tage</h3>
+            <div className="divide-y divide-champagne/10 border border-champagne/15">
+              {q.data.daily.map((row) => (
+                <div key={row.date} className="flex items-center justify-between gap-3 px-3 py-2 text-xs">
+                  <span className="text-vanilla/60">{format(new Date(`${row.date}T12:00:00`), "dd.MM.yyyy", { locale: de })}</span>
+                  <strong className="font-display text-base text-champagne">{row.visitors}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <h3 className="eyebrow text-champagne mb-2">Monatlich · letzte 6 Monate</h3>
+            <div className="divide-y divide-champagne/10 border border-champagne/15">
+              {q.data.monthly.map((row) => (
+                <div key={row.month} className="flex items-center justify-between gap-3 px-3 py-2 text-xs">
+                  <span className="text-vanilla/60">{format(new Date(`${row.month}-15T12:00:00`), "MMMM yyyy", { locale: de })}</span>
+                  <strong className="font-display text-base text-champagne">{row.visitors}</strong>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-        <div>
-          <h3 className="eyebrow text-champagne mb-3">Monatlich · letzte 6 Monate</h3>
-          <div className="divide-y divide-champagne/10 border border-champagne/15">
-            {q.data.monthly.map((row) => (
-              <div key={row.month} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
-                <span className="text-vanilla/60">{format(new Date(`${row.month}-15T12:00:00`), "MMMM yyyy", { locale: de })}</span>
-                <strong className="font-display text-lg text-champagne">{row.visitors}</strong>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      </details>
     </section>
   );
 }
