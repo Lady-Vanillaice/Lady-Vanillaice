@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef } from "react";
 import { Calendar, Crown, Instagram, Mail } from "lucide-react";
 import heroImage from "../assets/CARL0938-2.jpeg";
 import { AdminLoginWidget } from "@/components/site/AdminLoginWidget";
 import { useT, useTr } from "@/i18n";
+import { recordHomepageVisit } from "@/lib/visitor-stats.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -43,6 +45,21 @@ function Index() {
   const beholdRef = useRef<HTMLDivElement>(null);
   const t = useT();
   const tr = useTr();
+  const recordVisit = useServerFn(recordHomepageVisit);
+
+  useEffect(() => {
+    try {
+      const storageKey = "lvi-homepage-visitor-id";
+      let visitorId = window.localStorage.getItem(storageKey);
+      if (!visitorId) {
+        visitorId = crypto.randomUUID();
+        window.localStorage.setItem(storageKey, visitorId);
+      }
+      void recordVisit({ data: { visitor_id: visitorId } }).catch(() => undefined);
+    } catch {
+      // Besucherstatistik darf die Homepage niemals beeinträchtigen.
+    }
+  }, [recordVisit]);
 
   useEffect(() => {
     if (!beholdRef.current) return;
