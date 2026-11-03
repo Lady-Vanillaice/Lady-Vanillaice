@@ -92,6 +92,7 @@ const hub = `function AdminHubPage() { /* Weitere Admin-Bereiche */
           <h2 className="font-display text-2xl sm:text-3xl gold-text mt-1">Dein Tagesüberblick</h2>
         </div>
         <DashboardOverview />
+        <HomepageVisitorStats />
       </section>
 
       {!query && <section className="mb-10">
