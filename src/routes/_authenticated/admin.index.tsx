@@ -169,6 +169,7 @@ function AdminHubPage() {
 
       <PostSessionWhatsApp />
       <DashboardOverview />
+      <HomepageVisitorStats />
 
       <section className="mb-10">
         <div className="flex items-baseline justify-between flex-wrap gap-2 mb-4 pb-3 border-b border-champagne/15">
@@ -209,7 +210,6 @@ function AdminHubPage() {
       </div>)}</div>
       <StudioManagement />
       <AdminAccessRequestsPanel />
-      <HomepageVisitorStats />
     </div></section>
   </>;
 }
