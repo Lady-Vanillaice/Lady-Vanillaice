@@ -27,20 +27,29 @@ function shiftMonthKey(monthKey: string, months: number) {
   return date.toISOString().slice(0, 7);
 }
 
+function visitSlug(dateKey: string, visitorId: string) {
+  return `hv-${dateKey}-${visitorId}`;
+}
+
 export const recordHomepageVisit = createServerFn({ method: "POST" })
   .inputValidator((data) => visitorSchema.parse(data))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const db = supabaseAdmin as any;
     const visitDate = berlinDateKey();
-    const { error } = await db.from("homepage_visits").upsert(
-      {
-        visitor_id: data.visitor_id,
-        visit_date: visitDate,
-        first_seen_at: new Date().toISOString(),
-      },
-      { onConflict: "visitor_id,visit_date", ignoreDuplicates: true },
-    );
+
+    // Nutzt die bereits vorhandene site_content-Tabelle.
+    // Pro Browser und Kalendertag existiert maximal eine Zeile.
+    const { error } = await supabaseAdmin
+      .from("site_content")
+      .upsert(
+        {
+          slug: visitSlug(visitDate, data.visitor_id),
+          body: "homepage-visit",
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "slug", ignoreDuplicates: true },
+      );
+
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -54,6 +63,7 @@ export const getHomepageVisitStats = createServerFn({ method: "GET" })
       .eq("user_id", context.userId)
       .eq("role", "admin")
       .maybeSingle();
+
     if (roleError) throw new Error(roleError.message);
     if (!role) throw new Error("Forbidden");
 
@@ -63,20 +73,26 @@ export const getHomepageVisitStats = createServerFn({ method: "GET" })
     const firstDate = `${firstMonth}-01`;
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const db = supabaseAdmin as any;
-    const { data, error } = await db
-      .from("homepage_visits")
-      .select("visitor_id, visit_date")
-      .gte("visit_date", firstDate)
-      .lte("visit_date", today);
+    const { data, error } = await supabaseAdmin
+      .from("site_content")
+      .select("slug")
+      .like("slug", "hv-%");
+
     if (error) throw new Error(error.message);
 
-    const rows = (data ?? []) as Array<{ visitor_id: string; visit_date: string }>;
+    const rows = (data ?? [])
+      .map((row) => {
+        const match = row.slug.match(/^hv-(\d{4}-\d{2}-\d{2})-([0-9a-f-]{36})$/i);
+        return match ? { date: match[1], visitorId: match[2] } : null;
+      })
+      .filter((row): row is { date: string; visitorId: string } => Boolean(row))
+      .filter((row) => row.date >= firstDate && row.date <= today);
+
     const daily = Array.from({ length: 7 }, (_, index) => {
       const date = shiftDateKey(today, index - 6);
       return {
         date,
-        visitors: new Set(rows.filter((row) => row.visit_date === date).map((row) => row.visitor_id)).size,
+        visitors: new Set(rows.filter((row) => row.date === date).map((row) => row.visitorId)).size,
       };
     });
 
@@ -85,7 +101,7 @@ export const getHomepageVisitStats = createServerFn({ method: "GET" })
       return {
         month,
         visitors: new Set(
-          rows.filter((row) => row.visit_date.startsWith(month)).map((row) => row.visitor_id),
+          rows.filter((row) => row.date.startsWith(month)).map((row) => row.visitorId),
         ).size,
       };
     });
