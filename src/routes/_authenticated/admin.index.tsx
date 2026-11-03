@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { listAdminAccessRequests, decideAdminAccessRequest } from "@/lib/admin-access.functions";
 import { createStudio, deleteStudio, listStudios } from "@/lib/studio.functions";
 import { listCashBookEntries } from "@/lib/cashbook.functions";
+import { getHomepageVisitStats } from "@/lib/visitor-stats.functions";
 import {
   getPushConfiguration,
   removePushSubscription,
@@ -208,8 +209,74 @@ function AdminHubPage() {
       </div>)}</div>
       <StudioManagement />
       <AdminAccessRequestsPanel />
+      <HomepageVisitorStats />
     </div></section>
   </>;
+}
+
+
+function HomepageVisitorStats() {
+  const getStats = useServerFn(getHomepageVisitStats);
+  const q = useQuery({
+    queryKey: ["homepage-visitor-stats"],
+    queryFn: () => getStats(),
+    refetchInterval: 60_000,
+  });
+
+  if (q.isLoading) {
+    return <section className="mb-12 border border-champagne/20 bg-card p-5 sm:p-6"><p className="text-sm text-vanilla/50">Besucherstatistik wird geladen…</p></section>;
+  }
+  if (q.isError || !q.data) {
+    return <section className="mb-12 border border-champagne/20 bg-card p-5 sm:p-6"><p className="text-sm text-bordeaux">Besucherstatistik konnte nicht geladen werden.</p></section>;
+  }
+
+  return (
+    <section className="mb-12 border border-champagne/25 bg-card p-5 sm:p-6">
+      <div className="flex items-center gap-3 mb-5">
+        <Users className="text-champagne" size={22} />
+        <div>
+          <h2 className="font-display text-2xl gold-text">Homepage-Besucher</h2>
+          <p className="text-xs text-vanilla/50">Eindeutige Besucher pro Browser – Mehrfachaufrufe am selben Tag werden nicht doppelt gezählt.</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mb-6">
+        <div className="border border-champagne/20 bg-anthracite/30 p-4">
+          <div className="font-display text-3xl text-vanilla">{q.data.today}</div>
+          <div className="mt-1 text-[0.6rem] uppercase tracking-[0.18em] text-vanilla/50">Heute</div>
+        </div>
+        <div className="border border-champagne/20 bg-anthracite/30 p-4">
+          <div className="font-display text-3xl text-vanilla">{q.data.thisMonth}</div>
+          <div className="mt-1 text-[0.6rem] uppercase tracking-[0.18em] text-vanilla/50">Dieser Monat</div>
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-6">
+        <div>
+          <h3 className="eyebrow text-champagne mb-3">Täglich · letzte 7 Tage</h3>
+          <div className="divide-y divide-champagne/10 border border-champagne/15">
+            {q.data.daily.map((row) => (
+              <div key={row.date} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
+                <span className="text-vanilla/60">{format(new Date(`${row.date}T12:00:00`), "dd.MM.yyyy", { locale: de })}</span>
+                <strong className="font-display text-lg text-champagne">{row.visitors}</strong>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <h3 className="eyebrow text-champagne mb-3">Monatlich · letzte 6 Monate</h3>
+          <div className="divide-y divide-champagne/10 border border-champagne/15">
+            {q.data.monthly.map((row) => (
+              <div key={row.month} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
+                <span className="text-vanilla/60">{format(new Date(`${row.month}-15T12:00:00`), "MMMM yyyy", { locale: de })}</span>
+                <strong className="font-display text-lg text-champagne">{row.visitors}</strong>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function StudioManagement() {
