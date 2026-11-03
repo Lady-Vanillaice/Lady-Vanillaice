@@ -5,6 +5,37 @@ export function PwaRegistration() {
     if (!("serviceWorker" in navigator)) return;
 
     let disposed = false;
+    let checkingVersion = false;
+
+    const normalizedModuleScripts = (root: Document) =>
+      Array.from(root.querySelectorAll<HTMLScriptElement>('script[type="module"][src]'))
+        .map((script) => new URL(script.src, window.location.origin).pathname)
+        .sort()
+        .join("|");
+
+    const reloadIfNewBuild = async () => {
+      if (disposed || checkingVersion || document.visibilityState !== "visible") return;
+      checkingVersion = true;
+      try {
+        const response = await fetch(`${window.location.pathname}?__lvi_build_check=${Date.now()}`, {
+          cache: "no-store",
+          credentials: "same-origin",
+          headers: { "x-lvi-build-check": "1" },
+        });
+        if (!response.ok) return;
+        const html = await response.text();
+        const nextDocument = new DOMParser().parseFromString(html, "text/html");
+        const currentScripts = normalizedModuleScripts(document);
+        const nextScripts = normalizedModuleScripts(nextDocument);
+        if (currentScripts && nextScripts && currentScripts !== nextScripts) {
+          window.location.reload();
+        }
+      } catch (error) {
+        console.warn("LVI Admin build check failed", error);
+      } finally {
+        checkingVersion = false;
+      }
+    };
 
     const clearBadge = async () => {
       if (document.visibilityState !== "visible") return;
@@ -28,16 +59,26 @@ export function PwaRegistration() {
     };
 
     navigator.serviceWorker
-      .register("/admin-sw.js")
-      .then(() => clearBadge())
+      .register("/admin-sw.js", { updateViaCache: "none" })
+      .then(async (registration) => {
+        await registration.update();
+        await clearBadge();
+        await reloadIfNewBuild();
+      })
       .catch((error) => {
         console.error("LVI Admin service worker could not be registered", error);
       });
 
     const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") void clearBadge();
+      if (document.visibilityState === "visible") {
+        void clearBadge();
+        void reloadIfNewBuild();
+      }
     };
-    const onFocus = () => void clearBadge();
+    const onFocus = () => {
+      void clearBadge();
+      void reloadIfNewBuild();
+    };
 
     document.addEventListener("visibilitychange", onVisibilityChange);
     window.addEventListener("focus", onFocus);
