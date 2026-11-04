@@ -1285,6 +1285,11 @@ export const createManualBooking = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await ensureAdmin(context.supabase, context.userId);
 
+    const depositExemptionReason =
+      data.deposit_exemption_reason === "spontaneous"
+        ? "exception"
+        : data.deposit_exemption_reason;
+
     const startsAt = new Date(data.starts_at);
     const endsAt = new Date(data.ends_at);
     if (!(endsAt > startsAt)) {
@@ -1296,10 +1301,10 @@ export const createManualBooking = createServerFn({ method: "POST" })
     if (durationMinutes < 15) {
       throw new Error("Termin muss mindestens 15 Minuten dauern.");
     }
-    if (!data.deposit_exemption_reason && data.deposit_amount > 0 && !data.deposit_paid_at) {
+    if (!depositExemptionReason && data.deposit_amount > 0 && !data.deposit_paid_at) {
       throw new Error("Das Eingangsdatum der Zahlung fehlt.");
     }
-    if (data.booking_type !== "custom_content" && !data.deposit_exemption_reason && data.deposit_amount <= 0) {
+    if (data.booking_type !== "custom_content" && !depositExemptionReason && data.deposit_amount <= 0) {
       throw new Error("Die erhaltene Anzahlung muss größer als 0 € sein.");
     }
     if (data.deposit_amount > data.total_amount) {
@@ -1363,14 +1368,14 @@ export const createManualBooking = createServerFn({ method: "POST" })
           status: "confirmed",
           admin_note: liegezeitNote,
           studio_override: data.location,
-          anzahlung: data.deposit_exemption_reason ? 0 : data.deposit_amount,
-          anzahlung_method: data.deposit_exemption_reason ? data.onsite_method : data.deposit_method,
-          anzahlung_paid: !data.deposit_exemption_reason && data.deposit_amount > 0,
-          anzahlung_paid_at: !data.deposit_exemption_reason && data.deposit_amount > 0 && data.deposit_paid_at ? `${data.deposit_paid_at}T12:00:00.000Z` : null,
-          deposit_exemption_reason: data.deposit_exemption_reason,
-          bar: data.total_amount - (data.deposit_exemption_reason ? 0 : data.deposit_amount),
+          anzahlung: depositExemptionReason ? 0 : data.deposit_amount,
+          anzahlung_method: depositExemptionReason ? data.onsite_method : data.deposit_method,
+          anzahlung_paid: !depositExemptionReason && data.deposit_amount > 0,
+          anzahlung_paid_at: !depositExemptionReason && data.deposit_amount > 0 && data.deposit_paid_at ? `${data.deposit_paid_at}T12:00:00.000Z` : null,
+          deposit_exemption_reason: depositExemptionReason,
+          bar: data.total_amount - (depositExemptionReason ? 0 : data.deposit_amount),
           cash_received_at: data.onsite_paid_at ? `${data.onsite_paid_at}T12:00:00.000Z` : null,
-          fully_paid: Boolean(data.onsite_paid_at) || (!data.deposit_exemption_reason && data.total_amount === data.deposit_amount),
+          fully_paid: Boolean(data.onsite_paid_at) || (!depositExemptionReason && data.total_amount === data.deposit_amount),
         });
       if (liegezeitErr) throw new Error(liegezeitErr.message);
       return { ok: true, slot_id: null, liegezeit_only: true };
@@ -1520,14 +1525,14 @@ export const createManualBooking = createServerFn({ method: "POST" })
         message,
         status: "confirmed",
         admin_note: combinedInternalNote,
-        anzahlung: data.deposit_exemption_reason ? 0 : data.deposit_amount,
-        anzahlung_method: data.deposit_exemption_reason ? data.onsite_method : data.deposit_method,
-        anzahlung_paid: !data.deposit_exemption_reason && data.deposit_amount > 0,
-        anzahlung_paid_at: !data.deposit_exemption_reason && data.deposit_amount > 0 && data.deposit_paid_at ? `${data.deposit_paid_at}T12:00:00.000Z` : null,
-        deposit_exemption_reason: data.deposit_exemption_reason,
-        bar: data.total_amount - (data.deposit_exemption_reason ? 0 : data.deposit_amount),
+        anzahlung: depositExemptionReason ? 0 : data.deposit_amount,
+        anzahlung_method: depositExemptionReason ? data.onsite_method : data.deposit_method,
+        anzahlung_paid: !depositExemptionReason && data.deposit_amount > 0,
+        anzahlung_paid_at: !depositExemptionReason && data.deposit_amount > 0 && data.deposit_paid_at ? `${data.deposit_paid_at}T12:00:00.000Z` : null,
+        deposit_exemption_reason: depositExemptionReason,
+        bar: data.total_amount - (depositExemptionReason ? 0 : data.deposit_amount),
         cash_received_at: data.onsite_paid_at ? `${data.onsite_paid_at}T12:00:00.000Z` : null,
-        fully_paid: Boolean(data.onsite_paid_at) || (!data.deposit_exemption_reason && data.total_amount === data.deposit_amount),
+        fully_paid: Boolean(data.onsite_paid_at) || (!depositExemptionReason && data.total_amount === data.deposit_amount),
       });
     if (bookingErr) {
       // Roll back the slot to avoid orphan blocked windows.
