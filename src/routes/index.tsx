@@ -62,21 +62,54 @@ function Index() {
   }, [recordVisit]);
 
   useEffect(() => {
-    if (!beholdRef.current) return;
+    const container = beholdRef.current;
+    if (!container) return;
 
-    if (!document.querySelector('script[src="https://w.behold.so/widget.js"]')) {
-      const s = document.createElement("script");
-      s.type = "module";
-      s.src = "https://w.behold.so/widget.js";
-      document.head.appendChild(s);
-    }
+    let loadTimeout: number | undefined;
 
-    if (!beholdRef.current.querySelector("behold-widget")) {
-      const widget = document.createElement("behold-widget") as HTMLElement;
-      widget.setAttribute("feed-id", "3Zc4c6wwZsXTG57RIQFB");
-      widget.className = "w-full";
-      beholdRef.current.appendChild(widget);
-    }
+    const loadInstagramWidget = () => {
+      if (!document.querySelector('script[src="https://w.behold.so/widget.js"]')) {
+        const script = document.createElement("script");
+        script.type = "module";
+        script.async = true;
+        script.src = "https://w.behold.so/widget.js";
+        script.addEventListener("load", () => {
+          if (loadTimeout) window.clearTimeout(loadTimeout);
+        }, { once: true });
+        script.addEventListener("error", () => {
+          if (loadTimeout) window.clearTimeout(loadTimeout);
+          script.remove();
+        }, { once: true });
+        document.head.appendChild(script);
+
+        loadTimeout = window.setTimeout(() => {
+          script.remove();
+        }, 10_000);
+      }
+
+      if (!container.querySelector("behold-widget")) {
+        const widget = document.createElement("behold-widget") as HTMLElement;
+        widget.setAttribute("feed-id", "3Zc4c6wwZsXTG57RIQFB");
+        widget.className = "w-full";
+        container.appendChild(widget);
+      }
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        observer.disconnect();
+        loadInstagramWidget();
+      },
+      { rootMargin: "400px 0px" },
+    );
+
+    observer.observe(container);
+
+    return () => {
+      observer.disconnect();
+      if (loadTimeout) window.clearTimeout(loadTimeout);
+    };
   }, []);
 
   const reasons: Card[] = [
