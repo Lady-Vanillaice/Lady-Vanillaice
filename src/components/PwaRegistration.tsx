@@ -14,6 +14,11 @@ export function PwaRegistration() {
         .join("|");
 
     const reloadIfNewBuild = async () => {
+      const isAdminSurface =
+        window.location.pathname === "/auth" ||
+        window.location.pathname === "/admin" ||
+        window.location.pathname.startsWith("/admin/");
+      if (!isAdminSurface) return;
       if (disposed || checkingVersion || document.visibilityState !== "visible") return;
       checkingVersion = true;
       try {
