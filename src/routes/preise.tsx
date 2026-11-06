@@ -75,6 +75,34 @@ function Preise() {
       ],
     },
     {
+      duration: tr("Liegezeit", "Restraint time"),
+      price: tr(
+        "150 € pro Stunde unbeaufsichtigt · 250 € pro Stunde beaufsichtigt",
+        "€ 150 per hour unsupervised · € 250 per hour supervised",
+      ),
+      priceRows: [
+        {
+          amount: tr("150 €", "€ 150"),
+          unit: tr("pro Stunde · unbeaufsichtigt", "per hour · unsupervised"),
+        },
+        {
+          amount: tr("250 €", "€ 250"),
+          unit: tr("pro Stunde · beaufsichtigt", "per hour · supervised"),
+        },
+      ],
+      priceUnitBelow: true,
+      desc: tr(
+        "Liegezeit kann unbeaufsichtigt oder persönlich beaufsichtigt gebucht werden.",
+        "Restraint time can be booked unsupervised or with personal supervision.",
+      ),
+      perks: [
+        tr("Individuelle Dauer", "Individual duration"),
+        tr("Unbeaufsichtigt oder beaufsichtigt", "Unsupervised or supervised"),
+        tr("Diskrete Abstimmung", "Discreet arrangement"),
+      ],
+      compactPrice: true,
+    },
+    {
       duration: tr("Doppelsession", "Double session"),
       price: tr("300 € pro Stunde pro Domina", "€ 300 per hour per domina"),
       priceRows: [
