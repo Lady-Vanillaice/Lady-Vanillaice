@@ -33,9 +33,9 @@ const newBlock = `  const overrideDeposit = typeof override.deposit === "number"
   const overrideBar = typeof override.bar === "number" && override.bar >= 0 ? override.bar : null;
   const savedDeposit = booking.anzahlung != null && Number(booking.anzahlung) >= 0 ? Number(booking.anzahlung) : null;
   const savedBar = booking.bar != null && Number(booking.bar) >= 0 ? Number(booking.bar) : null;
-  const durationTotal = booking.duration_minutes ? Math.round((booking.duration_minutes / 60) * 300) : null;
+  const durationTotal = sessionPriceForMinutes(booking.duration_minutes);
   const deposit = overrideDeposit ?? savedDeposit ?? 0;
-  // Explicit amounts represent the agreed price and must never revert to 50 percent.
+  // Explicit amounts represent historical agreements and must never be recalculated.
   const bar = overrideBar ?? (overrideDeposit != null && durationTotal != null
     ? Math.round(Math.max(0, durationTotal - deposit) * 100) / 100
     : savedBar != null && savedBar > 0 ? savedBar
