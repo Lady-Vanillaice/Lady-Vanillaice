@@ -135,6 +135,7 @@ function Leistungen() {
       title: tr("Macht & Kontrolle", "Power & control"),
       items: [
         tr("AS", "AS"),
+        tr("NS", "NS"),
         tr("Dilation", "Dilation"),
         tr("Erniedrigung & Demütigung", "Humiliation & degradation"),
         tr("Keuschhaltung & Orgasmuskontrolle", "Chastity & orgasm control"),
