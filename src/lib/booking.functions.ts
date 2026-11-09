@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { sessionPriceForMinutes } from "@/lib/session-pricing";
 
 // Admin bootstrap via a client-callable endpoint has been removed to prevent
 // privilege-escalation races. Admin roles must be granted via a migration
@@ -654,7 +655,7 @@ function computePersonalMessageAmounts(
   let bar = overrideBar ?? savedBar;
 
   const minutes = booking.duration_minutes ?? null;
-  const durationTotal = minutes ? Math.round((minutes / 60) * 300) : null;
+  const durationTotal = sessionPriceForMinutes(minutes);
 
   // Fill missing pieces via fallback logic so we can ALWAYS show a rest amount if possible.
   if (deposit != null && bar == null) {
@@ -1151,12 +1152,12 @@ export const markDepositPaid = createServerFn({ method: "POST" })
       const barExplicit = Number(booking.bar);
       const hasExplicitBar = Number.isFinite(barExplicit) && barExplicit > 0;
 
-      // Fallback: if admin didn't fill "bar", derive rest from duration (300 €/h) - anzahlung.
+      // Fallback: if admin did not fill "bar", derive the rest from the current duration price.
       let restNum = hasExplicitBar ? barExplicit : 0;
       let totalNum = anzahlungNum + restNum;
 
       if (!hasExplicitBar && booking.duration_minutes) {
-        const computedTotal = Math.round((booking.duration_minutes / 60) * 300);
+        const computedTotal = sessionPriceForMinutes(booking.duration_minutes) ?? 0;
         if (computedTotal > anzahlungNum) {
           restNum = computedTotal - anzahlungNum;
           totalNum = computedTotal;
