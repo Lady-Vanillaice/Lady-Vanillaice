@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/site/PageHeader";
 import { ArrowLeft, CalendarPlus, Download, Crown } from "lucide-react";
-import { format, isSameDay, startOfDay } from "date-fns";
+import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { ManualBookingForm, type ManualBookingValues } from "@/components/admin/admin-shared";
 import { CustomContentForm } from "@/components/admin/custom-content-form";
@@ -23,6 +23,7 @@ export const Route = createFileRoute("/_authenticated/admin/terminplan")({
 type Entry = {
   id: string;
   start: string;
+  calendar_day_start: string;
   end: string | null;
   guest_name: string;
   guest_email: string | null;
@@ -46,6 +47,15 @@ type Entry = {
 
 function hasNoDeposit(entry: Pick<Entry, "deposit_exemption_reason" | "anzahlung" | "bar">) {
   return Boolean(entry.deposit_exemption_reason) || (Number(entry.anzahlung ?? 0) === 0 && Number(entry.bar ?? 0) > 0);
+}
+
+function berlinDayKey(value: string | Date) {
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Europe/Berlin",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(value));
 }
 
 function TerminplanPage() {
@@ -111,6 +121,9 @@ function TerminplanPage() {
         return {
           id: b.id,
           start,
+          // Termine nach Mitternacht bleiben im Terminplan dem Starttag
+          // ihres ursprünglichen Kalender-Zeitfensters zugeordnet.
+          calendar_day_start: slot?.starts_at ?? start,
           end,
           guest_name: b.guest_name,
           guest_email: b.guest_email,
@@ -138,17 +151,21 @@ function TerminplanPage() {
     },
   });
 
-  const now = Date.now();
-  const todayStart = startOfDay(new Date(now)).getTime();
-  const upcoming = (q.data ?? []).filter((e) => startOfDay(new Date(e.start)).getTime() >= todayStart);
-  const past = (q.data ?? []).filter((e) => startOfDay(new Date(e.start)).getTime() < todayStart).reverse();
+  const todayKey = berlinDayKey(new Date());
+  const upcoming = (q.data ?? []).filter((e) => berlinDayKey(e.calendar_day_start) >= todayKey);
+  const past = (q.data ?? []).filter((e) => berlinDayKey(e.calendar_day_start) < todayKey).reverse();
 
-  const groups: { day: Date; items: Entry[] }[] = [];
+  const groups: { dayKey: string; day: Date; items: Entry[] }[] = [];
   for (const e of upcoming) {
-    const d = startOfDay(new Date(e.start));
+    const dayKey = berlinDayKey(e.calendar_day_start);
     const last = groups[groups.length - 1];
-    if (last && isSameDay(last.day, d)) last.items.push(e);
-    else groups.push({ day: d, items: [e] });
+    if (last?.dayKey === dayKey) last.items.push(e);
+    else groups.push({
+      dayKey,
+      // Mittags-UTC verhindert Datumsverschiebungen bei der reinen Anzeige.
+      day: new Date(`${dayKey}T12:00:00.000Z`),
+      items: [e],
+    });
   }
 
   return (
@@ -199,7 +216,7 @@ function TerminplanPage() {
 
           <div className="space-y-8">
             {groups.map((g) => (
-              <div key={g.day.toISOString()}>
+              <div key={g.dayKey}>
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-champagne/20 pb-3">
                   <div className="flex flex-wrap items-baseline gap-3">
                     <div className="font-display text-2xl text-champagne">

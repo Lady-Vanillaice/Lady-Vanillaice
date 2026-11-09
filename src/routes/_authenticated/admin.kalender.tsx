@@ -46,6 +46,15 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { listStudios } from "@/lib/studio.functions";
 
+function berlinDayKey(value: string | Date) {
+  return new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Europe/Berlin",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(value));
+}
+
 export const Route = createFileRoute("/_authenticated/admin/kalender")({
   head: () => ({
     meta: [
@@ -184,12 +193,14 @@ function AdminKalenderPage() {
 
   const slotsByDay = new Map<string, Slot[]>();
   for (const slot of regularSlots) {
-    const dayKey = format(new Date(slot.starts_at), "yyyy-MM-dd");
+    // Ein Zeitfenster gehört immer zum Berliner Starttag, auch wenn es
+    // nach Mitternacht am Folgetag endet.
+    const dayKey = berlinDayKey(slot.starts_at);
     slotsByDay.set(dayKey, [...(slotsByDay.get(dayKey) ?? []), slot]);
   }
   const groupedSlots = [...slotsByDay.entries()].map(([dayKey, slots]) => ({
     dayKey,
-    date: new Date(slots[0]?.starts_at ?? dayKey),
+    date: new Date(`${dayKey}T12:00:00.000Z`),
     slots,
   }));
 
