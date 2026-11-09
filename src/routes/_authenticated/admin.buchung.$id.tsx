@@ -43,6 +43,7 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { DEFAULT_STUDIOS, listStudios } from "@/lib/studio.functions";
 import { updateBookingOnsitePayment } from "@/lib/rest-payment.functions";
+import { sessionPriceForMinutes } from "@/lib/session-pricing";
 
 export const Route = createFileRoute("/_authenticated/admin/buchung/$id")({
   head: () => ({
@@ -228,7 +229,7 @@ setDuoPartner(b.availability_slots?.duo_partner ?? "");
         setOverrideTime("");
       }
       setOverrideDuration(b.duration_minutes ? String(b.duration_minutes) : "");
-      setPaymentTotalInput(String((Number(b.anzahlung) + Number(b.bar)) > 0 ? Number(b.anzahlung) + Number(b.bar) : Math.round(Number(b.duration_minutes || 0) / 60 * 300)));
+      setPaymentTotalInput(String((Number(b.anzahlung) + Number(b.bar)) > 0 ? Number(b.anzahlung) + Number(b.bar) : sessionPriceForMinutes(b.duration_minutes) ?? 0));
       setAnzahlungInput(b.anzahlung != null ? String(b.anzahlung) : "0");
       setAnzahlungMethod(b.anzahlung_method ?? "");
       setDepositExemptionReason(b.deposit_exemption_reason ?? "");
@@ -554,9 +555,9 @@ const depositDateMut = useMutation({
   | null;
   const isDuoBooking = bookingType === "duo";
 
-  // Price calc — same logic as the confirmation email (300 €/h, 50% deposit).
+  // Preisvorschlag nach der aktuellen öffentlichen Preistabelle; gespeicherte Beträge bleiben unverändert.
   const minutes = booking.duration_minutes ?? null;
-  const total = minutes ? Math.round((minutes / 60) * 300) : null;
+  const total = sessionPriceForMinutes(minutes);
   const deposit = total ? Math.round(total * 0.5) : null;
   const rest = total && deposit ? total - deposit : null;
 
