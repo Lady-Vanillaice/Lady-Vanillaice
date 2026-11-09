@@ -1110,7 +1110,7 @@ const [liegezeitDuration, setLiegezeitDuration] = useState("60");
         <div className="grid sm:grid-cols-2 gap-3">
           <div><label className="eyebrow block mb-1">Kurzsession</label><select value={shortSessionPrice} onChange={(e) => { const value = e.target.value; setShortSessionPrice(value); if (value) setTotalAmount(value); }} className="input-luxe !py-2"><option value="">Preis auswählen</option><option value="60">60 €</option><option value="75">75 €</option><option value="100">100 €</option></select></div>
           <div><label className="eyebrow block mb-1">Anzahlungsregel</label><select value={depositExemptionReason ?? ""} onChange={(e) => { const value = e.target.value as ManualBookingValues["deposit_exemption_reason"] | ""; setDepositExemptionReason(value || null); if (value) setDepositAmount("0"); }} className="input-luxe !py-2"><option value="">Normale Anzahlung</option><option value="regular_customer">Keine Anzahlung – Stammkunde</option><option value="trust">Keine Anzahlung – Vertrauensbasis</option><option value="exception">Keine Anzahlung – Ausnahme</option><option value="colleague_guarantees">Keine Anzahlung – Kollegin bürgt</option><option value="spontaneous">Keine Anzahlung – Spontaner Termin</option></select></div>
-          <div className={shortSessionPrice ? "hidden" : ""}><label className="eyebrow block mb-1">Sessionpreis (€)</label><input required={!shortSessionPrice} inputMode="decimal" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} placeholder="z. B. 450" className="input-luxe !py-2" /></div>
+          <div className={shortSessionPrice ? "hidden" : ""}><label className="eyebrow block mb-1">Sessionpreis (€)</label><input required={!shortSessionPrice} inputMode="decimal" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} placeholder="z. B. 500" className="input-luxe !py-2" /></div>
           {/* LIEGEZEIT_BOOKING_FEATURE */}
       <div className="border border-champagne/25 bg-champagne/[0.03] p-4 space-y-3">
         <label className="flex items-start gap-3 text-xs text-vanilla/75 cursor-pointer">
@@ -1183,7 +1183,7 @@ export function useConfirmAmounts(
   }) => void,
 ) {
   return (id: string) => {
-    const tRaw = window.prompt("Gesamtpreis der Session in € (z. B. 450):", "300");
+    const tRaw = window.prompt("Gesamtpreis der Session in € (z. B. 500):", "300");
     if (tRaw === null) return;
     const aRaw = window.prompt("Davon Anzahlung in € (Rest wird bar bezahlt):", "150");
     if (aRaw === null) return;
