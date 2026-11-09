@@ -42,7 +42,12 @@ const newBlock = `  const overrideDeposit = typeof override.deposit === "number"
     : durationTotal != null ? Math.round(Math.max(0, durationTotal - deposit) * 100) / 100 : null);
 `;
 
-if (!source.includes(newBlock)) {
+const alreadyApplied =
+  source.includes("  const durationTotal = sessionPriceForMinutes(booking.duration_minutes);") &&
+  source.includes("  const deposit = overrideDeposit ?? savedDeposit ?? 0;") &&
+  source.includes("  const bar = overrideBar ??");
+
+if (!alreadyApplied) {
   if (!source.includes(oldBlock)) {
     throw new Error("Duration-based deposit calculation patch target not found");
   }
