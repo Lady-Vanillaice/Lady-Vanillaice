@@ -307,20 +307,20 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
     // The timeline assigns each appointment to the Berlin day it starts on.
     // A booking that runs past midnight stays on its start day; it must not
     // paint the first minutes of the following day's timeline red.
+    const timelineSlotIds = [...new Set(dayTimelineSlots.map((entry) => entry.id))];
     const { data: bookings } = await supabaseAdmin
       .from("bookings")
       .select("slot_id, requested_start, duration_minutes, status, updated_at, message")
-      .gte("requested_start", dayStart.toISOString())
-      .lt("requested_start", dayEnd.toISOString())
+      // Assign overnight appointments to the calendar window they were booked
+      // in, even when their actual start timestamp falls after midnight.
+      .in("slot_id", timelineSlotIds)
       .in("status", ["waiting_deposit", "confirmed"])
       .not("requested_start", "is", null)
       .not("duration_minutes", "is", null);
 
-    const activeBookings = (bookings ?? []).filter((b) => {
-      if (!isActiveBlockingBooking(b) || !b.requested_start || !b.duration_minutes) return false;
-      const appointmentStart = new Date(b.requested_start).getTime();
-      return appointmentStart >= dayStart.getTime() && appointmentStart < dayEnd.getTime();
-    });
+    const activeBookings = (bookings ?? []).filter(
+      (b) => isActiveBlockingBooking(b) && Boolean(b.requested_start) && Boolean(b.duration_minutes),
+    );
     // Build the slot lookup before loading metadata for hidden manual slots.
     // The day-wide query also returns external appointments whose source slot
     // is hidden and therefore not part of slotsForDay.
