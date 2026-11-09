@@ -290,22 +290,27 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
       .gt("ends_at", dayStart.toISOString())
       .order("starts_at", { ascending: true });
 
-    const slotsForDay = daySlots?.length ? daySlots : [slot];
+    // The timeline assigns every slot to its Berlin start date. A window that
+    // ends after midnight remains on the day it was entered and is not repeated
+    // on the following day.
+    const calendarDayKey = getBerlinCalendarDayKey(slot.starts_at);
+    const overlappingSlots = daySlots ?? [];
+    const slotsForDay = overlappingSlots.filter(
+      (entry) => getBerlinCalendarDayKey(entry.starts_at) === calendarDayKey,
+    );
+    const dayTimelineSlots = slotsForDay.length ? slotsForDay : [slot];
     // Every visible slot belongs to the released day window, even after that
     // slot becomes held/booked. Using only currently open slots would turn the
     // former slot boundaries into artificial grey gaps beside real bookings.
-    const visibleDaySlots = slotsForDay.filter((s) => !s.is_hidden);
-    const timelineSlots = visibleDaySlots.length ? visibleDaySlots : slotsForDay;
-    // The Terminplan is the source of truth for public occupancy. Read every
-    // confirmed/reserved appointment by its real start and duration instead of
-    // relying on the original availability slot, which may later be merged,
-    // moved or deleted. The lookback also captures appointments crossing midnight.
-    const bookingLookback = new Date(dayStart.getTime() - 48 * 60 * 60_000);
-
+    const visibleDaySlots = dayTimelineSlots.filter((s) => !s.is_hidden);
+    const timelineSlots = visibleDaySlots.length ? visibleDaySlots : dayTimelineSlots;
+    // The timeline assigns each appointment to the Berlin day it starts on.
+    // A booking that runs past midnight stays on its start day; it must not
+    // paint the first minutes of the following day's timeline red.
     const { data: bookings } = await supabaseAdmin
       .from("bookings")
       .select("slot_id, requested_start, duration_minutes, status, updated_at, message")
-      .gte("requested_start", bookingLookback.toISOString())
+      .gte("requested_start", dayStart.toISOString())
       .lt("requested_start", dayEnd.toISOString())
       .in("status", ["waiting_deposit", "confirmed"])
       .not("requested_start", "is", null)
@@ -314,8 +319,7 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
     const activeBookings = (bookings ?? []).filter((b) => {
       if (!isActiveBlockingBooking(b) || !b.requested_start || !b.duration_minutes) return false;
       const appointmentStart = new Date(b.requested_start).getTime();
-      const appointmentEnd = appointmentStart + b.duration_minutes * 60_000;
-      return appointmentStart < dayEnd.getTime() && appointmentEnd > dayStart.getTime();
+      return appointmentStart >= dayStart.getTime() && appointmentStart < dayEnd.getTime();
     });
     // Build the slot lookup before loading metadata for hidden manual slots.
     // The day-wide query also returns external appointments whose source slot
