@@ -29,13 +29,17 @@ function berlinMidnightToUtc(dateKey: string) {
   return new Date(wallMidnight - offsetMinutes * 60_000);
 }
 
-function getBerlinCalendarDayBounds(value: string | Date) {
-  const dateKey = new Intl.DateTimeFormat("sv-SE", {
+function getBerlinCalendarDayKey(value: string | Date) {
+  return new Intl.DateTimeFormat("sv-SE", {
     timeZone: "Europe/Berlin",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(new Date(value));
+}
+
+function getBerlinCalendarDayBounds(value: string | Date) {
+  const dateKey = getBerlinCalendarDayKey(value);
   const dayStart = berlinMidnightToUtc(dateKey);
   const nextWallDate = new Date(Date.UTC(
     Number(dateKey.slice(0, 4)),
@@ -782,10 +786,15 @@ export const listUpcomingSlots = createServerFn({ method: "GET" }).handler(async
   if (slots.length === 0) return vacationEntries;
 
   const openSlots = slots;
-  const dayKeys = Array.from(new Set(slots.map((s) => new Date(s.starts_at).toISOString().slice(0, 10))));
-  const rangeStart = new Date(`${dayKeys[0]}T00:00:00.000Z`);
-  const rangeEnd = new Date(`${dayKeys[dayKeys.length - 1]}T00:00:00.000Z`);
-  rangeEnd.setUTCDate(rangeEnd.getUTCDate() + 1);
+  // Öffentliche Kalendertage richten sich ausschließlich nach dem Berliner
+  // Startdatum des Zeitfensters. Ein Ende nach Mitternacht erzeugt keinen
+  // zusätzlichen Eintrag am Folgetag.
+  const dayKeys = Array.from(new Set(slots.map((s) => getBerlinCalendarDayKey(s.starts_at)))).sort();
+  const { dayStart: rangeStart } = getBerlinCalendarDayBounds(slots[0].starts_at);
+  const lastDaySlot = [...slots].reverse().find(
+    (slot) => getBerlinCalendarDayKey(slot.starts_at) === dayKeys[dayKeys.length - 1],
+  ) ?? slots[slots.length - 1];
+  const { dayEnd: rangeEnd } = getBerlinCalendarDayBounds(lastDaySlot.starts_at);
 
   const slotIds = openSlots.map((s) => s.id);
 
@@ -835,7 +844,7 @@ export const listUpcomingSlots = createServerFn({ method: "GET" }).handler(async
       // frei ist.
       const sameDayClosed = (closedSlots ?? []).filter((s) => {
         if (s.id === slot.id) return false;
-        return new Date(s.starts_at).toISOString().slice(0, 10) === new Date(slot.starts_at).toISOString().slice(0, 10);
+        return getBerlinCalendarDayKey(s.starts_at) === getBerlinCalendarDayKey(slot.starts_at);
       });
       const hasBooking = busy.length > 0 || sameDayClosed.length > 0;
     const busyRanges = busy.map((b) => ({
@@ -865,7 +874,7 @@ export const listUpcomingSlots = createServerFn({ method: "GET" }).handler(async
 
   const byDay = new Map<string, (typeof enrichedSlots)[number]>();
   for (const slot of enrichedSlots) {
-    const key = new Date(slot.starts_at).toISOString().slice(0, 10);
+    const key = getBerlinCalendarDayKey(slot.starts_at);
     const current = byDay.get(key);
     if (!current) {
       byDay.set(key, slot);
@@ -883,7 +892,7 @@ export const listUpcomingSlots = createServerFn({ method: "GET" }).handler(async
   }
 
   const regularDays = [...byDay.entries()].map(([dayKey, slot]) => {
-    const daySlots = enrichedSlots.filter((s) => new Date(s.starts_at).toISOString().slice(0, 10) === dayKey);
+    const daySlots = enrichedSlots.filter((s) => getBerlinCalendarDayKey(s.starts_at) === dayKey);
     const starts = daySlots.map((s) => new Date(s.starts_at).getTime());
     const ends = daySlots.map((s) => new Date(s.ends_at).getTime());
     const duoSlot = daySlots.find((s) => s.is_duo);
