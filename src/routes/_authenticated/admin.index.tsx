@@ -76,7 +76,7 @@ const HUB_GROUPS: HubGroup[] = [
   { label: "Inhalte", hint: "Website-Inhalte pflegen", cards: [
     { to: "/admin/newsletter", title: "Neue Termine versenden", description: "Newsletter an bestätigte Empfänger senden.", Icon: Send },
     { to: "/admin/erfahrungsberichte", title: "Erfahrungsberichte", description: "Eingereichte Erfahrungsberichte freigeben.", Icon: Quote },
-    { to: "/admin/journal", title: "Journal · WhatsApp-Status", description: "Journalbeiträge als WhatsApp-Statusbild herunterladen.", Icon: BookOpen },
+    { to: "/admin/journal", title: "Journal", description: "Journalbeiträge als WhatsApp-Statusbild herunterladen.", Icon: BookOpen },
     { to: "/admin/agb", title: "AGB", description: "AGB-Text bearbeiten und einfügen.", Icon: MessageSquare },
   ]},
 ];
@@ -200,7 +200,7 @@ function AdminHubPage() {
           </Link>
           <Link to="/admin/journal" className="group bg-card border border-champagne/25 p-4 hover:border-champagne/60 transition">
             <BookOpen size={19} className="text-champagne mb-2" />
-            <div className="font-display text-lg text-vanilla group-hover:text-champagne transition">Journal · WhatsApp-Status</div>
+            <div className="font-display text-lg text-vanilla group-hover:text-champagne transition">Journal</div>
             <div className="text-xs text-vanilla/45 mt-1">Beiträge als Statusbild herunterladen</div>
           </Link>
         </div>
