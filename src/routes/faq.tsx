@@ -385,8 +385,8 @@ function GiftGuide() {
                 <GiftCard title={tr("Getränke", "Drinks")}>
                   <p>
                     {tr(
-                      "Alkoholfrei freue ich mich über Coca-Cola Zero — am liebsten im Glas.",
-                      "For a non-alcoholic drink, Coca-Cola Zero in a glass is always welcome."
+                      "Alkoholfrei freue ich mich über Coca-Cola Zero — am liebsten im Glas — und über Matcha mit Hafermilch.",
+                      "For drinks, I love Coca-Cola Zero in a glass and matcha with oat milk."
                     )}
                   </p>
                 </GiftCard>
