@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { PageHeader } from "../components/site/PageHeader";
 import { Plus, Minus } from "lucide-react";
 import type { ReactNode } from "react";
@@ -14,7 +14,6 @@ const faqStructured: { q: string; a: string }[] = [
   { q: "Wer ist bei mir richtig?", a: "Das merkst du am besten, indem du dich mit meiner Welt beschäftigst — auf BestFans, Clips4Sale, in meinem Onlineshop und auf meinen Socials. Vorerfahrung spielt keine Rolle. Wichtig sind Mut, Ehrlichkeit und die Bereitschaft, dich nicht zu verstecken." },
   { q: "Wie weit im Voraus sollte ich buchen?", a: "Je früher, desto besser. Mehrere Tage im Voraus geben uns Zeit für ein gutes Vorgespräch und eine sorgfältige Vorbereitung. Kurzfristige Termine sind manchmal möglich, aber nicht garantiert." },
   { q: "Wie kann ich dich Online erleben?", a: "Auf BestFans, Clips4Sale und in meinem Onlineshop findest du Einblicke in meine Sessions. Auf BestFans zeige ich außerdem eine Seite von mir, die ich nur Online teile: meine devote Seite. Chatten führe ich ausschließlich über BestFans." },
-  { q: "Was macht dir als Geschenk eine Freude?", a: "Herzhaftes: Pizza mit Schinken, Sahne, Zwiebel und Ei oder Sahne und Garnelen, Sushi mit Avocado, Garnelen oder Lachs, eine Crunchy Chicken Bowl oder Käsebrezel. Champignons mag ich gar nicht; bei Meeresfrüchten bin ich wählerisch — Garnelen mag ich aber auf Pizza und im Sushi. Süßes: Kinderschokolade, Ü-Ei, Knusper Puffreis oder Zimtschnecke. Alkoholfrei gern Coca-Cola Zero im Glas und Matcha mit Hafermilch. Kleidung: Dessous, Kleider und Latex in Größe 36, BH-Größe 70D; My Holy Desire in München. Schuhe: Pleaser jeglicher Art in Größe 39. Außerdem freue ich mich über Parfüm und Goldschmuck wie Ketten, Armbänder und verstellbare offene Ringe. Geschenke sind Inspiration, keine Erwartung." },
   { q: "Werden meine Daten gespeichert?", a: "Ich speichere nur, was für die Terminabsprache nötig ist — und auch das nur so lange, wie es wirklich gebraucht wird. Details in der Datenschutzerklärung." },
 ];
 
@@ -314,105 +313,6 @@ function useFaqs(): { q: string; a: ReactNode }[] {
   ];
 }
 
-function GiftCard({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <article className="border border-champagne/15 bg-card p-5 md:p-6">
-      <h3 className="font-display text-2xl text-champagne mb-3">{title}</h3>
-      <div className="text-sm text-vanilla/70 leading-relaxed">{children}</div>
-    </article>
-  );
-}
-
-function GiftGuideContent() {
-  const tr = useTr();
-
-  return (
-    <div>
-      <p className="text-sm text-vanilla/65 leading-relaxed max-w-2xl mb-6">
-        {tr(
-          "Wenn du mir gern etwas schenken möchtest, findest du hier ein paar Denkanstöße. Ich freue mich über liebevoll ausgesuchte Aufmerksamkeiten — die Liste ist Inspiration, keine Erwartung.",
-          "If you would like to give me something, here are a few ideas. I appreciate thoughtful gifts — this list is inspiration, never an expectation."
-        )}
-      </p>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <GiftCard title={tr("Herzhaftes", "Savory")}>
-          <p>
-            {tr(
-              "Bei Pizza liebe ich besonders Schinken, Sahne, Zwiebel und Ei — oder Sahne mit Garnelen. Sushi mag ich ebenfalls sehr gern, vor allem Maki mit Avocado oder Sushi mit Garnelen oder Lachs. Auch eine Crunchy Chicken Bowl oder eine Käsebrezel vom Bäcker machen mich glücklich. Champignons mag ich gar nicht; bei Meeresfrüchten bin ich wählerisch — Garnelen mag ich aber auf Pizza und im Sushi.",
-              "My favorite pizzas have ham, cream, onion and egg, or cream and shrimp. I also love sushi, especially avocado maki or sushi with shrimp or salmon. A crunchy chicken bowl or a cheese pretzel from the bakery makes me happy too. I don't like mushrooms and am selective about seafood — shrimp are an exception I enjoy on pizza and in sushi."
-            )}
-          </p>
-        </GiftCard>
-
-        <GiftCard title={tr("Süßes", "Something sweet")}>
-          <p>
-            {tr(
-              "Kinderschokolade liebe ich abgöttisch — ich könnte mich darin hineinlegen. Ein Ü-Ei erinnert mich immer an meine Kindheit. Knusper Puffreis mag ich ebenfalls sehr gern, und eine Zimtschnecke vom Bäcker geht auch immer. Ich weiß, meine Mischung ist vielleicht etwas verrückt — aber wir sind doch alle ein bisschen verrückt.",
-              "I absolutely adore Kinderschokolade — I could happily live in it. A Kinder Surprise egg always reminds me of my childhood. I also love crunchy puffed rice and a cinnamon roll from the bakery. Maybe my tastes are a little quirky — but we're all a little crazy."
-            )}
-          </p>
-        </GiftCard>
-
-        <GiftCard title={tr("Getränke", "Drinks")}>
-          <p>
-            {tr(
-              "Alkoholfrei freue ich mich über Coca-Cola Zero — am liebsten im Glas — und über Matcha mit Hafermilch.",
-              "For drinks, I love Coca-Cola Zero in a glass and matcha with oat milk."
-            )}
-          </p>
-        </GiftCard>
-
-        <GiftCard title={tr("Kleidung", "Clothing")}>
-          <p className="mb-3">
-            {tr(
-              "Mit Kleidung kannst du mir aktuell wohl die größte Freude machen. Ich liebe Dessous, Kleider und Latex und bin noch am Anfang, mir eine schöne Auswahl aufzubauen. Meine Größen: Kleidergröße 36 und BH-Größe 70D.",
-              "Clothing might be the loveliest gift for me right now. I love lingerie, dresses and latex, and I'm still at the beginning of building a collection I adore. My sizes: EU 36 in clothing and 70D bra."
-            )}
-          </p>
-          <p>
-            {tr("Bei ", "At ")}
-            <a href="https://myholydesire.com" target="_blank" rel="noreferrer" className="text-champagne hover:underline">
-              My Holy Desire
-            </a>
-            {tr(
-              " in München findest du schöne Ideen. Dort berät dich Ella diskret und mit Stil; auch online gibt es eine passende Auswahl.",
-              " in Munich you'll find lovely ideas. Ella offers discreet, stylish advice, and there's a suitable selection online too."
-            )}
-          </p>
-        </GiftCard>
-
-        <GiftCard title={tr("Schuhe", "Shoes")}>
-          <p>
-            {tr(
-              "Ich habe einen wahnsinnigen Schuhtick und liebe Pleaser jeglicher Art. Schuhgröße 39.",
-              "I have a serious shoe obsession and love all kinds of Pleasers. Shoe size EU 39."
-            )}
-          </p>
-        </GiftCard>
-
-        <GiftCard title={tr("Parfüm", "Perfume")}>
-          <p>
-            {tr(
-              "Parfüms finde ich wahnsinnig toll — hier kannst du mich sehr gern überraschen.",
-              "I love perfume, so feel free to surprise me with a scent you think I'll enjoy."
-            )}
-          </p>
-        </GiftCard>
-
-        <GiftCard title={tr("Schmuck", "Jewelry")}>
-          <p>
-            {tr(
-              "Goldene Ketten und Armbänder liebe ich sehr. Besonders gern mag ich verstellbare, offene Ringe, die ich selbst anpassen kann.",
-              "I love gold necklaces and bracelets. I especially like adjustable, open rings that I can size myself."
-            )}
-          </p>
-        </GiftCard>
-      </div>
-    </div>
-  );
-}
-
 function FAQCategoryPanel({
   id,
   number,
@@ -531,51 +431,31 @@ function FAQ() {
   const tr = useTr();
   const faqs = useFaqs();
 
-  useEffect(() => {
-    if (window.location.hash !== "#geschenke-wuensche") return;
-    setOpenCategory("geschenke-wuensche");
-    requestAnimationFrame(() => {
-      document.getElementById("geschenke-wuensche")?.scrollIntoView({ behavior: "smooth", block: "center" });
-    });
-  }, []);
-
   const at = (indexes: number[]) =>
     indexes.flatMap((index) => (faqs[index] ? [faqs[index]] : []));
   const categories = [
     {
-      id: "geschenke-wuensche",
-      number: "01",
-      title: tr("Geschenke & Wünsche", "Gifts & Wishes"),
-      subtitle: tr("Persönliche Denkanstöße — von herzhaft bis goldfarben.", "Personal ideas, from savory treats to golden details."),
-      indexes: [] as number[],
-      gifts: true,
-    },
-    {
       id: "booking",
-      number: "02",
+      number: "01",
       title: tr("Buchung & Termin", "Booking & Appointments"),
       subtitle: tr("Anfrage, Terminfindung und Zahlung.", "Enquiries, scheduling and payment."),
       indexes: [0, 1, 6],
-      gifts: false,
     },
     {
       id: "session",
-      number: "03",
+      number: "02",
       title: tr("Session & Vertrauen", "Sessions & Trust"),
       subtitle: tr("Ablauf, Grenzen und ein gutes Gefühl.", "What to expect, boundaries and feeling at ease."),
       indexes: [2, 3, 4, 5],
-      gifts: false,
     },
     {
       id: "online",
-      number: "04",
+      number: "03",
       title: tr("Online & Privatsphäre", "Online & Privacy"),
       subtitle: tr("Online-Angebote und der Umgang mit deinen Daten.", "Online content and how your data is handled."),
       indexes: [7, 8],
-      gifts: false,
     },
   ];
-
   return (
     <>
       <PageHeader
@@ -608,24 +488,20 @@ function FAQ() {
                 open={isCategoryOpen}
                 onToggle={() => setOpenCategory(isCategoryOpen ? null : category.id)}
               >
-                {category.gifts ? (
-                  <GiftGuideContent />
-                ) : (
-                  <div className="border-t border-champagne/15">
-                    {items.map((item, index) => {
-                      const questionId = `${category.id}-${index}`;
-                      return (
-                        <FAQQuestion
-                          key={item.q}
-                          id={questionId}
-                          item={item}
-                          open={openQuestion === questionId}
-                          onToggle={() => setOpenQuestion(openQuestion === questionId ? null : questionId)}
-                        />
-                      );
-                    })}
-                  </div>
-                )}
+                <div className="border-t border-champagne/15">
+                  {items.map((item, index) => {
+                    const questionId = `${category.id}-${index}`;
+                    return (
+                      <FAQQuestion
+                        key={item.q}
+                        id={questionId}
+                        item={item}
+                        open={openQuestion === questionId}
+                        onToggle={() => setOpenQuestion(openQuestion === questionId ? null : questionId)}
+                      />
+                    );
+                  })}
+                </div>
               </FAQCategoryPanel>
             );
           })}
