@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { combineCustomerAdminNote, splitCustomerAdminNote } from "@/lib/customer-special-rules";
 
 async function assertAdmin(ctx: { supabase: any; userId: string }) {
   const { data } = await ctx.supabase
@@ -98,6 +99,7 @@ export type CustomerRow = {
     gesundheit: string | null;
     safeword: string | null;
     admin_note: string | null;
+    special_rules: string | null;
     updated_at: string;
   } | null;
 };
@@ -213,6 +215,7 @@ export const listCustomers = createServerFn({ method: "GET" })
           gesundheit: null,
           safeword: null,
           admin_note: row.notiz,
+          special_rules: null,
           updated_at: row.created_at,
         } : null,
       });
@@ -239,6 +242,7 @@ export const listCustomers = createServerFn({ method: "GET" })
       const key = (n.email ?? "").toLowerCase();
       if (!key) continue;
       const existing = map.get(key);
+      const { adminNote, specialRules } = splitCustomerAdminNote(n.admin_note);
       const noteData = {
         id: n.id,
         pseudonym: n.pseudonym,
@@ -247,7 +251,8 @@ export const listCustomers = createServerFn({ method: "GET" })
         tabus: n.tabus,
         gesundheit: n.gesundheit,
         safeword: n.safeword,
-        admin_note: n.admin_note,
+        admin_note: adminNote || null,
+        special_rules: specialRules || null,
         updated_at: n.updated_at,
       };
       if (existing) {
@@ -308,6 +313,7 @@ export const upsertCustomerNote = createServerFn({ method: "POST" })
         gesundheit: z.string().trim().max(4000).optional().nullable(),
         safeword: z.string().trim().max(200).optional().nullable(),
         admin_note: z.string().trim().max(4000).optional().nullable(),
+        special_rules: z.string().trim().max(4000).optional().nullable(),
       })
       .parse(d),
   )
@@ -317,9 +323,15 @@ export const upsertCustomerNote = createServerFn({ method: "POST" })
 
     const { data: existing } = await context.supabase
       .from("customer_notes")
-      .select("id, pseudonym")
+      .select("id, pseudonym, admin_note")
       .ilike("email", emailLower)
       .maybeSingle();
+
+    const existingNote = splitCustomerAdminNote(existing?.admin_note);
+    const specialRules = Object.prototype.hasOwnProperty.call(data, "special_rules")
+      ? data.special_rules
+      : existingNote.specialRules;
+    const savedAdminNote = combineCustomerAdminNote(data.admin_note, specialRules);
 
     const payload = {
       email: emailLower,
@@ -329,7 +341,7 @@ export const upsertCustomerNote = createServerFn({ method: "POST" })
       tabus: data.tabus ?? null,
       gesundheit: data.gesundheit ?? null,
       safeword: data.safeword ?? null,
-      admin_note: data.admin_note ?? null,
+      admin_note: savedAdminNote,
     };
     const legacyPayload = {
       email: emailLower,
@@ -341,7 +353,7 @@ export const upsertCustomerNote = createServerFn({ method: "POST" })
         data.admin_note ?? null,
         data.gesundheit ? `Gesundheit: ${data.gesundheit}` : null,
         data.safeword ? `Safeword: ${data.safeword}` : null,
-      ].filter(Boolean).join("\n") || null,
+      ].filter(Boolean).join("\n") ? combineCustomerAdminNote([data.admin_note ?? null, data.gesundheit ? `Gesundheit: ${data.gesundheit}` : null, data.safeword ? `Safeword: ${data.safeword}` : null].filter(Boolean).join("\n"), specialRules) : combineCustomerAdminNote(null, specialRules),
     };
 
     if (existing?.id) {
