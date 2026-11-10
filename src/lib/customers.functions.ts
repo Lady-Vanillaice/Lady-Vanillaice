@@ -343,17 +343,18 @@ export const upsertCustomerNote = createServerFn({ method: "POST" })
       safeword: data.safeword ?? null,
       admin_note: savedAdminNote,
     };
+    const legacyAdminNote = [
+      data.admin_note ?? null,
+      data.gesundheit ? `Gesundheit: ${data.gesundheit}` : null,
+      data.safeword ? `Safeword: ${data.safeword}` : null,
+    ].filter(Boolean).join("\n");
     const legacyPayload = {
       email: emailLower,
       pseudonym: data.pseudonym ?? null,
       phone: data.phone ?? null,
       vorlieben: data.vorlieben ?? null,
       tabus: data.tabus ?? null,
-      admin_note: [
-        data.admin_note ?? null,
-        data.gesundheit ? `Gesundheit: ${data.gesundheit}` : null,
-        data.safeword ? `Safeword: ${data.safeword}` : null,
-      ].filter(Boolean).join("\n") ? combineCustomerAdminNote([data.admin_note ?? null, data.gesundheit ? `Gesundheit: ${data.gesundheit}` : null, data.safeword ? `Safeword: ${data.safeword}` : null].filter(Boolean).join("\n"), specialRules) : combineCustomerAdminNote(null, specialRules),
+      admin_note: combineCustomerAdminNote(legacyAdminNote, specialRules),
     };
 
     if (existing?.id) {
