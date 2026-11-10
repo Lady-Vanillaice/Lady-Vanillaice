@@ -14,7 +14,7 @@ const faqStructured: { q: string; a: string }[] = [
   { q: "Wer ist bei mir richtig?", a: "Das merkst du am besten, indem du dich mit meiner Welt beschäftigst — auf BestFans, Clips4Sale, in meinem Onlineshop und auf meinen Socials. Vorerfahrung spielt keine Rolle. Wichtig sind Mut, Ehrlichkeit und die Bereitschaft, dich nicht zu verstecken." },
   { q: "Wie weit im Voraus sollte ich buchen?", a: "Je früher, desto besser. Mehrere Tage im Voraus geben uns Zeit für ein gutes Vorgespräch und eine sorgfältige Vorbereitung. Kurzfristige Termine sind manchmal möglich, aber nicht garantiert." },
   { q: "Wie kann ich dich Online erleben?", a: "Auf BestFans, Clips4Sale und in meinem Onlineshop findest du Einblicke in meine Sessions. Auf BestFans zeige ich außerdem eine Seite von mir, die ich nur Online teile: meine devote Seite. Chatten führe ich ausschließlich über BestFans." },
-  { q: "Was macht dir als Geschenk eine Freude?", a: "Herzhaftes: Pizza mit Schinken, Sahne, Zwiebel und Ei oder Sahne und Garnelen, Sushi mit Avocado, Garnelen oder Lachs, eine Crunchy Chicken Bowl oder Käsebrezel. Champignons mag ich gar nicht; bei Meeresfrüchten bin ich wählerisch — Garnelen mag ich aber auf Pizza und im Sushi. Süßes: Kinderschokolade, Ü-Ei, Knusper Puffreis oder Zimtschnecke. Alkoholfrei gern Coca-Cola Zero im Glas. Kleidung: Dessous, Kleider und Latex in Größe 36, BH-Größe 70D; My Holy Desire in München. Schuhe: Pleaser jeglicher Art in Größe 39. Außerdem freue ich mich über Parfüm und Goldschmuck wie Ketten, Armbänder und verstellbare offene Ringe. Geschenke sind Inspiration, keine Erwartung." },
+  { q: "Was macht dir als Geschenk eine Freude?", a: "Herzhaftes: Pizza mit Schinken, Sahne, Zwiebel und Ei oder Sahne und Garnelen, Sushi mit Avocado, Garnelen oder Lachs, eine Crunchy Chicken Bowl oder Käsebrezel. Champignons mag ich gar nicht; bei Meeresfrüchten bin ich wählerisch — Garnelen mag ich aber auf Pizza und im Sushi. Süßes: Kinderschokolade, Ü-Ei, Knusper Puffreis oder Zimtschnecke. Alkoholfrei gern Coca-Cola Zero im Glas und Matcha mit Hafermilch. Kleidung: Dessous, Kleider und Latex in Größe 36, BH-Größe 70D; My Holy Desire in München. Schuhe: Pleaser jeglicher Art in Größe 39. Außerdem freue ich mich über Parfüm und Goldschmuck wie Ketten, Armbänder und verstellbare offene Ringe. Geschenke sind Inspiration, keine Erwartung." },
   { q: "Werden meine Daten gespeichert?", a: "Ich speichere nur, was für die Terminabsprache nötig ist — und auch das nur so lange, wie es wirklich gebraucht wird. Details in der Datenschutzerklärung." },
 ];
 
@@ -385,8 +385,8 @@ function GiftGuide() {
                 <GiftCard title={tr("Getränke", "Drinks")}>
                   <p>
                     {tr(
-                      "Alkoholfrei freue ich mich über Coca-Cola Zero — am liebsten im Glas.",
-                      "For a non-alcoholic drink, Coca-Cola Zero in a glass is always welcome."
+                      "Alkoholfrei freue ich mich über Coca-Cola Zero — am liebsten im Glas — und über Matcha mit Hafermilch.",
+                      "For drinks, I love Coca-Cola Zero in a glass and matcha with oat milk."
                     )}
                   </p>
                 </GiftCard>
