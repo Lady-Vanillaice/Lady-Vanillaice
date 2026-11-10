@@ -40,6 +40,7 @@ function AdminKundenPage() {
       gesundheit?: string | null;
       safeword?: string | null;
       admin_note?: string | null;
+      special_rules?: string | null;
     }) => upsertFn({ data: v }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-customers"] }),
   });
@@ -61,6 +62,7 @@ function AdminKundenPage() {
         c.booking_profile.gesundheit ?? "",
         c.booking_profile.safeword ?? "",
         c.note?.admin_note ?? "",
+        c.note?.special_rules ?? "",
       ]
         .join(" ")
         .toLowerCase();
@@ -211,6 +213,7 @@ function CustomerEditor({
     gesundheit: string | null;
     safeword: string | null;
     admin_note: string | null;
+    special_rules: string | null;
   }) => void | Promise<void>;
   onClose: () => void;
 }) {
@@ -225,6 +228,7 @@ function CustomerEditor({
   const [gesundheit, setGesundheit] = useState(customer.note?.gesundheit ?? customer.booking_profile.gesundheit ?? "");
   const [safeword, setSafeword] = useState(customer.note?.safeword ?? customer.booking_profile.safeword ?? "");
   const [adminNote, setAdminNote] = useState(customer.note?.admin_note ?? "");
+  const [specialRules, setSpecialRules] = useState(customer.note?.special_rules ?? "");
 
   return (
     <div className="border-t border-champagne/10 p-5 space-y-4">
@@ -315,6 +319,18 @@ function CustomerEditor({
           placeholder="z. B. Rot"
         />
       </div>
+      <div className="border border-champagne/30 bg-champagne/5 p-4">
+        <label className="eyebrow block mb-1.5 text-champagne">Dauerhafte Sonderregelungen</label>
+        <p className="text-xs text-vanilla/55 mb-2">Diese Hinweise bleiben beim Kunden gespeichert und erscheinen automatisch in jedem Termin-Detail.</p>
+        <textarea
+          rows={3}
+          value={specialRules}
+          onChange={(e) => setSpecialRules(e.target.value)}
+          className="input-luxe resize-y"
+          maxLength={4000}
+          placeholder="z. B. vereinbarter Sonderpreis, abweichender Zahlbetrag oder Anzahlung aus Vertrauensbasis"
+        />
+      </div>
       <div>
         <label className="eyebrow block mb-1.5">Wichtig & Persönliches (intern)</label>
         <textarea
@@ -338,6 +354,7 @@ function CustomerEditor({
               gesundheit: gesundheit.trim() || null,
               safeword: safeword.trim() || null,
               admin_note: adminNote.trim() || null,
+              special_rules: specialRules.trim() || null,
             })
           }
           className="btn-gold !py-2 !px-4 !text-[0.65rem] disabled:opacity-40"
