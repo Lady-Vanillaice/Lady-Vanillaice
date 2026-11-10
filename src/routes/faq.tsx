@@ -14,7 +14,7 @@ const faqStructured: { q: string; a: string }[] = [
   { q: "Wer ist bei mir richtig?", a: "Das merkst du am besten, indem du dich mit meiner Welt beschäftigst — auf BestFans, Clips4Sale, in meinem Onlineshop und auf meinen Socials. Vorerfahrung spielt keine Rolle. Wichtig sind Mut, Ehrlichkeit und die Bereitschaft, dich nicht zu verstecken." },
   { q: "Wie weit im Voraus sollte ich buchen?", a: "Je früher, desto besser. Mehrere Tage im Voraus geben uns Zeit für ein gutes Vorgespräch und eine sorgfältige Vorbereitung. Kurzfristige Termine sind manchmal möglich, aber nicht garantiert." },
   { q: "Wie kann ich dich Online erleben?", a: "Auf BestFans, Clips4Sale und in meinem Onlineshop findest du Einblicke in meine Sessions. Auf BestFans zeige ich außerdem eine Seite von mir, die ich nur Online teile: meine devote Seite. Chatten führe ich ausschließlich über BestFans." },
-  { q: "Was darf ich dir mitbringen, wenn ich dir eine Freude machen möchte?", a: "Eine kleine Aufmerksamkeit ist herzlich willkommen — besonders freue ich mich über Kinderschokolade, Coca-Cola Zero im Glas und Pleaser-High-Heels in Größe 39. Für Größeres empfehle ich meinen Lieblingsfetischladen My Holy Desire in München." },
+  { q: "Was macht dir als Geschenk eine Freude?", a: "Herzhaftes: Pizza mit Schinken, Sahne, Zwiebel und Ei oder Sahne und Garnelen, Sushi mit Avocado, Garnelen oder Lachs, eine Crunchy Chicken Bowl oder Käsebrezel. Champignons mag ich gar nicht; bei Meeresfrüchten bin ich wählerisch — Garnelen mag ich aber auf Pizza und im Sushi. Süßes: Kinderschokolade, Ü-Ei, Knusper Puffreis oder Zimtschnecke. Alkoholfrei gern Coca-Cola Zero im Glas. Kleidung: Dessous, Kleider und Latex in Größe 36, BH-Größe 70D; My Holy Desire in München. Schuhe: Pleaser jeglicher Art in Größe 39. Außerdem freue ich mich über Parfüm und Goldschmuck wie Ketten, Armbänder und verstellbare offene Ringe. Geschenke sind Inspiration, keine Erwartung." },
   { q: "Werden meine Daten gespeichert?", a: "Ich speichere nur, was für die Terminabsprache nötig ist — und auch das nur so lange, wie es wirklich gebraucht wird. Details in der Datenschutzerklärung." },
 ];
 
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/faq")({
   head: () => ({
     meta: [
       { title: "FAQ — Lady Vanilla Ice" },
-      { name: "description", content: "Häufige Fragen zu Diskretion, Ablauf, Buchung und Sessions bei Lady Vanilla Ice." },
+      { name: "description", content: "Häufige Fragen zu Buchung, Sessions, Diskretion sowie Geschenken und Wünschen bei Lady Vanilla Ice." },
       { property: "og:title", content: "FAQ — Lady Vanilla Ice" },
       { property: "og:description", content: "Antworten auf häufige Fragen." },
       { property: "og:url", content: "https://lady-vanillaice.com/faq" },
@@ -167,19 +167,6 @@ function useFaqs(): { q: string; a: ReactNode }[] {
         ),
       },
       {
-        q: "What can I bring to please you?",
-        a: (
-          <>
-            <p className="mb-4">
-              A small attention is warmly welcome — I especially enjoy Kinderschokolade, Coca-Cola Zero in a glass and Pleaser high heels in size 39. For something bigger I recommend my favourite fetish shop in Munich: <a href="https://myholydesire.com" target="_blank" rel="noopener noreferrer" className="text-champagne hover:underline">My Holy Desire</a>. There Ella advises you discreetly and with style. If you can't be there in person, the accompanying online shop has a suitable selection.
-            </p>
-            <p>
-              A well-chosen gift can have a wonderful effect.
-            </p>
-          </>
-        ),
-      },
-      {
         q: "Is my data stored?",
         a: (
           <>
@@ -312,19 +299,6 @@ function useFaqs(): { q: string; a: ReactNode }[] {
       ),
     },
     {
-      q: "Was darf ich dir mitbringen, wenn ich dir eine Freude machen möchte?",
-      a: (
-        <>
-          <p className="mb-4">
-            Eine kleine Aufmerksamkeit ist herzlich willkommen – besonders freue ich mich über Kinderschokolade, Coca-Cola Zero im Glas und Pleaser-High-Heels in Größe 39. Für etwas Größeres empfehle ich dir meinen Lieblingsfetischladen in München: <a href="https://myholydesire.com" target="_blank" rel="noopener noreferrer" className="text-champagne hover:underline">My Holy Desire</a>. Dort berät dich Ella diskret und mit Stil. Wer nicht vor Ort sein kann, findet im zugehörigen Onlineshop eine passende Auswahl.
-          </p>
-          <p>
-            Ein gut gewähltes Geschenk kann eine wunderbare Wirkung entfalten.
-          </p>
-        </>
-      ),
-    },
-    {
       q: "Werden meine Daten gespeichert?",
       a: (
         <>
@@ -338,6 +312,113 @@ function useFaqs(): { q: string; a: ReactNode }[] {
       ),
     },
   ];
+}
+
+function GiftCard({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <article className="border border-champagne/15 bg-card p-5 md:p-6">
+      <h3 className="font-display text-2xl text-champagne mb-3">{title}</h3>
+      <div className="text-sm text-vanilla/70 leading-relaxed">{children}</div>
+    </article>
+  );
+}
+
+function GiftGuide() {
+  const tr = useTr();
+
+  return (
+    <section className="mt-20" aria-labelledby="gift-guide-title">
+      <div className="mb-8">
+        <div className="eyebrow text-champagne mb-3">
+          {tr("Persönliche Wunschliste", "A few gift ideas")}
+        </div>
+        <h2 id="gift-guide-title" className="font-display text-4xl md:text-5xl text-vanilla mb-4">
+          {tr("Geschenke & Wünsche", "Gifts & Wishes")}
+        </h2>
+        <p className="text-sm text-vanilla/65 leading-relaxed max-w-2xl">
+          {tr(
+            "Wenn du mir gern etwas schenken möchtest, findest du hier ein paar Denkanstöße. Ich freue mich über liebevoll ausgesuchte Aufmerksamkeiten — die Liste ist Inspiration, keine Erwartung.",
+            "If you would like to give me something, here are a few ideas. I appreciate thoughtful gifts — this list is inspiration, never an expectation."
+          )}
+        </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <GiftCard title={tr("Herzhaftes", "Savory")}>
+          <p>
+            {tr(
+              "Bei Pizza liebe ich besonders Schinken, Sahne, Zwiebel und Ei — oder Sahne mit Garnelen. Sushi mag ich ebenfalls sehr gern, vor allem Maki mit Avocado oder Sushi mit Garnelen oder Lachs. Auch eine Crunchy Chicken Bowl oder eine Käsebrezel vom Bäcker machen mich glücklich. Champignons mag ich gar nicht; bei Meeresfrüchten bin ich wählerisch — Garnelen mag ich aber auf Pizza und im Sushi.",
+              "My favorite pizzas have ham, cream, onion and egg, or cream and shrimp. I also love sushi, especially avocado maki or sushi with shrimp or salmon. A crunchy chicken bowl or a cheese pretzel from the bakery makes me happy too. I don't like mushrooms and am selective about seafood — shrimp are an exception I enjoy on pizza and in sushi."
+            )}
+          </p>
+        </GiftCard>
+
+        <GiftCard title={tr("Süßes", "Something sweet")}>
+          <p>
+            {tr(
+              "Kinderschokolade liebe ich abgöttisch — ich könnte mich darin hineinlegen. Ein Ü-Ei erinnert mich immer an meine Kindheit. Knusper Puffreis mag ich ebenfalls sehr gern, und eine Zimtschnecke vom Bäcker geht auch immer. Ich weiß, meine Mischung ist vielleicht etwas verrückt — aber wir sind doch alle ein bisschen verrückt.",
+              "I absolutely adore Kinderschokolade — I could happily live in it. A Kinder Surprise egg always reminds me of my childhood. I also love crunchy puffed rice and a cinnamon roll from the bakery. Maybe my tastes are a little quirky — but we're all a little crazy."
+            )}
+          </p>
+        </GiftCard>
+
+        <GiftCard title={tr("Getränke", "Drinks")}>
+          <p>
+            {tr(
+              "Alkoholfrei freue ich mich über Coca-Cola Zero — am liebsten im Glas.",
+              "For a non-alcoholic drink, Coca-Cola Zero in a glass is always welcome."
+            )}
+          </p>
+        </GiftCard>
+
+        <GiftCard title={tr("Kleidung", "Clothing")}>
+          <p className="mb-3">
+            {tr(
+              "Mit Kleidung kannst du mir aktuell wohl die größte Freude machen. Ich liebe Dessous, Kleider und Latex und bin noch am Anfang, mir eine schöne Auswahl aufzubauen. Meine Größen: Kleidergröße 36 und BH-Größe 70D.",
+              "Clothing might be the loveliest gift for me right now. I love lingerie, dresses and latex, and I'm still at the beginning of building a collection I adore. My sizes: EU 36 in clothing and 70D bra."
+            )}
+          </p>
+          <p>
+            {tr("Bei ", "At ")}
+            <a href="https://myholydesire.com" target="_blank" rel="noreferrer" className="text-champagne hover:underline">
+              My Holy Desire
+            </a>
+            {tr(
+              " in München findest du schöne Ideen. Dort berät dich Ella diskret und mit Stil; auch online gibt es eine passende Auswahl.",
+              " in Munich you'll find lovely ideas. Ella offers discreet, stylish advice, and there's a suitable selection online too."
+            )}
+          </p>
+        </GiftCard>
+
+        <GiftCard title={tr("Schuhe", "Shoes")}>
+          <p>
+            {tr(
+              "Ich habe einen wahnsinnigen Schuhtick und liebe Pleaser jeglicher Art. Schuhgröße 39.",
+              "I have a serious shoe obsession and love all kinds of Pleasers. Shoe size EU 39."
+            )}
+          </p>
+        </GiftCard>
+
+        <GiftCard title={tr("Parfüm", "Perfume")}>
+          <p>
+            {tr(
+              "Parfüms finde ich wahnsinnig toll — hier kannst du mich sehr gern überraschen.",
+              "I love perfume, so feel free to surprise me with a scent you think I'll enjoy."
+            )}
+          </p>
+        </GiftCard>
+
+        <GiftCard title={tr("Schmuck", "Jewelry")}>
+          <p>
+            {tr(
+              "Goldene Ketten und Armbänder liebe ich sehr. Besonders gern mag ich verstellbare, offene Ringe, die ich selbst anpassen kann.",
+              "I love gold necklaces and bracelets. I especially like adjustable, open rings that I can size myself."
+            )}
+          </p>
+        </GiftCard>
+      </div>
+    </section>
+  );
 }
 
 function FAQ() {
@@ -396,6 +477,8 @@ function FAQ() {
               );
             })}
           </div>
+
+          <GiftGuide />
 
           <div className="mt-12 text-center">
             <Link to="/kontakt" className="btn-outline-gold">
