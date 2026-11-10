@@ -1551,10 +1551,7 @@ export const getBookingDetail = createServerFn({ method: "GET" })
 
     let customerSpecialRules = "";
     if (booking.guest_email) {
-      const escapedEmail = String(booking.guest_email).replace(/[\\%_]/g, "\\    if (error) throw new Error(error.message);
-    if (!booking) throw new Error("Buchung nicht gefunden.");
-
-    // Load email log entries related to this booking.");
+      const escapedEmail = String(booking.guest_email).replace(/[%_]/g, String.raw\`\\$&\`);
       const { data: customerNote, error: customerNoteError } = await context.supabase
         .from("customer_notes")
         .select("admin_note")
