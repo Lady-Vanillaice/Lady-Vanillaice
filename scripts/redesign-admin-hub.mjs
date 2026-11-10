@@ -157,7 +157,7 @@ text = text.slice(0, hubStart) + hub + text.slice(hubEnd);
 
 // Preserve the Journal entry after the admin hub redesign; this script runs during Vercel postinstall.
 const reviewCard = `    { to: "/admin/erfahrungsberichte", title: "Erfahrungsberichte", description: "Eingegangene Erfahrungsberichte prüfen und freigeben.", Icon: Quote },
-    { to: "/admin/journal", title: "Journal · WhatsApp-Status", description: "Journalbeiträge als WhatsApp-Statusbild herunterladen.", Icon: BookOpen },`;
+    { to: "/admin/journal", title: "Journal", description: "Journalbeiträge als WhatsApp-Statusbild herunterladen.", Icon: BookOpen },`;
 const oldReviewCard = `    { to: "/admin/erfahrungsberichte", title: "Erfahrungsberichte", description: "Eingegangene Erfahrungsberichte prüfen und freigeben.", Icon: Quote },`;
 if (!text.includes('to: "/admin/journal"')) {
   if (!text.includes(oldReviewCard)) throw new Error("Journal insertion point not found in admin group");
@@ -165,7 +165,7 @@ if (!text.includes('to: "/admin/journal"')) {
 }
 const quickKassenbuch = `            { to: "/admin/kassenbuch" as const, title: "Kassenbuch", subtitle: "Zahlungen prüfen", Icon: Wallet },`;
 const quickJournal = quickKassenbuch + `
-            { to: "/admin/journal" as const, title: "Journal · WhatsApp-Status", subtitle: "Statusbild herunterladen", Icon: BookOpen },`;
+            { to: "/admin/journal" as const, title: "Journal", subtitle: "Statusbild herunterladen", Icon: BookOpen },`;
 if (!text.includes('to: "/admin/journal" as const')) {
   if (!text.includes(quickKassenbuch)) throw new Error("Journal quick access insertion point not found");
   text = text.replace(quickKassenbuch, quickJournal);
