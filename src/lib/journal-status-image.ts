@@ -72,7 +72,7 @@ function formatDate(date: string) {
   });
 }
 
-export const createJournalStatusImage = createClientOnlyFn(async (post: JournalPost) => {
+export const createJournalStatusImage = createClientOnlyFn(async (post: JournalPost, options?: { downloadOnly?: boolean }) => {
   await document.fonts.load('500 78px "Cormorant Garamond"');
   await document.fonts.load('400 30px Inter');
   await document.fonts.ready;
@@ -180,7 +180,7 @@ export const createJournalStatusImage = createClientOnlyFn(async (post: JournalP
     share?: (data: ShareData) => Promise<void>;
   };
 
-  if (shareNavigator.share && (!shareNavigator.canShare || shareNavigator.canShare({ files: [file] }))) {
+  if (!options?.downloadOnly && shareNavigator.share && (!shareNavigator.canShare || shareNavigator.canShare({ files: [file] }))) {
     try {
       await shareNavigator.share({ files: [file], title: post.title });
       return;
