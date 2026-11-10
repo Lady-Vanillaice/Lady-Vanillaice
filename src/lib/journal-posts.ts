@@ -322,6 +322,75 @@ export const journalPosts: JournalPost[] = [
       },
     ],
   },
+  {
+    slug: "klinik-fetisch-mehr-als-nadeln",
+    title: "Klinik-Fetisch: Mehr als Nadeln und Katheter",
+    eyebrow: "Perspektive",
+    category: "Perspektive",
+    excerpt:
+      "Mein erstes Hineinschnuppern in Klinik-Play hat mir gezeigt, wie vielfältig dieses Feld ist — und dass es nicht immer um Nadeln oder Schmerzen gehen muss.",
+    date: "2026-11-10",
+    readingMinutes: 7,
+    content: [
+      {
+        type: "p",
+        text: "Vor Kurzem durfte ich zum ersten Mal in das Thema Klinik hineinschnuppern. Ich hatte vorher natürlich bestimmte Bilder im Kopf: Nadeln, Katheter, Schmerzen. Doch schon bei diesem ersten Einblick wurde mir klar, wie viel mehr dahintersteckt. Klinik-Play kann sehr körperlich sein — es kann aber genauso von Atmosphäre, Rollen und der Spannung einer Untersuchung leben.",
+      },
+      { type: "h2", text: "Klinik ist nicht automatisch Nadel und Schmerz" },
+      {
+        type: "p",
+        text: "Für manche ist gerade der Schmerzreiz mit Nadeln Teil des Fetischs. Andere reizt vor allem das Rollenspiel: Man kommt in eine Praxis, wird empfangen, befragt und untersucht. Vielleicht hörst du das Klicken von Instrumenten, spürst kühle Handschuhe oder ein Stethoskop auf der Haut. Vielleicht geht es um einen Check-up, die Frage, ob dein Herz in Ordnung ist, oder um das Gefühl, dich einer Untersuchung anzuvertrauen. Das kann intensiv sein, auch ohne dass eine Nadel ins Spiel kommt.",
+      },
+      {
+        type: "p",
+        text: "Mich hat überrascht, wie viel Spannung in den kleinen Momenten liegen kann: in der ruhigen, bestimmten Stimme, in einer Anweisung, im Warten auf den nächsten Schritt. Die Rolle schafft einen Rahmen, in dem jemand die Führung übernimmt und der andere sich untersuchen lässt. Für manche ist genau diese Mischung aus Vertrauen, Kontrolle und Verletzlichkeit der eigentliche Reiz.",
+      },
+      {
+        type: "quote",
+        text: "Klinik-Play beginnt nicht erst mit einem Instrument. Manchmal reicht schon die Frage: „Ist dein Herz in Ordnung?“",
+      },
+      { type: "h2", text: "Welche Facetten kann Klinik-Play haben?" },
+      {
+        type: "p",
+        text: "Der Begriff umfasst unterschiedliche Fantasien und Spielweisen. Was davon passt, ist sehr persönlich — und nicht jede Domina bietet jede Variante an. Hier ein paar Beispiele, damit du eine Vorstellung von der Bandbreite bekommst:",
+      },
+      {
+        type: "ul",
+        items: [
+          "Arzt-Patient-Rollenspiel: Ankommen, Fragen beantworten, eine Untersuchung und ein inszenierter Befund.",
+          "Check-up-Szenen: Stethoskop, Puls, Blutdruck oder Temperatur als Teil der Atmosphäre und des Rollenspiels.",
+          "Untersuchung und Abtasten: ein vereinbarter, respektvoller Check bestimmter Körperbereiche — innerhalb klarer Grenzen.",
+          "Klinik-Atmosphäre: Kittel, Handschuhe, ruhige Abläufe, medizinische Sprache und das Gefühl, in einer Praxis zu sein.",
+          "Sensorisches Spiel: etwa der Kontrast von kühlen Instrumenten, Berührung und Erwartung.",
+          "Machtgefälle und Ausgeliefertsein: klare Anweisungen, eine festgelegte Rolle oder eine vereinbarte Begrenzung der Bewegungsfreiheit.",
+          "Schmerz- und Nadelfetisch: von der Fantasie und dem Anblick bis zu speziell vereinbarten Praktiken. Das ist nicht automatisch Teil jeder Klinik-Session.",
+          "Katheter- oder andere invasive Szenarien: eine besonders spezialisierte und risikoreiche Facette, die keine spontane Spielidee und nichts für Selbstversuche ist.",
+        ],
+      },
+      { type: "h2", text: "Fantasie, Rollenspiel und echte Medizin" },
+      {
+        type: "p",
+        text: "Ein wichtiger Unterschied: Eine gespielte Untersuchung ist keine medizinische Diagnose oder Behandlung. Viele Szenen lassen sich als Rollenspiel oder mit dafür gedachten Requisiten gestalten. Alles, was tatsächlich in den Körper eingreift — zum Beispiel echte Nadeln oder Katheter — bringt besondere Risiken mit sich und gehört ausschließlich in fachkundige Hände. Darüber gibt es keine spontane Überraschung: Grenzen, Einverständnis und der genaue Rahmen müssen vorher klar besprochen sein.",
+      },
+      {
+        type: "p",
+        text: "Auch innerhalb einer Fantasie bleibt ein Nein jederzeit ein Nein. Vorher sollten Wünsche, No-Gos, gesundheitliche Einschränkungen und ein klares Stoppsignal besprochen werden. Eine gute Szene lebt nicht davon, Grenzen zu erraten, sondern davon, dass beide Seiten wissen, worauf sie sich einlassen.",
+      },
+      { type: "h2", text: "Mein persönlicher Anfang" },
+      {
+        type: "p",
+        text: "Ich stehe bei diesem Thema noch ganz am Anfang — und genau das macht es gerade so spannend. Mein erster Einblick hat meine Neugier geweckt und mir gezeigt, dass ich Klinik nicht vorschnell auf Nadeln und Schmerzen reduzieren möchte. Ich möchte mehr darüber lernen und würde sehr gern eine fundierte Ausbildung in diesem Bereich machen.",
+      },
+      {
+        type: "p",
+        text: "Mein Tipp an dich: Schreib Klinik nicht sofort ab, nur weil du dabei zuerst an Nadeln, Katheter oder Schmerz denkst. Vielleicht spricht dich das Rollenspiel an, vielleicht die Atmosphäre einer Untersuchung oder einfach die Rolle, dich für einen Moment in erfahrene Hände zu begeben. Manchmal lohnt es sich, vorsichtig hineinzuschnuppern — mit klarer Absprache und in einem Rahmen, der sich für alle gut anfühlt.",
+      },
+      {
+        type: "quote",
+        text: "Man muss nicht schon genau wissen, was einen reizt. Neugier und ein ehrliches Gespräch sind ein guter Anfang.",
+      },
+    ],
+  },
 ];
 
 export function getPostBySlug(slug: string): JournalPost | undefined {
