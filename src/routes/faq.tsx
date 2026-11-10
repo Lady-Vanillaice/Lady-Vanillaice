@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "../components/site/PageHeader";
 import { Plus, Minus } from "lucide-react";
 import type { ReactNode } from "react";
@@ -323,131 +323,258 @@ function GiftCard({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function GiftGuide() {
+function GiftGuideContent() {
   const tr = useTr();
-  const [open, setOpen] = useState(false);
 
   return (
-    <section className="mb-12 border-y border-champagne/15" aria-labelledby="gift-guide-title">
+    <div>
+      <p className="text-sm text-vanilla/65 leading-relaxed max-w-2xl mb-6">
+        {tr(
+          "Wenn du mir gern etwas schenken möchtest, findest du hier ein paar Denkanstöße. Ich freue mich über liebevoll ausgesuchte Aufmerksamkeiten — die Liste ist Inspiration, keine Erwartung.",
+          "If you would like to give me something, here are a few ideas. I appreciate thoughtful gifts — this list is inspiration, never an expectation."
+        )}
+      </p>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <GiftCard title={tr("Herzhaftes", "Savory")}>
+          <p>
+            {tr(
+              "Bei Pizza liebe ich besonders Schinken, Sahne, Zwiebel und Ei — oder Sahne mit Garnelen. Sushi mag ich ebenfalls sehr gern, vor allem Maki mit Avocado oder Sushi mit Garnelen oder Lachs. Auch eine Crunchy Chicken Bowl oder eine Käsebrezel vom Bäcker machen mich glücklich. Champignons mag ich gar nicht; bei Meeresfrüchten bin ich wählerisch — Garnelen mag ich aber auf Pizza und im Sushi.",
+              "My favorite pizzas have ham, cream, onion and egg, or cream and shrimp. I also love sushi, especially avocado maki or sushi with shrimp or salmon. A crunchy chicken bowl or a cheese pretzel from the bakery makes me happy too. I don't like mushrooms and am selective about seafood — shrimp are an exception I enjoy on pizza and in sushi."
+            )}
+          </p>
+        </GiftCard>
+
+        <GiftCard title={tr("Süßes", "Something sweet")}>
+          <p>
+            {tr(
+              "Kinderschokolade liebe ich abgöttisch — ich könnte mich darin hineinlegen. Ein Ü-Ei erinnert mich immer an meine Kindheit. Knusper Puffreis mag ich ebenfalls sehr gern, und eine Zimtschnecke vom Bäcker geht auch immer. Ich weiß, meine Mischung ist vielleicht etwas verrückt — aber wir sind doch alle ein bisschen verrückt.",
+              "I absolutely adore Kinderschokolade — I could happily live in it. A Kinder Surprise egg always reminds me of my childhood. I also love crunchy puffed rice and a cinnamon roll from the bakery. Maybe my tastes are a little quirky — but we're all a little crazy."
+            )}
+          </p>
+        </GiftCard>
+
+        <GiftCard title={tr("Getränke", "Drinks")}>
+          <p>
+            {tr(
+              "Alkoholfrei freue ich mich über Coca-Cola Zero — am liebsten im Glas — und über Matcha mit Hafermilch.",
+              "For drinks, I love Coca-Cola Zero in a glass and matcha with oat milk."
+            )}
+          </p>
+        </GiftCard>
+
+        <GiftCard title={tr("Kleidung", "Clothing")}>
+          <p className="mb-3">
+            {tr(
+              "Mit Kleidung kannst du mir aktuell wohl die größte Freude machen. Ich liebe Dessous, Kleider und Latex und bin noch am Anfang, mir eine schöne Auswahl aufzubauen. Meine Größen: Kleidergröße 36 und BH-Größe 70D.",
+              "Clothing might be the loveliest gift for me right now. I love lingerie, dresses and latex, and I'm still at the beginning of building a collection I adore. My sizes: EU 36 in clothing and 70D bra."
+            )}
+          </p>
+          <p>
+            {tr("Bei ", "At ")}
+            <a href="https://myholydesire.com" target="_blank" rel="noreferrer" className="text-champagne hover:underline">
+              My Holy Desire
+            </a>
+            {tr(
+              " in München findest du schöne Ideen. Dort berät dich Ella diskret und mit Stil; auch online gibt es eine passende Auswahl.",
+              " in Munich you'll find lovely ideas. Ella offers discreet, stylish advice, and there's a suitable selection online too."
+            )}
+          </p>
+        </GiftCard>
+
+        <GiftCard title={tr("Schuhe", "Shoes")}>
+          <p>
+            {tr(
+              "Ich habe einen wahnsinnigen Schuhtick und liebe Pleaser jeglicher Art. Schuhgröße 39.",
+              "I have a serious shoe obsession and love all kinds of Pleasers. Shoe size EU 39."
+            )}
+          </p>
+        </GiftCard>
+
+        <GiftCard title={tr("Parfüm", "Perfume")}>
+          <p>
+            {tr(
+              "Parfüms finde ich wahnsinnig toll — hier kannst du mich sehr gern überraschen.",
+              "I love perfume, so feel free to surprise me with a scent you think I'll enjoy."
+            )}
+          </p>
+        </GiftCard>
+
+        <GiftCard title={tr("Schmuck", "Jewelry")}>
+          <p>
+            {tr(
+              "Goldene Ketten und Armbänder liebe ich sehr. Besonders gern mag ich verstellbare, offene Ringe, die ich selbst anpassen kann.",
+              "I love gold necklaces and bracelets. I especially like adjustable, open rings that I can size myself."
+            )}
+          </p>
+        </GiftCard>
+      </div>
+    </div>
+  );
+}
+
+function FAQCategoryPanel({
+  id,
+  number,
+  title,
+  subtitle,
+  open,
+  onToggle,
+  children,
+}: {
+  id: string;
+  number: string;
+  title: string;
+  subtitle: string;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  const panelId = `faq-panel-${id}`;
+
+  return (
+    <section
+      id={id}
+      className={`scroll-mt-28 border transition-colors duration-300 ${
+        open ? "border-champagne/40 bg-card shadow-[0_18px_48px_rgba(0,0,0,0.2)]" : "border-champagne/15 bg-card/40"
+      }`}
+    >
       <button
         type="button"
         aria-expanded={open}
-        aria-controls="gift-guide-content"
-        onClick={() => setOpen((value) => !value)}
-        className="w-full flex items-center justify-between gap-6 py-6 text-left group"
+        aria-controls={panelId}
+        onClick={onToggle}
+        className="w-full flex items-center justify-between gap-5 px-5 py-5 md:px-7 md:py-6 text-left group"
       >
-        <span>
-          <span className="eyebrow block text-champagne mb-2">
-            {tr("Persönliche Wunschliste", "A few gift ideas")}
+        <span className="flex min-w-0 items-center gap-4 md:gap-6">
+          <span aria-hidden="true" className="font-display text-3xl md:text-4xl text-champagne/65 tabular-nums">
+            {number}
           </span>
-          <span id="gift-guide-title" className="block font-display text-3xl md:text-4xl text-vanilla group-hover:text-champagne transition-colors">
-            {tr("Geschenke & Wünsche", "Gifts & Wishes")}
+          <span className="min-w-0">
+            <span className="block font-display text-2xl md:text-3xl text-vanilla group-hover:text-champagne transition-colors">
+              {title}
+            </span>
+            <span className="mt-1 block text-xs md:text-sm text-vanilla/55">
+              {subtitle}
+            </span>
           </span>
         </span>
-        <span className="shrink-0 w-9 h-9 border border-champagne/30 flex items-center justify-center text-champagne">
-          {open ? <Minus size={14} /> : <Plus size={14} />}
+        <span className="shrink-0 w-10 h-10 border border-champagne/30 flex items-center justify-center text-champagne">
+          {open ? <Minus size={15} /> : <Plus size={15} />}
         </span>
       </button>
 
       <div
-        id="gift-guide-content"
+        id={panelId}
         className={`grid transition-all duration-500 ${
-          open ? "grid-rows-[1fr] opacity-100 pb-6" : "grid-rows-[0fr] opacity-0"
+          open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
         }`}
       >
         <div className="overflow-hidden">
-          <div className="pb-2">
-            <p className="text-sm text-vanilla/65 leading-relaxed max-w-2xl mb-6">
-              {tr(
-                "Wenn du mir gern etwas schenken möchtest, findest du hier ein paar Denkanstöße. Ich freue mich über liebevoll ausgesuchte Aufmerksamkeiten — die Liste ist Inspiration, keine Erwartung.",
-                "If you would like to give me something, here are a few ideas. I appreciate thoughtful gifts — this list is inspiration, never an expectation."
-              )}
-            </p>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <GiftCard title={tr("Herzhaftes", "Savory")}>
-                  <p>
-                    {tr(
-                      "Bei Pizza liebe ich besonders Schinken, Sahne, Zwiebel und Ei — oder Sahne mit Garnelen. Sushi mag ich ebenfalls sehr gern, vor allem Maki mit Avocado oder Sushi mit Garnelen oder Lachs. Auch eine Crunchy Chicken Bowl oder eine Käsebrezel vom Bäcker machen mich glücklich. Champignons mag ich gar nicht; bei Meeresfrüchten bin ich wählerisch — Garnelen mag ich aber auf Pizza und im Sushi.",
-                      "My favorite pizzas have ham, cream, onion and egg, or cream and shrimp. I also love sushi, especially avocado maki or sushi with shrimp or salmon. A crunchy chicken bowl or a cheese pretzel from the bakery makes me happy too. I don't like mushrooms and am selective about seafood — shrimp are an exception I enjoy on pizza and in sushi."
-                    )}
-                  </p>
-                </GiftCard>
-        
-                <GiftCard title={tr("Süßes", "Something sweet")}>
-                  <p>
-                    {tr(
-                      "Kinderschokolade liebe ich abgöttisch — ich könnte mich darin hineinlegen. Ein Ü-Ei erinnert mich immer an meine Kindheit. Knusper Puffreis mag ich ebenfalls sehr gern, und eine Zimtschnecke vom Bäcker geht auch immer. Ich weiß, meine Mischung ist vielleicht etwas verrückt — aber wir sind doch alle ein bisschen verrückt.",
-                      "I absolutely adore Kinderschokolade — I could happily live in it. A Kinder Surprise egg always reminds me of my childhood. I also love crunchy puffed rice and a cinnamon roll from the bakery. Maybe my tastes are a little quirky — but we're all a little crazy."
-                    )}
-                  </p>
-                </GiftCard>
-        
-                <GiftCard title={tr("Getränke", "Drinks")}>
-                  <p>
-                    {tr(
-                      "Alkoholfrei freue ich mich über Coca-Cola Zero — am liebsten im Glas — und über Matcha mit Hafermilch.",
-                      "For drinks, I love Coca-Cola Zero in a glass and matcha with oat milk."
-                    )}
-                  </p>
-                </GiftCard>
-        
-                <GiftCard title={tr("Kleidung", "Clothing")}>
-                  <p className="mb-3">
-                    {tr(
-                      "Mit Kleidung kannst du mir aktuell wohl die größte Freude machen. Ich liebe Dessous, Kleider und Latex und bin noch am Anfang, mir eine schöne Auswahl aufzubauen. Meine Größen: Kleidergröße 36 und BH-Größe 70D.",
-                      "Clothing might be the loveliest gift for me right now. I love lingerie, dresses and latex, and I'm still at the beginning of building a collection I adore. My sizes: EU 36 in clothing and 70D bra."
-                    )}
-                  </p>
-                  <p>
-                    {tr("Bei ", "At ")}
-                    <a href="https://myholydesire.com" target="_blank" rel="noreferrer" className="text-champagne hover:underline">
-                      My Holy Desire
-                    </a>
-                    {tr(
-                      " in München findest du schöne Ideen. Dort berät dich Ella diskret und mit Stil; auch online gibt es eine passende Auswahl.",
-                      " in Munich you'll find lovely ideas. Ella offers discreet, stylish advice, and there's a suitable selection online too."
-                    )}
-                  </p>
-                </GiftCard>
-        
-                <GiftCard title={tr("Schuhe", "Shoes")}>
-                  <p>
-                    {tr(
-                      "Ich habe einen wahnsinnigen Schuhtick und liebe Pleaser jeglicher Art. Schuhgröße 39.",
-                      "I have a serious shoe obsession and love all kinds of Pleasers. Shoe size EU 39."
-                    )}
-                  </p>
-                </GiftCard>
-        
-                <GiftCard title={tr("Parfüm", "Perfume")}>
-                  <p>
-                    {tr(
-                      "Parfüms finde ich wahnsinnig toll — hier kannst du mich sehr gern überraschen.",
-                      "I love perfume, so feel free to surprise me with a scent you think I'll enjoy."
-                    )}
-                  </p>
-                </GiftCard>
-        
-                <GiftCard title={tr("Schmuck", "Jewelry")}>
-                  <p>
-                    {tr(
-                      "Goldene Ketten und Armbänder liebe ich sehr. Besonders gern mag ich verstellbare, offene Ringe, die ich selbst anpassen kann.",
-                      "I love gold necklaces and bracelets. I especially like adjustable, open rings that I can size myself."
-                    )}
-                  </p>
-                </GiftCard>
-              </div>
-          </div>
+          <div className="px-5 pb-6 md:px-7 md:pb-8">{children}</div>
         </div>
       </div>
     </section>
   );
 }
 
+function FAQQuestion({
+  id,
+  item,
+  open,
+  onToggle,
+}: {
+  id: string;
+  item: { q: string; a: ReactNode };
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const answerId = `answer-${id}`;
+
+  return (
+    <div className="border-b border-champagne/10 last:border-0">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={answerId}
+        onClick={onToggle}
+        className="w-full flex items-center justify-between gap-5 py-5 text-left group"
+      >
+        <span className={`font-display text-xl md:text-2xl transition-colors ${open ? "text-champagne" : "text-vanilla group-hover:text-champagne"}`}>
+          {item.q}
+        </span>
+        <span className="shrink-0 w-8 h-8 border border-champagne/20 flex items-center justify-center text-champagne">
+          {open ? <Minus size={13} /> : <Plus size={13} />}
+        </span>
+      </button>
+      <div
+        id={answerId}
+        className={`grid transition-all duration-300 ${
+          open ? "grid-rows-[1fr] opacity-100 pb-5" : "grid-rows-[0fr] opacity-0"
+        }`}
+      >
+        <div className="overflow-hidden">
+          {typeof item.a === "string" ? (
+            <p className="text-sm text-vanilla/70 leading-relaxed max-w-2xl">{item.a}</p>
+          ) : (
+            <div className="text-sm text-vanilla/70 leading-relaxed max-w-2xl">{item.a}</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FAQ() {
-  const [open, setOpen] = useState<number | null>(0);
+  const [openCategory, setOpenCategory] = useState<string | null>(null);
+  const [openQuestion, setOpenQuestion] = useState<string | null>(null);
   const tr = useTr();
   const faqs = useFaqs();
+
+  useEffect(() => {
+    if (window.location.hash !== "#geschenke-wuensche") return;
+    setOpenCategory("geschenke-wuensche");
+    requestAnimationFrame(() => {
+      document.getElementById("geschenke-wuensche")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, []);
+
+  const at = (indexes: number[]) =>
+    indexes.flatMap((index) => (faqs[index] ? [faqs[index]] : []));
+  const categories = [
+    {
+      id: "geschenke-wuensche",
+      number: "01",
+      title: tr("Geschenke & Wünsche", "Gifts & Wishes"),
+      subtitle: tr("Persönliche Denkanstöße — von herzhaft bis goldfarben.", "Personal ideas, from savory treats to golden details."),
+      indexes: [] as number[],
+      gifts: true,
+    },
+    {
+      id: "booking",
+      number: "02",
+      title: tr("Buchung & Termin", "Booking & Appointments"),
+      subtitle: tr("Anfrage, Terminfindung und Zahlung.", "Enquiries, scheduling and payment."),
+      indexes: [0, 1, 6],
+      gifts: false,
+    },
+    {
+      id: "session",
+      number: "03",
+      title: tr("Session & Vertrauen", "Sessions & Trust"),
+      subtitle: tr("Ablauf, Grenzen und ein gutes Gefühl.", "What to expect, boundaries and feeling at ease."),
+      indexes: [2, 3, 4, 5],
+      gifts: false,
+    },
+    {
+      id: "online",
+      number: "04",
+      title: tr("Online & Privatsphäre", "Online & Privacy"),
+      subtitle: tr("Online-Angebote und der Umgang mit deinen Daten.", "Online content and how your data is handled."),
+      indexes: [7, 8],
+      gifts: false,
+    },
+  ];
 
   return (
     <>
@@ -465,45 +592,45 @@ function FAQ() {
         )}
       />
 
-      <section className="py-24">
-        <div className="container-luxe max-w-3xl">
-          <GiftGuide />
+      <section className="py-16 md:py-24">
+        <div className="container-luxe max-w-3xl space-y-4">
+          {categories.map((category) => {
+            const isCategoryOpen = openCategory === category.id;
+            const items = at(category.indexes);
 
-          <div className="divide-y divide-champagne/15 border-y border-champagne/15">
-            {faqs.map((item, i) => {
-              const isOpen = open === i;
-              return (
-                <div key={item.q}>
-                  <button
-                    onClick={() => setOpen(isOpen ? null : i)}
-                    className="w-full flex items-center justify-between gap-6 py-6 text-left group"
-                  >
-                    <span className={`font-display text-xl transition-colors ${isOpen ? "gold-text" : "text-vanilla group-hover:text-champagne"}`}>
-                      {item.q}
-                    </span>
-                    <span className="shrink-0 w-9 h-9 border border-champagne/30 flex items-center justify-center text-champagne">
-                      {isOpen ? <Minus size={14} /> : <Plus size={14} />}
-                    </span>
-                  </button>
-                  <div
-                    className={`grid transition-all duration-500 ${
-                      isOpen ? "grid-rows-[1fr] opacity-100 pb-6" : "grid-rows-[0fr] opacity-0"
-                    }`}
-                  >
-                    <div className="overflow-hidden">
-                      {typeof item.a === "string" ? (
-                        <p className="text-sm text-vanilla/70 leading-relaxed max-w-2xl">{item.a}</p>
-                      ) : (
-                        <div className="text-sm text-vanilla/70 leading-relaxed max-w-2xl">{item.a}</div>
-                      )}
-                    </div>
+            return (
+              <FAQCategoryPanel
+                key={category.id}
+                id={category.id}
+                number={category.number}
+                title={category.title}
+                subtitle={category.subtitle}
+                open={isCategoryOpen}
+                onToggle={() => setOpenCategory(isCategoryOpen ? null : category.id)}
+              >
+                {category.gifts ? (
+                  <GiftGuideContent />
+                ) : (
+                  <div className="border-t border-champagne/15">
+                    {items.map((item, index) => {
+                      const questionId = `${category.id}-${index}`;
+                      return (
+                        <FAQQuestion
+                          key={item.q}
+                          id={questionId}
+                          item={item}
+                          open={openQuestion === questionId}
+                          onToggle={() => setOpenQuestion(openQuestion === questionId ? null : questionId)}
+                        />
+                      );
+                    })}
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                )}
+              </FAQCategoryPanel>
+            );
+          })}
 
-          <div className="mt-12 text-center">
+          <div className="pt-8 text-center">
             <Link to="/kontakt" className="btn-outline-gold">
               {tr("Persönlich fragen", "Ask personally")}
             </Link>
