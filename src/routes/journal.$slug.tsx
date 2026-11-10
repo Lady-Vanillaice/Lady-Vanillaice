@@ -2,6 +2,9 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { PageHeader } from "../components/site/PageHeader";
 import { getPostBySlug, getSortedPosts, type JournalPost } from "../lib/journal-posts";
 import { useTr, useLang } from "@/i18n";
+import { useState } from "react";
+import { ImageDown } from "lucide-react";
+import { createJournalStatusImage } from "@/lib/journal-status-image.client";
 
 export const Route = createFileRoute("/journal/$slug")({
   loader: ({ params }) => {
@@ -111,6 +114,54 @@ function renderBlock(block: JournalPost["content"][number], i: number) {
   }
 }
 
+function JournalStatusTools({ post }: { post: JournalPost }) {
+  const tr = useTr();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function createStatusImage() {
+    setBusy(true);
+    setError(null);
+    try {
+      await createJournalStatusImage(post);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : tr("Das Statusbild konnte nicht erstellt werden.", "The status image could not be created."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="mt-12 border border-champagne/20 bg-card/70 p-5 md:p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="eyebrow text-champagne mb-2">
+            {tr("Zum Teilen", "Share this post")}
+          </div>
+          <p className="text-sm text-vanilla/65 leading-relaxed max-w-md">
+            {tr(
+              "Erstellt ein Hochformat-Statusbild mit Titel, kurzem Einblick und Beitragslink. Auf dem Handy kannst du es direkt teilen, sonst wird es als PNG heruntergeladen.",
+              "Creates a vertical status image with the title, a short preview and the article link. Share it from your phone or download the PNG."
+            )}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void createStatusImage()}
+          disabled={busy}
+          className="btn-outline-gold !py-3 !px-5 !text-[0.62rem] disabled:opacity-60"
+        >
+          <ImageDown size={16} />
+          {busy
+            ? tr("Bild wird erstellt …", "Creating image …")
+            : tr("Statusbild erstellen", "Create status image")}
+        </button>
+      </div>
+      {error && <p role="alert" className="mt-3 text-sm text-red-300">{error}</p>}
+    </section>
+  );
+}
+
 function JournalPostView() {
   const { post } = Route.useLoaderData();
   const others = getSortedPosts().filter((p) => p.slug !== post.slug).slice(0, 2);
@@ -138,6 +189,7 @@ function JournalPostView() {
           )}
           <p className="text-lg text-vanilla/80 leading-relaxed">{post.excerpt}</p>
           <div className="mt-2">{post.content.map(renderBlock)}</div>
+          <JournalStatusTools post={post} />
 
           <div className="mt-16 pt-8 border-t border-champagne/15 flex flex-wrap gap-4 justify-between">
             <Link to="/journal" className="text-[0.7rem] uppercase tracking-[0.24em] text-champagne hover:text-vanilla">
