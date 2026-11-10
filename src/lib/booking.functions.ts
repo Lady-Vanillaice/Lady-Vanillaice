@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { splitCustomerAdminNote } from "@/lib/customer-special-rules";
 import { z } from "zod";
 import { sessionPriceForMinutes } from "@/lib/session-pricing";
 
@@ -1548,6 +1549,21 @@ export const getBookingDetail = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     if (!booking) throw new Error("Buchung nicht gefunden.");
 
+    let customerSpecialRules = "";
+    if (booking.guest_email) {
+      const escapedEmail = String(booking.guest_email).replace(/[\\%_]/g, "\\    if (error) throw new Error(error.message);
+    if (!booking) throw new Error("Buchung nicht gefunden.");
+
+    // Load email log entries related to this booking.");
+      const { data: customerNote, error: customerNoteError } = await context.supabase
+        .from("customer_notes")
+        .select("admin_note")
+        .ilike("email", escapedEmail)
+        .maybeSingle();
+      if (customerNoteError) throw new Error(customerNoteError.message);
+      customerSpecialRules = splitCustomerAdminNote(customerNote?.admin_note).specialRules;
+    }
+
     // Load email log entries related to this booking. We match by suffix on
     // message_id (idempotency keys end with the booking id) and recipient.
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -1594,7 +1610,7 @@ export const getBookingDetail = createServerFn({ method: "GET" })
       photoUrl = signed?.signedUrl ?? null;
     }
 
-    return { booking, emails: dedupedEmails, photoUrl, photoPath };
+    return { booking, emails: dedupedEmails, photoUrl, photoPath, customerSpecialRules };
   });
 
 
