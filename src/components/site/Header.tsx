@@ -28,7 +28,6 @@ export function Header() {
     { to: "/preise", label: t<string>("nav.prices") },
     { to: "/kalender", label: t<string>("nav.calendar") },
     { to: "/online", label: t<string>("nav.online") },
-    { to: "/faq", label: t<string>("nav.faq") },
   ] as const;
 
   const mobileNav = [
@@ -42,8 +41,8 @@ export function Header() {
     { to: "/content-dreh", label: t<string>("nav.contentDreh") },
     { to: "/custom", label: t<string>("nav.custom") },
     { to: "/fotoshooting", label: t<string>("nav.photoshoot") },
+    { to: "/geschenke-wuensche", label: tr("Geschenke & Wünsche", "Gifts & Wishes") },
     { to: "/erfahrungsberichte", label: t<string>("nav.reviews") },
-    { to: "/faq", hash: "geschenke-wuensche", label: tr("Geschenke & Wünsche", "Gifts & Wishes") },
     { to: "/journal", label: t<string>("nav.journal") },
     { to: "/buchung", label: t<string>("nav.booking") },
     { to: "/kontakt", label: t<string>("nav.contact") },
