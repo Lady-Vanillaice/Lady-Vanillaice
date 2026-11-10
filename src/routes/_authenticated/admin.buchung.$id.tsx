@@ -542,7 +542,7 @@ const depositDateMut = useMutation({
   }
   if (!detailQ.data) return null;
 
-  const { booking, emails, photoUrl, photoPath } = detailQ.data;
+  const { booking, emails, photoUrl, photoPath, customerSpecialRules } = detailQ.data;
  const slot = booking.availability_slots as
   | {
       starts_at: string;
@@ -681,6 +681,13 @@ const depositDateMut = useMutation({
               </div>
             )}
           </div>
+
+          {customerSpecialRules?.trim() && (
+            <aside className="mb-6 border border-champagne/40 bg-champagne/10 p-4 sm:p-5" role="note">
+              <div className="eyebrow text-champagne mb-2">Dauerhafte Sonderregelungen aus dem CRM</div>
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-vanilla">{customerSpecialRules}</p>
+            </aside>
+          )}
 
           {/* TABS NAV */}
           <div className="flex flex-wrap gap-1 border-b border-champagne/15 mb-6">
