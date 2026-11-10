@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Crown, Menu, X } from "lucide-react";
-import { LanguageSwitcher, useT } from "@/i18n";
+import { LanguageSwitcher, useT, useTr } from "@/i18n";
 
 function Monogram() {
   return (
@@ -20,6 +20,7 @@ export function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const t = useT();
+  const tr = useTr();
 
   const nav = [
     { to: "/ueber-mich", label: t<string>("nav.about") },
@@ -42,6 +43,7 @@ export function Header() {
     { to: "/custom", label: t<string>("nav.custom") },
     { to: "/fotoshooting", label: t<string>("nav.photoshoot") },
     { to: "/erfahrungsberichte", label: t<string>("nav.reviews") },
+    { to: "/faq", hash: "geschenke-wuensche", label: tr("Geschenke & Wünsche", "Gifts & Wishes") },
     { to: "/journal", label: t<string>("nav.journal") },
     { to: "/buchung", label: t<string>("nav.booking") },
     { to: "/kontakt", label: t<string>("nav.contact") },
@@ -104,8 +106,9 @@ export function Header() {
           <nav className="container-luxe flex flex-col py-3">
             {mobileNav.map((item) => (
               <Link
-                key={item.to}
+                key={`${item.to}${"hash" in item ? item.hash : ""}`}
                 to={item.to}
+                hash={"hash" in item ? item.hash : undefined}
                 onClick={() => setOpen(false)}
                 className={`py-3.5 text-sm uppercase tracking-[0.2em] border-b border-champagne/15 ${item.to === "/kontakt" ? "text-champagne font-semibold" : "text-vanilla hover:text-champagne"}`}
                 activeProps={{ className: "text-champagne" }}
