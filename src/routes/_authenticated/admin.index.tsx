@@ -15,7 +15,7 @@ import {
 import { PageHeader } from "@/components/site/PageHeader";
 import {
   LogOut, Calendar, Mail, ShieldCheck, CheckCircle2, XCircle, MessageSquare, Quote,
-  Camera, Sparkles, Wallet, RotateCcw, CalendarClock, Users, Clock3, BadgeEuro,
+  BookOpen, Camera, Sparkles, Wallet, RotateCcw, CalendarClock, Users, Clock3, BadgeEuro,
   CircleAlert, ArrowRight, ChevronDown, Download, Share, Bell, BellOff, Send, Building2, Plus, Trash2,
 } from "lucide-react";
 import { endOfMonth, endOfWeek, format, isWithinInterval, startOfDay, startOfMonth, startOfWeek } from "date-fns";
@@ -27,7 +27,7 @@ export const Route = createFileRoute("/_authenticated/admin/")({
 });
 
 type HubCard = {
-  to: "/admin/kalender" | "/admin/terminplan" | "/admin/termine" | "/admin/duo" | "/admin/contentdreh" | "/admin/custom" | "/admin/fotoshooting" | "/admin/kassenbuch" | "/admin/erfahrungsberichte" | "/admin/umplanen" | "/admin/kunden" | "/admin/agb" | "/admin/newsletter";
+  to: "/admin/kalender" | "/admin/terminplan" | "/admin/termine" | "/admin/duo" | "/admin/contentdreh" | "/admin/custom" | "/admin/fotoshooting" | "/admin/journal" | "/admin/kassenbuch" | "/admin/erfahrungsberichte" | "/admin/umplanen" | "/admin/kunden" | "/admin/agb" | "/admin/newsletter";
   title: string;
   description: string;
   Icon: typeof Calendar;
@@ -76,6 +76,7 @@ const HUB_GROUPS: HubGroup[] = [
   { label: "Inhalte", hint: "Website-Inhalte pflegen", cards: [
     { to: "/admin/newsletter", title: "Neue Termine versenden", description: "Newsletter an bestätigte Empfänger senden.", Icon: Send },
     { to: "/admin/erfahrungsberichte", title: "Erfahrungsberichte", description: "Eingereichte Erfahrungsberichte freigeben.", Icon: Quote },
+    { to: "/admin/journal", title: "Journal", description: "Journalbeiträge als WhatsApp-Statusbild herunterladen.", Icon: BookOpen },
     { to: "/admin/agb", title: "AGB", description: "AGB-Text bearbeiten und einfügen.", Icon: MessageSquare },
   ]},
 ];
