@@ -1551,7 +1551,7 @@ export const getBookingDetail = createServerFn({ method: "GET" })
 
     let customerSpecialRules = "";
     if (booking.guest_email) {
-      const escapedEmail = String(booking.guest_email).replace(/[%_]/g, String.raw\`\\$&\`);
+      const escapedEmail = String(booking.guest_email).replace(/[%_]/g, "\\$&");
       const { data: customerNote, error: customerNoteError } = await context.supabase
         .from("customer_notes")
         .select("admin_note")
