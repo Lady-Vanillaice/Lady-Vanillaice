@@ -4,7 +4,7 @@ import { getPostBySlug, getSortedPosts, type JournalPost } from "../lib/journal-
 import { useTr, useLang } from "@/i18n";
 import { useState } from "react";
 import { ImageDown } from "lucide-react";
-import { createJournalStatusImage } from "@/lib/journal-status-image.client";
+
 
 export const Route = createFileRoute("/journal/$slug")({
   loader: ({ params }) => {
@@ -123,6 +123,7 @@ function JournalStatusTools({ post }: { post: JournalPost }) {
     setBusy(true);
     setError(null);
     try {
+      const { createJournalStatusImage } = await import("@/lib/journal-status-image.client");
       await createJournalStatusImage(post);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : tr("Das Statusbild konnte nicht erstellt werden.", "The status image could not be created."));
