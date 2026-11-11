@@ -69,7 +69,7 @@ export const journalPosts: JournalPost[] = [
       },
       {
         "type": "p",
-        "text": "Wir achten darauf, dass Gäste einander möglichst nicht begegnen. Du sollst in Ruhe ankommen, dich zurückziehen, duschen und dich vorbereiten können, ohne dabei gestört zu werden. Auch beim Empfang und zwischen den einzelnen Abläufen behandeln wir jeden Gast diskret und respektvoll. Für mich gehört das genauso zu einem guten Besuch wie die Ausstattung und die passende Atmosphäre."
+        "text": "Unser gut eingespieltes System sorgt dafür, dass Gäste einander nicht begegnen und du in Ruhe ankommen, dich zurückziehen und duschen kannst – ohne von anderen Gästen gesehen oder gestört zu werden. Auch beim Empfang und zwischen den einzelnen Abläufen behandeln wir jeden Gast diskret und respektvoll. Für mich gehört das genauso zu einem guten Besuch wie die Ausstattung und die passende Atmosphäre."
       },
       {
         "type": "h2",
