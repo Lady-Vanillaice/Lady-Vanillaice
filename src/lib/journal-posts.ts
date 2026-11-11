@@ -18,6 +18,70 @@ export type JournalPost = {
 
 export const journalPosts: JournalPost[] = [
   {
+    "slug": "was-mich-als-domina-ausmacht",
+    "title": "Was mich von anderen Dominas unterscheidet",
+    "eyebrow": "Perspektive",
+    "category": "Perspektive",
+    "excerpt": "Meine spielerische Art, die Liebe zum Detail, kreative Ideen und ein bayerischer Einschlag – warum eine Session mit mir für mich mehr ist als ein Termin.",
+    "date": "2026-11-11",
+    "readingMinutes": 5,
+    "content": [
+      {
+        "type": "p",
+        "text": "Wenn ich beschreiben soll, was mich von anderen Dominas unterscheidet, ist meine ehrlichste Antwort: meine Art. Ich möchte niemanden vergleichen oder behaupten, dass eine Art zu führen besser ist als eine andere. Jede Domina bringt ihre eigene Persönlichkeit mit. Ich kann dir nur erzählen, was du bei mir erleben kannst."
+      },
+      {
+        "type": "h2",
+        "text": "Spielerisch, kreativ und mit Liebe zum Detail"
+      },
+      {
+        "type": "p",
+        "text": "Ich liebe es, mich immer wieder kreativ auszutoben. Eine Idee darf wachsen, eine Szene darf sich entwickeln und manchmal sind es gerade die kleinen Details, die aus einem Moment etwas Besonderes machen. Ich denke gern darüber nach, welche Stimmung, welche Worte oder welche kleine Wendung zu dir und zu dem passt, was wir gemeinsam vereinbart haben."
+      },
+      {
+        "type": "p",
+        "text": "Meine spielerische Seite gehört genauso zu mir wie mein Blick fürs Detail. Ich mag es, mit Erwartungen zu spielen, dich neugierig zu machen und dich vielleicht auf eine Idee zu bringen, mit der du vorher gar nicht gerechnet hast – immer innerhalb unseres vorher besprochenen Rahmens."
+      },
+      {
+        "type": "h2",
+        "text": "Ein bisschen Bayern – und wenn ich will, ganz klare Führung"
+      },
+      {
+        "type": "p",
+        "text": "Auch meine bayerische Art darf manchmal mit hineinspielen. Sie macht mich direkt, bodenständig und auf meine Weise herzlich. Doch lass dich davon nicht täuschen: Wenn ich es will, kann ich sehr klar, hart und bestimmend werden. Ich liebe diesen Wechsel – von einem spielerischen oder beinahe vertrauten Moment hinein in eine Führung, bei der du spürst, dass jetzt ich den Ton angebe."
+      },
+      {
+        "type": "p",
+        "text": "Welche Seite stärker zum Vorschein kommt, hängt nicht von einer fertigen Schablone ab. Es kommt auf dich, deine Wünsche und die Dynamik an, die wir gemeinsam entstehen lassen. Für mich ist genau das ein großer Teil der Spannung."
+      },
+      {
+        "type": "h2",
+        "text": "Mehr als eine Session"
+      },
+      {
+        "type": "p",
+        "text": "Mit mir buchst du nicht nur eine Session – du buchst ein Erlebnis. Für mich kann darin eine besondere Art von Wellness liegen: eine bewusste Auszeit vom Alltag, volle Aufmerksamkeit und der Raum, dich auf etwas Neues einzulassen. Nicht, weil alles sanft sein muss, sondern weil du für diesen Moment ganz bei dir und in unserem gemeinsamen Spiel sein darfst."
+      },
+      {
+        "type": "p",
+        "text": "Vielleicht entdeckst du dabei eine neue Seite an dir. Vielleicht probierst du eine Fantasie aus, die bisher nur in deinem Kopf existiert hat. Oder du genießt einfach, dich kreativ auszuleben und dich von mir führen zu lassen. Neufindung muss dabei nichts Großes oder Endgültiges bedeuten. Manchmal reicht es, sich selbst für eine Weile anders zu erleben."
+      },
+      {
+        "type": "h2",
+        "text": "Was mir dabei wichtig ist"
+      },
+      {
+        "type": "p",
+        "text": "Kreativität bedeutet für mich nicht, Grenzen zu übergehen. Wünsche, Tabus und der passende Rahmen gehören für mich immer dazu. Gerade wenn eine Session überraschend, intensiv oder sehr verspielt wird, ist eine klare Basis wichtig. Sie gibt uns die Freiheit, uns innerhalb dessen auszutoben, worauf wir uns verständigt haben."
+      },
+      {
+        "type": "quote",
+        "text": "Meine Art ist eine Mischung aus Kreativität, Detailverliebtheit, bayerischer Direktheit und klarer Führung. Mit mir sollst du nicht einfach eine Session abhaken – du sollst ein Erlebnis mitnehmen."
+      }
+    ]
+  },
+
+  {
     "slug": "studio-60-muenchen-warum-ich-es-liebe",
     "title": "Studio 60 in München – warum ich dieses BDSM-Studio so liebe",
     "eyebrow": "Perspektive",
