@@ -18,6 +18,75 @@ export type JournalPost = {
 
 export const journalPosts: JournalPost[] = [
   {
+    "slug": "studio-60-muenchen-warum-ich-es-liebe",
+    "title": "Studio 60 in München – warum ich dieses BDSM-Studio so liebe",
+    "eyebrow": "Perspektive",
+    "category": "Perspektive",
+    "excerpt": "Mehr als 500 m², viele eigene Themenwelten und ein eingespielter Ablauf: Ich erzähle, was das Studio 60 für mich so besonders macht – und warum Diskretion dort zum Erlebnis dazugehört.",
+    "date": "2026-11-11",
+    "readingMinutes": 6,
+    "content": [
+      {
+        "type": "p",
+        "text": "Manche Orte fühlen sich einfach richtig an. Das Studio 60 in München ist für mich mehr als nur der Ort, an dem ich meine Termine wahrnehme. Es ist ein Haus mit vielen verschiedenen Facetten, einer besonderen Atmosphäre und erstaunlich vielen Möglichkeiten. Genau diese Mischung liebe ich."
+      },
+      {
+        "type": "h2",
+        "text": "Ein Haus – viele eigene Welten"
+      },
+      {
+        "type": "p",
+        "text": "Auf über 500 Quadratmetern gibt es mehr als fünfzehn Themenräume und drei Klinikräume. Jeder Bereich hat seinen eigenen Charakter. So kann die Atmosphäre ganz unterschiedlich sein: kühl und klinisch, dunkel und streng, sinnlich, verspielt oder auf eine bestimmte Fantasie zugeschnitten. Das macht es leichter, den Raum zu finden, der zu einer Session und zu den Menschen darin passt."
+      },
+      {
+        "type": "ul",
+        "items": [
+          "Klinik 1 / Melkstation: ein medizinisch inspirierter Bereich mit Melkstation und einer klaren, funktionalen Atmosphäre.",
+          "Klinik 2 / OP-Klinik: ein eigener OP-Raum für individuell abgesprochene, kontrolliert inszenierte Szenen.",
+          "Klinik 3 / Zahnklinik & Gynäkologie: Praxis-Atmosphäre für Untersuchungs- und Rollenspiel-Fantasien.",
+          "Latex / Serious Kit: ein Bereich für Latex, technische Ausstattung und intensive, präzise geführte Sessions.",
+          "Sissy Bitch: ein Raum für Transformation, feminine Inszenierung und Rollenspiele.",
+          "Glashaus: Licht und Transparenz sorgen für eine offene, fast bühnenhafte Wirkung.",
+          "Black Blue: dunkle Farben und blaue Akzente geben dem Raum eine konzentrierte, dominante Stimmung.",
+          "Purple Room: eine intimere, weichere Atmosphäre mit violetten Akzenten.",
+          "My Holy Desire: ein Raum mit besonderer, fast ritueller Wirkung – passend für Fantasien rund um Hingabe und Verehrung.",
+          "Red Love: warme rote Akzente schaffen eine sinnliche, intensive Stimmung.",
+          "Nasszelle: ein praktischer, gut zu reinigender Bereich für Abläufe, bei denen Wasser und Hygiene wichtig sind.",
+          "Dazu kommen Umkleide und WC, Foyer, Eingang, Ladies Room sowie eine Ladies Lounge mit Pantry."
+        ]
+      },
+      {
+        "type": "p",
+        "text": "Diese Vielfalt ist für mich nicht einfach eine lange Liste von Räumen. Jeder Bereich erzählt eine andere Geschichte und verändert, wie sich eine Session anfühlt. Ich mag, dass man nicht alles in denselben Raum packen muss – die Umgebung kann Teil der Fantasie werden."
+      },
+      {
+        "type": "h2",
+        "text": "Diskretion braucht einen guten Ablauf"
+      },
+      {
+        "type": "p",
+        "text": "Im Studio gibt es einzelne Zimmer, und an manchen Tagen sind auch mehrere Dominas im Haus. Von außen könnte man denken, dass es dadurch hektisch wird oder man anderen Gästen begegnet. Genau deshalb ist mir unser Ablauf so wichtig. Termine finden nach Absprache statt, und wir haben inzwischen ein wirklich gut eingespieltes System, das die Privatsphäre der Gäste schützt."
+      },
+      {
+        "type": "p",
+        "text": "Unser gut eingespieltes System sorgt dafür, dass Gäste einander nicht begegnen und du in Ruhe ankommen, dich zurückziehen und duschen kannst – ohne von anderen Gästen gesehen oder gestört zu werden. Auch beim Empfang und zwischen den einzelnen Abläufen behandeln wir jeden Gast diskret und respektvoll. Für mich gehört das genauso zu einem guten Besuch wie die Ausstattung und die passende Atmosphäre."
+      },
+      {
+        "type": "h2",
+        "text": "Warum ich das Studio so liebe"
+      },
+      {
+        "type": "p",
+        "text": "Ich liebe die Möglichkeiten, die mir die verschiedenen Räume geben. Ich liebe, dass aus einer Idee nicht automatisch eine Standardszene werden muss, sondern dass wir gemeinsam den passenden Rahmen finden können. Und ich schätze, dass hinter der Größe des Hauses ein durchdachter Ablauf steht – damit sich ein Gast nicht wie einer von vielen fühlt, sondern mit seinen Wünschen und seiner Privatsphäre ernst genommen wird."
+      },
+      {
+        "type": "quote",
+        "text": "Für mich ist das Studio 60 ein Ort voller unterschiedlicher Welten – und ein Ort, an dem Diskretion nicht nur versprochen, sondern im Alltag mitgedacht wird."
+      }
+    ]
+  },
+
+  {
     slug: "erstes-mal-domina-ablauf",
     title: "Das erste Mal bei einer Domina – so läuft eine Session wirklich ab",
     eyebrow: "Ratgeber",
