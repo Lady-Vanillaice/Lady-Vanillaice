@@ -36,14 +36,14 @@ export const journalPosts: JournalPost[] = [
       },
       {
         "type": "p",
-        "text": "Auf über 500 Quadratmetern gibt es mehr als fünfzehn Themenräume und drei Klinikräume. Jeder Bereich hat seinen eigenen Charakter. So kann die Atmosphäre ganz unterschiedlich sein: kühl und klinisch, dunkel und streng, sinnlich, verspielt oder auf eine bestimmte Fantasie zugeschnitten. Das macht es leichter, den Raum zu finden, der zu einer Session und zu den Menschen darin passt."
+        "text": "Auf über 500 Quadratmetern gibt es mehr als fünfzehn Themenräume und zwei Klinikräume. Jeder Bereich hat seinen eigenen Charakter. So kann die Atmosphäre ganz unterschiedlich sein: kühl und klinisch, dunkel und streng, sinnlich, verspielt oder auf eine bestimmte Fantasie zugeschnitten. Das macht es leichter, den Raum zu finden, der zu einer Session und zu den Menschen darin passt."
       },
       {
         "type": "ul",
         "items": [
           "Klinik 1 / Melkstation: ein medizinisch inspirierter Bereich mit Melkstation und einer klaren, funktionalen Atmosphäre.",
           "Klinik 2 / OP-Klinik: ein eigener OP-Raum für individuell abgesprochene, kontrolliert inszenierte Szenen.",
-          "Klinik 3 / Zahnklinik & Gynäkologie: Praxis-Atmosphäre für Untersuchungs- und Rollenspiel-Fantasien.",
+          "Der frühere dritte Klinikraum ist heute ein normaler Spielraum mit Bett, Dusche und Andreaskreuz.",
           "Latex / Serious Kit: ein Bereich für Latex, technische Ausstattung und intensive, präzise geführte Sessions.",
           "Sissy Bitch: ein Raum für Transformation, feminine Inszenierung und Rollenspiele.",
           "Glashaus: Licht und Transparenz sorgen für eine offene, fast bühnenhafte Wirkung.",
