@@ -77,7 +77,18 @@ export const createStudio = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await ensureAdmin(context.supabase, context.userId);
-    const existing = await listStudios();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: rows, error: loadError } = await supabaseAdmin
+      .from("site_content")
+      .select("slug, body")
+      .like("slug", `${STUDIO_SLUG_PREFIX}%`);
+    if (loadError) throw new Error("Studios konnten nicht geprüft werden.");
+
+    const existing = [
+      ...DEFAULT_STUDIOS,
+      ...(rows ?? []).map(parseStudioRow).filter((studio): studio is StudioOption => Boolean(studio)),
+    ];
     const duplicate = existing.some(
       (studio) =>
         studio.name.trim().toLocaleLowerCase("de-DE") === data.name.trim().toLocaleLowerCase("de-DE") &&
@@ -85,7 +96,6 @@ export const createStudio = createServerFn({ method: "POST" })
     );
     if (duplicate) throw new Error("Dieses Studio ist bereits vorhanden.");
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const id = crypto.randomUUID();
     const { error } = await supabaseAdmin
       .from("site_content")
