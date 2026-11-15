@@ -2,12 +2,14 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 import { CustomerSessionHistory } from "@/components/admin/CustomerSessionHistory";
 import { PageHeader } from "@/components/site/PageHeader";
-import { ArrowLeft, Search, Mail, Phone, User, Save, X, CalendarCheck, Star, ShieldAlert, HeartPulse, KeyRound } from "lucide-react";
+import { ArrowLeft, Search, Mail, Phone, User, Save, X, CalendarCheck, Star, ShieldAlert, HeartPulse, KeyRound, FileDown } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { listCustomers, upsertCustomerNote, type CustomerRow } from "@/lib/customers.functions";
+import { listCustomers, listCustomerVisitRecords, upsertCustomerNote, type CustomerRow } from "@/lib/customers.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/kunden")({
   head: () => ({
@@ -20,15 +22,120 @@ function AdminKundenPage() {
   const qc = useQueryClient();
   const listFn = useServerFn(listCustomers);
   const upsertFn = useServerFn(upsertCustomerNote);
+  const visitRecordsFn = useServerFn(listCustomerVisitRecords);
 
   const [search, setSearch] = useState("");
   const [openEmail, setOpenEmail] = useState<string | null>(null);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   const listQ = useQuery({
     queryKey: ["admin-customers"],
     queryFn: () => listFn(),
     retry: false,
   });
+
+
+  const downloadCustomerReport = async () => {
+    if (!listQ.data) return;
+    setExportingPdf(true);
+    setPdfError(null);
+    try {
+      const visits = await visitRecordsFn();
+      const customers = [...listQ.data]
+        .filter((customer) => customer.visits_count > 0)
+        .sort((a, b) => {
+          const countOrder = b.visits_count - a.visits_count;
+          if (countOrder) return countOrder;
+          return (a.note?.pseudonym || a.names[0] || a.email)
+            .localeCompare(b.note?.pseudonym || b.names[0] || b.email, "de");
+        });
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(19);
+      pdf.setTextColor(36, 29, 22);
+      pdf.text("Lady Vanillaice — Kundenübersicht", 14, 18);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9);
+      pdf.setTextColor(110, 97, 78);
+      pdf.text(`Erstellt am ${new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", dateStyle: "medium" }).format(new Date())}`, 14, 25);
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(12);
+      pdf.setTextColor(118, 88, 47);
+      pdf.text("Besuchshäufigkeit", 14, 35);
+      autoTable(pdf, {
+        startY: 39,
+        head: [["Rang", "Name", "Besuche"]],
+        body: customers.length
+          ? customers.map((customer, index) => [
+              String(index + 1),
+              customer.note?.pseudonym || customer.names[0] || customer.email.split("@")[0],
+              String(customer.visits_count),
+            ])
+          : [["—", "Noch keine Besuche erfasst", "0"]],
+        theme: "grid",
+        styles: { font: "helvetica", fontSize: 9, cellPadding: 2.5, textColor: [45, 39, 32], lineColor: [220, 210, 190] },
+        headStyles: { fillColor: [188, 151, 91], textColor: [20, 18, 15], fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [250, 247, 241] },
+        columnStyles: { 0: { cellWidth: 18 }, 2: { cellWidth: 28, halign: "right" } },
+      });
+
+      const tableEnd = (pdf as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 45;
+      let sectionY = tableEnd + 11;
+      if (sectionY > 260) {
+        pdf.addPage();
+        sectionY = 20;
+      }
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(12);
+      pdf.setTextColor(118, 88, 47);
+      pdf.text("Terminübersicht — neueste Termine zuerst", 14, sectionY);
+
+      const dateOnly = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+      const dateText = (value: string) => {
+        if (dateOnly(value)) {
+          const [year, month, day] = value.split("-");
+          return `${day}.${month}.${year}`;
+        }
+        return new Intl.DateTimeFormat("de-DE", {
+          timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit", year: "numeric",
+        }).format(new Date(value));
+      };
+      const timeText = (value: string) =>
+        dateOnly(value)
+          ? "—"
+          : new Intl.DateTimeFormat("de-DE", {
+              timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+            }).format(new Date(value));
+
+      autoTable(pdf, {
+        startY: sectionY + 4,
+        head: [["Datum", "Uhrzeit", "Name"]],
+        body: visits.map((visit) => [dateText(visit.occurredAt), timeText(visit.occurredAt), visit.displayName]),
+        theme: "grid",
+        styles: { font: "helvetica", fontSize: 8.5, cellPadding: 2.2, textColor: [45, 39, 32], lineColor: [220, 210, 190] },
+        headStyles: { fillColor: [188, 151, 91], textColor: [20, 18, 15], fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [250, 247, 241] },
+        columnStyles: { 0: { cellWidth: 33 }, 1: { cellWidth: 25 }, 2: { cellWidth: "auto" } },
+        showHead: "everyPage",
+      });
+
+      const pageCount = pdf.getNumberOfPages();
+      for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
+        pdf.setPage(pageNumber);
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(8);
+        pdf.setTextColor(125, 115, 101);
+        pdf.text(`Seite ${pageNumber} von ${pageCount}`, 196, 287, { align: "right" });
+      }
+      pdf.save(`kundenuebersicht-${new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Berlin" }).format(new Date())}.pdf`);
+    } catch (error) {
+      setPdfError(error instanceof Error ? error.message : "Der PDF-Bericht konnte nicht erstellt werden.");
+    } finally {
+      setExportingPdf(false);
+    }
+  };
 
   const upsertMut = useMutation({
     mutationFn: (v: {
@@ -99,8 +206,17 @@ function AdminKundenPage() {
                 className="bg-anthracite/40 border border-champagne/20 pl-8 pr-3 py-2 text-vanilla text-sm w-72 max-w-full"
               />
             </div>
+            <button
+              type="button"
+              onClick={downloadCustomerReport}
+              disabled={!listQ.data || exportingPdf}
+              className="btn-outline-gold !py-2 !px-4 !text-[0.65rem] disabled:opacity-40"
+            >
+              <FileDown size={13} /> {exportingPdf ? "PDF wird erstellt…" : "Kundenbericht als PDF"}
+            </button>
           </div>
 
+          {pdfError && <p role="alert" className="mb-4 text-sm text-bordeaux">{pdfError}</p>}
           {listQ.isLoading && <p className="text-vanilla/50 text-sm">Lade…</p>}
           {listQ.isError && (
             <div className="border border-bordeaux/50 bg-bordeaux/10 p-4 text-sm text-vanilla/80">
