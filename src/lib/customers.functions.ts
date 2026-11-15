@@ -300,6 +300,83 @@ export const listCustomers = createServerFn({ method: "GET" })
     });
   });
 
+
+export type CustomerVisitRecord = {
+  occurredAt: string;
+  displayName: string;
+};
+
+export const listCustomerVisitRecords = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<CustomerVisitRecord[]> => {
+    await assertAdmin(context);
+
+    const { data: bookings, error: bookingError } = await context.supabase
+      .from("bookings")
+      .select("id, guest_name, guest_email, requested_start, created_at, status, completed_at, fully_paid, cash_received_at, duration, message")
+      .eq("status", "confirmed")
+      .order("requested_start", { ascending: false });
+    if (bookingError) throw new Error(bookingError.message);
+
+    const now = Date.now();
+    const completedVisits = (bookings ?? []).filter((booking: any) => {
+      if (!booking.completed_at && !booking.fully_paid && !booking.cash_received_at) return false;
+      const occurredAt = booking.requested_start ?? booking.created_at;
+      if (!occurredAt || new Date(occurredAt).getTime() > now) return false;
+      const isLiegezeitOnly =
+        String(booking.duration ?? "").startsWith("Nur Liegezeit") ||
+        String(booking.message ?? "").includes("Nur Liegezeit");
+      return !isLiegezeitOnly;
+    });
+
+    const notesResult = await context.supabase
+      .from("customer_notes")
+      .select("email, pseudonym");
+    if (notesResult.error) throw new Error(notesResult.error.message);
+    const pseudonyms = new Map<string, string>();
+    for (const note of notesResult.data ?? []) {
+      if (note.email && note.pseudonym?.trim()) {
+        pseudonyms.set(String(note.email).toLowerCase(), String(note.pseudonym).trim());
+      }
+    }
+
+    const records: Array<CustomerVisitRecord & { sortAt: number }> = [];
+    const exportedBookingIds = new Set<string>();
+    for (const booking of completedVisits) {
+      const occurredAt = booking.requested_start ?? booking.created_at;
+      if (!occurredAt) continue;
+      const email = String(booking.guest_email ?? "").trim();
+      const displayName =
+        (email && pseudonyms.get(email.toLowerCase())) ||
+        String(booking.guest_name ?? "").trim() ||
+        "Unbekannt";
+      records.push({ occurredAt, displayName, sortAt: new Date(occurredAt).getTime() });
+      exportedBookingIds.add(String(booking.id));
+    }
+
+    // Manual or archived cashbook entries can outlive their booking row. Include
+    // those visits too, while avoiding a duplicate for bookings already listed.
+    const { data: cashbookRows, error: cashbookError } = await context.supabase
+      .from("cash_book_entries")
+      .select("id, kunde, datum, created_at")
+      .neq("kunde", "Studiomiete")
+      .order("datum", { ascending: false });
+    if (cashbookError) throw new Error(cashbookError.message);
+
+    for (const row of cashbookRows ?? []) {
+      const name = String(row.kunde ?? "").trim();
+      const occurredAt = String(row.datum ?? row.created_at ?? "").trim();
+      if (!name || !occurredAt || exportedBookingIds.has(String(row.id))) continue;
+      const sortAt = new Date(occurredAt).getTime();
+      if (!Number.isFinite(sortAt)) continue;
+      records.push({ occurredAt, displayName: name, sortAt });
+    }
+
+    return records
+      .sort((a, b) => b.sortAt - a.sortAt)
+      .map(({ occurredAt, displayName }) => ({ occurredAt, displayName }));
+  });
+
 export const upsertCustomerNote = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
