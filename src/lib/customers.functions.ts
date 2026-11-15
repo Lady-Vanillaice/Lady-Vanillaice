@@ -313,7 +313,7 @@ export const listCustomerVisitRecords = createServerFn({ method: "GET" })
 
     const { data: bookings, error: bookingError } = await context.supabase
       .from("bookings")
-      .select("id, guest_name, guest_email, requested_start, created_at, status, completed_at, fully_paid, cash_received_at, duration, message")
+      .select("id, guest_name, guest_email, requested_start, created_at, status, completed_at, fully_paid, cash_received_at, message")
       .eq("status", "confirmed")
       .order("requested_start", { ascending: false });
     if (bookingError) throw new Error(bookingError.message);
@@ -324,7 +324,6 @@ export const listCustomerVisitRecords = createServerFn({ method: "GET" })
       const occurredAt = booking.requested_start ?? booking.created_at;
       if (!occurredAt || new Date(occurredAt).getTime() > now) return false;
       const isLiegezeitOnly =
-        String(booking.duration ?? "").startsWith("Nur Liegezeit") ||
         String(booking.message ?? "").includes("Nur Liegezeit");
       return !isLiegezeitOnly;
     });
