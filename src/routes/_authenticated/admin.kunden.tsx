@@ -82,7 +82,11 @@ function AdminKundenPage() {
       });
 
       const tableEnd = (pdf as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 45;
-      const sectionY = tableEnd + 11;
+      let sectionY = tableEnd + 11;
+      if (sectionY > 260) {
+        pdf.addPage();
+        sectionY = 20;
+      }
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(12);
       pdf.setTextColor(118, 88, 47);
@@ -213,7 +217,7 @@ function AdminKundenPage() {
           </div>
 
           {pdfError && <p role="alert" className="mb-4 text-sm text-bordeaux">{pdfError}</p>}
-          {listQ.isLoading && <p className="text-vanilla/50 text-sm">Lade…</p>
+          {listQ.isLoading && <p className="text-vanilla/50 text-sm">Lade…</p>}
           {listQ.isError && (
             <div className="border border-bordeaux/50 bg-bordeaux/10 p-4 text-sm text-vanilla/80">
               <p>Die Kunden konnten nicht geladen werden: {(listQ.error as Error).message}</p>
