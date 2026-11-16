@@ -173,6 +173,11 @@ source = source.replace(
       }`,
 );
 
+source = source.replace(
+  "      y += appointmentRowHeight;",
+  "      y += appointmentRowHeight + specialExtraHeight;",
+);
+
 const oldTag = `      const tag = [
         slot.is_duo ? \`DUO\${slot.duo_partner ? \` · \${slot.duo_partner}\` : ""}\` : "",
         slot.is_content_shoot ? "CONTENT" : "",
