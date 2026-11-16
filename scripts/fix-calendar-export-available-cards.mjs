@@ -6,6 +6,7 @@ let source = fs.readFileSync(path, "utf8");
 const returnAnchors = [
   "  return { slots, availabilityByDay };",
   "  return { slots, availabilityByDay, vacations };",
+  "  return { slots, availabilityByDay, vacations, specialsByDay };",
 ];
 const returnReplacement = `  const displaySlots: SlotRow[] = [];
   const statusByDay = new Map<string, string>();
@@ -72,7 +73,7 @@ const returnReplacement = `  const displaySlots: SlotRow[] = [];
     statusByDay.set(dayKey, status);
   }
 
-  return { slots: displaySlots, availabilityByDay, statusByDay, vacations };`;
+  return { slots: displaySlots, availabilityByDay, statusByDay, vacations, specialsByDay };`;
 
 const returnAnchor = returnAnchors.find((anchor) => source.includes(anchor));
 if (returnAnchor) {
@@ -85,12 +86,19 @@ source = source.replace(
 );
 source = source.replace(
   "  const { slots, availabilityByDay, vacations } = await loadData(mode);",
-  "  const { slots, availabilityByDay, statusByDay, vacations } = await loadData(mode);",
+  "  const { slots, availabilityByDay, statusByDay, vacations, specialsByDay } = await loadData(mode);",
+);
+source = source.replace(
+  "  const { slots, availabilityByDay, vacations, specialsByDay } = await loadData(mode);",
+  "  const { slots, availabilityByDay, statusByDay, vacations, specialsByDay } = await loadData(mode);",
 );
 source = source.replace("  const appointmentRowHeight = 150;", "  const appointmentRowHeight = 190;");
 source = source.replace(
   "    (total, [, monthSlots]) => total + monthHeaderHeight + monthSlots.length * appointmentRowHeight,",
-  "    (total, [, monthSlots]) => total + monthHeaderHeight + new Set(monthSlots.map((slot) => dateParts(slot.starts_at).dayKey)).size * appointmentRowHeight,",
+  `    (total, [, monthSlots]) => total + monthHeaderHeight + [...new Set(monthSlots.map((slot) => dateParts(slot.starts_at).dayKey))].reduce(
+      (dayTotal, dayKey) => dayTotal + appointmentRowHeight + (specialsByDay.has(dayKey) ? 170 : 0),
+      0,
+    ),`,
 );
 
 source = source.replace(
@@ -102,6 +110,24 @@ source = source.replace(
       const daySlots = monthSlots
         .filter((entry) => dateParts(entry.starts_at).dayKey === dayKey)
         .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());`,
+);
+
+source = source.replace(
+  `      const cardX = outer + 28;
+      const cardWidth = width - cardX * 2;
+      ctx.fillStyle = COLORS.card;
+      ctx.fillRect(cardX, y, cardWidth, appointmentRowHeight - 18);
+      ctx.strokeStyle = "rgba(216,182,118,0.35)";
+      ctx.strokeRect(cardX, y, cardWidth, appointmentRowHeight - 18);`,
+  `      const cardX = outer + 28;
+      const cardWidth = width - cardX * 2;
+      const special = specialsByDay.get(dayKey);
+      const specialExtraHeight = special ? 170 : 0;
+      const cardHeight = appointmentRowHeight + specialExtraHeight - 18;
+      ctx.fillStyle = COLORS.card;
+      ctx.fillRect(cardX, y, cardWidth, cardHeight);
+      ctx.strokeStyle = "rgba(216,182,118,0.35)";
+      ctx.strokeRect(cardX, y, cardWidth, cardHeight);`,
 );
 
 source = source.replace(
@@ -121,7 +147,30 @@ source = source.replace(
           : "";
         const line = timeLabel(openSlot.starts_at) + " – " + timeLabel(openSlot.ends_at) + " Uhr" + suffix;
         ctx.fillText(line, cardX + 30, y + 104 + index * 30);
-      });`,
+      });
+
+      if (special) {
+        const specialY = y + 112 + daySlots.length * 30;
+        ctx.fillStyle = COLORS.gold;
+        ctx.font = 'bold 18px Arial, sans-serif';
+        ctx.textAlign = "left";
+        ctx.fillText("SPECIAL · " + special.title, cardX + 30, specialY);
+
+        let textY = specialY + 28;
+        if (special.outfit) {
+          ctx.fillStyle = COLORS.gold;
+          ctx.font = '16px Arial, sans-serif';
+          ctx.fillText("Outfit: " + special.outfit, cardX + 30, textY);
+          textY += 26;
+        }
+
+        ctx.fillStyle = COLORS.vanilla;
+        ctx.font = '16px Arial, sans-serif';
+        const lines = wrapCanvasLines(ctx, special.description, cardWidth - 60).slice(0, 4);
+        lines.forEach((line, index) => {
+          ctx.fillText(line, cardX + 30, textY + index * 23);
+        });
+      }`,
 );
 
 const oldTag = `      const tag = [
@@ -135,8 +184,11 @@ source = source.replace(oldPatchedTag, "      const tag = \"\";");
 if (!source.includes("const statusByDay = new Map<string, string>()")) {
   throw new Error("Export day-status patch could not be applied");
 }
-if (!source.includes("statusByDay, vacations")) {
-  throw new Error("Export day-status/vacation return patch could not be applied");
+if (!source.includes("statusByDay, vacations, specialsByDay")) {
+  throw new Error("Export day-status/vacation/special return patch could not be applied");
+}
+if (!source.includes('ctx.fillText("SPECIAL · " + special.title')) {
+  throw new Error("Export special text patch could not be applied");
 }
 if (!source.includes("const isDuoDay = daySlots.some")) {
   throw new Error("Export duo-day label condition could not be applied");
