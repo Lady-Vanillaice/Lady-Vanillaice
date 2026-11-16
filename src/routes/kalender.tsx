@@ -160,10 +160,28 @@ function KalenderPage() {
 
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [linkedStartTime, setLinkedStartTime] = useState<string | null>(null);
   const [, setNowTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setNowTick((n) => n + 1), 60_000);
     return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const dateParam = params.get("date");
+    const startParam = params.get("start");
+    if (!dateParam || !/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) return;
+
+    const linkedDay = new Date(dateParam + "T12:00:00");
+    if (Number.isNaN(linkedDay.getTime())) return;
+
+    setSelectedDay(linkedDay);
+    setCursor(startOfMonth(linkedDay));
+    if (startParam && /^\d{2}:\d{2}$/.test(startParam)) {
+      setLinkedStartTime(startParam);
+    }
   }, []);
 
   const slotByDay = useMemo(() => {
@@ -363,6 +381,7 @@ function KalenderPage() {
               {selectedSlot && (
                 <BookingPanel
                   slot={selectedSlot}
+                  initialStartTime={linkedStartTime}
                   onBooked={() => slotsQ.refetch()}
                 />
               )}
@@ -575,7 +594,15 @@ function WaitlistForm({ date, dateLabel }: { date: string; dateLabel: string }) 
 
 const OPTIONAL_DUO_PREFIX = "OPTIONAL_DUO::";
 
-function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) {
+function BookingPanel({
+  slot,
+  initialStartTime,
+  onBooked,
+}: {
+  slot: Slot;
+  initialStartTime?: string | null;
+  onBooked: () => void;
+}) {
   const tr = useTr();
   const { lang } = useLang();
   const DURATIONS = getDurations(lang);
@@ -584,7 +611,7 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
   const qc = useQueryClient();
 
   const [durationChoice, setDurationChoice] = useState<number | "custom" | "ganztags">(60);
-  const [earliest, setEarliest] = useState("10:00");
+  const [earliest, setEarliest] = useState(initialStartTime || "10:00");
   const [latest, setLatest] = useState("20:00");
   const [proposed, setProposed] = useState<{ start: string; end: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -596,6 +623,13 @@ function BookingPanel({ slot, onBooked }: { slot: Slot; onBooked: () => void }) 
 
   const slotStartHm = formatMunichTime(slot.starts_at);
   const slotEndHm = formatMunichTime(slot.ends_at);
+
+  useEffect(() => {
+    if (initialStartTime && /^\d{2}:\d{2}$/.test(initialStartTime)) {
+      setEarliest(initialStartTime);
+      setProposed(null);
+    }
+  }, [initialStartTime, slot.id]);
   const windows = useMemo(() => {
     const rows = slot.windows?.length ? slot.windows : [slot];
     const uniqueRows = rows.filter((row, index) =>

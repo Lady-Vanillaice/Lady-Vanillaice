@@ -1,13 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Calendar, CalendarClock, Crown, Instagram, Mail } from "lucide-react";
 import heroImage from "../assets/CARL0938-2.jpeg";
 import { AdminLoginWidget } from "@/components/site/AdminLoginWidget";
 import { useT, useTr, useLang } from "@/i18n";
 import { recordHomepageVisit } from "@/lib/visitor-stats.functions";
-import { listUpcomingSlots } from "@/lib/public-booking.functions";
+import { getSlotAvailability, listUpcomingSlots } from "@/lib/public-booking.functions";
+import { listCalendarSpecials } from "@/lib/calendar-special.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -50,32 +50,98 @@ function Index() {
   const { lang } = useLang();
   const recordVisit = useServerFn(recordHomepageVisit);
   const listSlots = useServerFn(listUpcomingSlots);
-  const nextSlotsQ = useQuery({
-    queryKey: ["homepage-next-free-slots"],
-    queryFn: () => listSlots(),
-    staleTime: 30_000,
-  });
+  const getAvailability = useServerFn(getSlotAvailability);
+  const listSpecials = useServerFn(listCalendarSpecials);
+  const [nextFreeDays, setNextFreeDays] = useState<any[]>([]);
+  const [specialDates, setSpecialDates] = useState<Set<string>>(() => new Set());
 
-  const nextFreeDays = (() => {
-    const rows = (nextSlotsQ.data ?? []).filter(
-      (slot: any) => !slot.is_vacation && !slot.is_fully_booked,
-    );
-    const seen = new Set<string>();
-    const result: any[] = [];
-    for (const slot of rows) {
-      const key = new Intl.DateTimeFormat("sv-SE", {
-        timeZone: "Europe/Berlin",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }).format(new Date(slot.starts_at));
-      if (seen.has(key)) continue;
-      seen.add(key);
-      result.push({ ...slot, dayKey: key });
-      if (result.length === 3) break;
-    }
-    return result;
-  })();
+  useEffect(() => {
+    let cancelled = false;
+
+    void Promise.all([
+      listSlots(),
+      listSpecials().catch(() => []),
+    ])
+      .then(async ([slots, specials]) => {
+        if (!cancelled) {
+          setSpecialDates(new Set(
+            (Array.isArray(specials) ? specials : []).map((special: any) => special.date),
+          ));
+        }
+        if (cancelled || !Array.isArray(slots)) return;
+
+        const seen = new Set<string>();
+        const candidates: any[] = [];
+
+        for (const slot of slots) {
+          try {
+            if (!slot || slot.is_vacation || slot.is_fully_booked || !slot.starts_at) continue;
+            const key = new Intl.DateTimeFormat("sv-SE", {
+              timeZone: "Europe/Berlin",
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+            }).format(new Date(slot.starts_at));
+            if (seen.has(key)) continue;
+            seen.add(key);
+            candidates.push({ ...slot, dayKey: key });
+            if (candidates.length === 3) break;
+          } catch {
+            // Ein fehlerhafter Termin darf die Startseite nie blockieren.
+          }
+        }
+
+        const result = await Promise.all(
+          candidates.map(async (slot) => {
+            try {
+              const availability = await getAvailability({ data: { slot_id: slot.id } });
+              const busy = availability?.busy ?? [];
+              const windows = Array.isArray(slot.windows) && slot.windows.length
+                ? slot.windows.filter((window: any) => !window.is_fully_booked)
+                : [slot];
+              const now = Date.now();
+              const ranges: Array<{ start: number; end: number }> = [];
+
+              for (const window of windows) {
+                let free: Array<{ start: number; end: number }> = [{
+                  start: Math.max(now, new Date(window.starts_at).getTime()),
+                  end: new Date(window.ends_at).getTime(),
+                }];
+
+                for (const block of busy) {
+                  const buffer = Number(block.buffer_minutes ?? window.buffer_minutes ?? 30) * 60_000;
+                  const blockStart = new Date(block.start).getTime() - buffer;
+                  const blockEnd = new Date(block.end).getTime() + buffer;
+                  free = free.flatMap((range) => {
+                    if (blockEnd <= range.start || blockStart >= range.end) return [range];
+                    const pieces: Array<{ start: number; end: number }> = [];
+                    if (blockStart > range.start) pieces.push({ start: range.start, end: blockStart });
+                    if (blockEnd < range.end) pieces.push({ start: blockEnd, end: range.end });
+                    return pieces;
+                  });
+                }
+
+                ranges.push(...free.filter((range) => range.end - range.start >= 60 * 60_000));
+              }
+
+              ranges.sort((a, b) => a.start - b.start);
+              return { ...slot, freeRanges: ranges.slice(0, 3) };
+            } catch {
+              return { ...slot, freeRanges: [] };
+            }
+          }),
+        );
+
+        if (!cancelled) setNextFreeDays(result);
+      })
+      .catch(() => {
+        if (!cancelled) setNextFreeDays([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [getAvailability, listSlots, listSpecials]);
 
   useEffect(() => {
     try {
@@ -332,20 +398,68 @@ function Index() {
                     { timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit" },
                   ).format(date);
                   return (
-                    <Link
+                    <a
                       key={slot.dayKey}
-                      to="/kalender"
+                      href={`/kalender?date=${encodeURIComponent(slot.dayKey)}&start=${encodeURIComponent(
+                        slot.freeRanges?.[0]
+                          ? new Intl.DateTimeFormat("de-DE", {
+                              timeZone: "Europe/Berlin",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hourCycle: "h23",
+                            }).format(new Date(slot.freeRanges[0].start))
+                          : "",
+                      )}`}
                       className="group border border-champagne/25 bg-background/70 p-4 transition hover:border-champagne/70 hover:bg-champagne/5"
                     >
                       <div className="flex items-center gap-2 text-champagne">
                         <CalendarClock size={15} />
                         <span className="text-xs uppercase tracking-[0.16em]">{weekday}</span>
                       </div>
+                      {(slot.is_duo || slot.is_content_shoot || specialDates.has(slot.dayKey)) && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {slot.is_duo && (
+                            <span className="border border-champagne/35 px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.14em] text-champagne">
+                              DUO
+                            </span>
+                          )}
+                          {slot.is_content_shoot && (
+                            <span className="border border-champagne/35 px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.14em] text-champagne">
+                              CONTENT
+                            </span>
+                          )}
+                          {specialDates.has(slot.dayKey) && (
+                            <span className="border border-champagne/35 px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.14em] text-champagne">
+                              SPECIAL
+                            </span>
+                          )}
+                        </div>
+                      )}
                       <div className="mt-2 font-display text-2xl text-vanilla">{day}</div>
-                      <div className="mt-1 text-xs text-vanilla/50 group-hover:text-champagne">
+                      {slot.freeRanges?.length > 0 && (
+                        <div className="mt-2 space-y-0.5 text-sm text-champagne">
+                          {slot.freeRanges.map((range: { start: number; end: number }, index: number) => {
+                            const time = new Intl.DateTimeFormat(
+                              lang === "en" ? "en-GB" : "de-DE",
+                              {
+                                timeZone: "Europe/Berlin",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hourCycle: "h23",
+                              },
+                            );
+                            return (
+                              <div key={index}>
+                                {time.format(new Date(range.start))}–{time.format(new Date(range.end))} {tr("Uhr", "")}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <div className="mt-2 text-xs text-vanilla/50 group-hover:text-champagne">
                         {tr("Freie Zeiten ansehen", "View free times")}
                       </div>
-                    </Link>
+                    </a>
                   );
                 })}
               </div>
