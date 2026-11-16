@@ -7,6 +7,7 @@ import { AdminLoginWidget } from "@/components/site/AdminLoginWidget";
 import { useT, useTr, useLang } from "@/i18n";
 import { recordHomepageVisit } from "@/lib/visitor-stats.functions";
 import { getSlotAvailability, listUpcomingSlots } from "@/lib/public-booking.functions";
+import { listCalendarSpecials } from "@/lib/calendar-special.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -50,13 +51,23 @@ function Index() {
   const recordVisit = useServerFn(recordHomepageVisit);
   const listSlots = useServerFn(listUpcomingSlots);
   const getAvailability = useServerFn(getSlotAvailability);
+  const listSpecials = useServerFn(listCalendarSpecials);
   const [nextFreeDays, setNextFreeDays] = useState<any[]>([]);
+  const [specialDates, setSpecialDates] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     let cancelled = false;
 
-    void listSlots()
-      .then(async (slots) => {
+    void Promise.all([
+      listSlots(),
+      listSpecials().catch(() => []),
+    ])
+      .then(async ([slots, specials]) => {
+        if (!cancelled) {
+          setSpecialDates(new Set(
+            (Array.isArray(specials) ? specials : []).map((special: any) => special.date),
+          ));
+        }
         if (cancelled || !Array.isArray(slots)) return;
 
         const seen = new Set<string>();
@@ -130,7 +141,7 @@ function Index() {
     return () => {
       cancelled = true;
     };
-  }, [getAvailability, listSlots]);
+  }, [getAvailability, listSlots, listSpecials]);
 
   useEffect(() => {
     try {
@@ -387,15 +398,43 @@ function Index() {
                     { timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit" },
                   ).format(date);
                   return (
-                    <Link
+                    <a
                       key={slot.dayKey}
-                      to="/kalender"
+                      href={`/kalender?date=${encodeURIComponent(slot.dayKey)}&start=${encodeURIComponent(
+                        slot.freeRanges?.[0]
+                          ? new Intl.DateTimeFormat("de-DE", {
+                              timeZone: "Europe/Berlin",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              hourCycle: "h23",
+                            }).format(new Date(slot.freeRanges[0].start))
+                          : "",
+                      )}`}
                       className="group border border-champagne/25 bg-background/70 p-4 transition hover:border-champagne/70 hover:bg-champagne/5"
                     >
                       <div className="flex items-center gap-2 text-champagne">
                         <CalendarClock size={15} />
                         <span className="text-xs uppercase tracking-[0.16em]">{weekday}</span>
                       </div>
+                      {(slot.is_duo || slot.is_content_shoot || specialDates.has(slot.dayKey)) && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {slot.is_duo && (
+                            <span className="border border-champagne/35 px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.14em] text-champagne">
+                              DUO
+                            </span>
+                          )}
+                          {slot.is_content_shoot && (
+                            <span className="border border-champagne/35 px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.14em] text-champagne">
+                              CONTENT
+                            </span>
+                          )}
+                          {specialDates.has(slot.dayKey) && (
+                            <span className="border border-champagne/35 px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.14em] text-champagne">
+                              SPECIAL
+                            </span>
+                          )}
+                        </div>
+                      )}
                       <div className="mt-2 font-display text-2xl text-vanilla">{day}</div>
                       {slot.freeRanges?.length > 0 && (
                         <div className="mt-2 space-y-0.5 text-sm text-champagne">
@@ -420,7 +459,7 @@ function Index() {
                       <div className="mt-2 text-xs text-vanilla/50 group-hover:text-champagne">
                         {tr("Freie Zeiten ansehen", "View free times")}
                       </div>
-                    </Link>
+                    </a>
                   );
                 })}
               </div>
