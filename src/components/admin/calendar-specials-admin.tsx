@@ -20,6 +20,7 @@ export function CalendarSpecialsAdmin() {
   const [date, setDate] = useState("");
   const [title, setTitle] = useState("SPECIAL");
   const [description, setDescription] = useState("");
+  const [outfit, setOutfit] = useState("");
 
   const sorted = useMemo(
     () => [...(specialsQ.data ?? [])].sort((a, b) => a.date.localeCompare(b.date)),
@@ -33,11 +34,13 @@ export function CalendarSpecialsAdmin() {
           date,
           title: title.trim() || "SPECIAL",
           description: description.trim(),
+          outfit: outfit.trim() || null,
         },
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["calendar-specials"] });
       setDescription("");
+      setOutfit("");
       setTitle("SPECIAL");
     },
   });
@@ -90,6 +93,16 @@ export function CalendarSpecialsAdmin() {
           />
         </label>
         <label className="grid gap-1 text-xs text-vanilla/65">
+          Outfit (optional)
+          <input
+            maxLength={200}
+            value={outfit}
+            onChange={(event) => setOutfit(event.target.value)}
+            placeholder="z. B. rotes Latex-Outfit mit Overknees"
+            className="luxe-input"
+          />
+        </label>
+        <label className="grid gap-1 text-xs text-vanilla/65">
           Öffentlicher Zusatztext
           <textarea
             required
@@ -128,6 +141,11 @@ export function CalendarSpecialsAdmin() {
                   {" · "}
                   {special.title}
                 </div>
+                {special.outfit && (
+                  <p className="mt-1 text-xs text-champagne/80">
+                    Outfit: {special.outfit}
+                  </p>
+                )}
                 <p className="mt-1 whitespace-pre-wrap text-xs leading-relaxed text-vanilla/60">
                   {special.description}
                 </p>
