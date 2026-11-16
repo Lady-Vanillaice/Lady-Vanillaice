@@ -6,7 +6,7 @@ import heroImage from "../assets/CARL0938-2.jpeg";
 import { AdminLoginWidget } from "@/components/site/AdminLoginWidget";
 import { useT, useTr, useLang } from "@/i18n";
 import { recordHomepageVisit } from "@/lib/visitor-stats.functions";
-import { listUpcomingSlots } from "@/lib/public-booking.functions";
+import { getSlotAvailability, listUpcomingSlots } from "@/lib/public-booking.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -49,17 +49,18 @@ function Index() {
   const { lang } = useLang();
   const recordVisit = useServerFn(recordHomepageVisit);
   const listSlots = useServerFn(listUpcomingSlots);
+  const getAvailability = useServerFn(getSlotAvailability);
   const [nextFreeDays, setNextFreeDays] = useState<any[]>([]);
 
   useEffect(() => {
     let cancelled = false;
 
     void listSlots()
-      .then((slots) => {
+      .then(async (slots) => {
         if (cancelled || !Array.isArray(slots)) return;
 
         const seen = new Set<string>();
-        const result: any[] = [];
+        const candidates: any[] = [];
 
         for (const slot of slots) {
           try {
@@ -72,12 +73,53 @@ function Index() {
             }).format(new Date(slot.starts_at));
             if (seen.has(key)) continue;
             seen.add(key);
-            result.push({ ...slot, dayKey: key });
-            if (result.length === 3) break;
+            candidates.push({ ...slot, dayKey: key });
+            if (candidates.length === 3) break;
           } catch {
             // Ein fehlerhafter Termin darf die Startseite nie blockieren.
           }
         }
+
+        const result = await Promise.all(
+          candidates.map(async (slot) => {
+            try {
+              const availability = await getAvailability({ data: { slot_id: slot.id } });
+              const busy = availability?.busy ?? [];
+              const windows = Array.isArray(slot.windows) && slot.windows.length
+                ? slot.windows.filter((window: any) => !window.is_fully_booked)
+                : [slot];
+              const now = Date.now();
+              const ranges: Array<{ start: number; end: number }> = [];
+
+              for (const window of windows) {
+                let free: Array<{ start: number; end: number }> = [{
+                  start: Math.max(now, new Date(window.starts_at).getTime()),
+                  end: new Date(window.ends_at).getTime(),
+                }];
+
+                for (const block of busy) {
+                  const buffer = Number(block.buffer_minutes ?? window.buffer_minutes ?? 30) * 60_000;
+                  const blockStart = new Date(block.start).getTime() - buffer;
+                  const blockEnd = new Date(block.end).getTime() + buffer;
+                  free = free.flatMap((range) => {
+                    if (blockEnd <= range.start || blockStart >= range.end) return [range];
+                    const pieces: Array<{ start: number; end: number }> = [];
+                    if (blockStart > range.start) pieces.push({ start: range.start, end: blockStart });
+                    if (blockEnd < range.end) pieces.push({ start: blockEnd, end: range.end });
+                    return pieces;
+                  });
+                }
+
+                ranges.push(...free.filter((range) => range.end - range.start >= 60 * 60_000));
+              }
+
+              ranges.sort((a, b) => a.start - b.start);
+              return { ...slot, freeRanges: ranges.slice(0, 3) };
+            } catch {
+              return { ...slot, freeRanges: [] };
+            }
+          }),
+        );
 
         if (!cancelled) setNextFreeDays(result);
       })
@@ -88,7 +130,7 @@ function Index() {
     return () => {
       cancelled = true;
     };
-  }, [listSlots]);
+  }, [getAvailability, listSlots]);
 
   useEffect(() => {
     try {
@@ -355,7 +397,27 @@ function Index() {
                         <span className="text-xs uppercase tracking-[0.16em]">{weekday}</span>
                       </div>
                       <div className="mt-2 font-display text-2xl text-vanilla">{day}</div>
-                      <div className="mt-1 text-xs text-vanilla/50 group-hover:text-champagne">
+                      {slot.freeRanges?.length > 0 && (
+                        <div className="mt-2 space-y-0.5 text-sm text-champagne">
+                          {slot.freeRanges.map((range: { start: number; end: number }, index: number) => {
+                            const time = new Intl.DateTimeFormat(
+                              lang === "en" ? "en-GB" : "de-DE",
+                              {
+                                timeZone: "Europe/Berlin",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hourCycle: "h23",
+                              },
+                            );
+                            return (
+                              <div key={index}>
+                                {time.format(new Date(range.start))}–{time.format(new Date(range.end))} {tr("Uhr", "")}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <div className="mt-2 text-xs text-vanilla/50 group-hover:text-champagne">
                         {tr("Freie Zeiten ansehen", "View free times")}
                       </div>
                     </Link>
