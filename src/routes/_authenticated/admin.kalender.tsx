@@ -45,6 +45,7 @@ import { listUpcomingSlots } from "@/lib/public-booking.functions";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { listStudios } from "@/lib/studio.functions";
+import { CalendarSpecialsAdmin } from "@/components/admin/calendar-specials-admin";
 
 function berlinDayKey(value: string | Date) {
   return new Intl.DateTimeFormat("sv-SE", {
@@ -240,6 +241,8 @@ function AdminKalenderPage() {
             pending={createMut.isPending}
             studios={studiosQ.data}
           />
+
+          <CalendarSpecialsAdmin />
 
           <FreeSlotImageExport
             slots={regularSlots}
