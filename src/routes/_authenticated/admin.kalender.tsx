@@ -46,6 +46,7 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { listStudios } from "@/lib/studio.functions";
 import { CalendarSpecialsAdmin } from "@/components/admin/calendar-specials-admin";
+import { CalendarWaitlistAdmin } from "@/components/admin/calendar-waitlist-admin";
 
 function berlinDayKey(value: string | Date) {
   return new Intl.DateTimeFormat("sv-SE", {
@@ -243,6 +244,8 @@ function AdminKalenderPage() {
           />
 
           <CalendarSpecialsAdmin />
+
+          <CalendarWaitlistAdmin />
 
           <FreeSlotImageExport
             slots={regularSlots}

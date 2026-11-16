@@ -18,6 +18,7 @@ import { de, enUS } from "date-fns/locale";
 import { useTr, useLang } from "@/i18n";
 import { getTimelineLabelTicks } from "@/lib/calendar-timeline";
 import { listCalendarSpecials, type CalendarSpecial } from "@/lib/calendar-special.functions";
+import { joinCalendarWaitlist } from "@/lib/calendar-waitlist.functions";
 
 type Slot = {
   id: string;
@@ -193,6 +194,9 @@ function KalenderPage() {
       ? selectedDaySlot
       : null;
   const selectedSpecial = selectedKey ? specialByDay.get(selectedKey) ?? null : null;
+  const selectedIsFullyBooked = Boolean(
+    selectedDaySlot?.is_fully_booked && !selectedDaySlot?.is_vacation,
+  );
 
   return (
     <>
@@ -248,18 +252,18 @@ function KalenderPage() {
                     <button
                       key={key}
                       onClick={() => {
-                        if (!isPast && !isVacation && (special || (has && !isFullyBooked))) {
+                        if (!isPast && !isVacation && (special || has)) {
                           setSelectedDay(day);
                         }
                       }}
-                      disabled={isPast || isVacation || (!special && (!has || isFullyBooked))}
+                      disabled={isPast || isVacation || (!special && !has)}
                       className={`aspect-square flex flex-col items-center justify-center border text-sm transition relative ${
                         isSel
                           ? "border-champagne bg-champagne/20 text-vanilla"
                           : isVacation && !isPast
                           ? "border-orange-500/75 bg-orange-950/30 text-vanilla shadow-[inset_0_0_0_1px_rgba(249,115,22,0.14)] cursor-default"
                           : isFullyBooked
-                          ? "border-bordeaux/50 bg-bordeaux/30 text-vanilla/80 cursor-default"
+                          ? "border-bordeaux/50 bg-bordeaux/30 text-vanilla/80 hover:border-bordeaux/80 cursor-pointer"
                           : partiallyBooked && !isPast
                           ? "border-champagne/50 bg-champagne/10 text-vanilla hover:border-champagne hover:bg-champagne/15 cursor-pointer"
                           : has && !isPast
@@ -314,7 +318,7 @@ function KalenderPage() {
             <div className="bg-card border border-champagne/15 p-6 min-h-[300px] public-booking-card">
               {slotsQ.isLoading && <p className="text-vanilla/50 text-sm">{tr("Lade Termine…", "Loading dates…")}</p>}
 
-              {!slotsQ.isLoading && !selectedSlot && (
+              {!slotsQ.isLoading && !selectedDay && !selectedSlot && (
                 <>
                   <div className="eyebrow mb-3">{tr("Verfügbare Tage", "Available days")}</div>
                   <h3 className="font-display text-2xl text-vanilla mb-3">{tr("Wähle einen Tag", "Pick a day")}</h3>
@@ -343,10 +347,17 @@ function KalenderPage() {
                 </div>
               )}
 
-              {selectedDay && !selectedSlot && selectedSpecial && (
+              {selectedDay && !selectedSlot && selectedSpecial && !selectedIsFullyBooked && (
                 <p className="text-sm leading-relaxed text-vanilla/55">
                   {tr("Für dieses SPECIAL ist aktuell kein freies Zeitfenster mehr verfügbar.", "There is currently no free time window left for this special.")}
                 </p>
+              )}
+
+              {selectedDay && selectedKey && selectedIsFullyBooked && (
+                <WaitlistForm
+                  date={selectedKey}
+                  dateLabel={format(selectedDay, "dd.MM.yyyy")}
+                />
               )}
 
               {selectedSlot && (
@@ -414,6 +425,151 @@ function KalenderPage() {
         </div>
       </section>
     </>
+  );
+}
+
+function WaitlistForm({ date, dateLabel }: { date: string; dateLabel: string }) {
+  const tr = useTr();
+  const join = useServerFn(joinCalendarWaitlist);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [availableFrom, setAvailableFrom] = useState("10:00");
+  const [availableTo, setAvailableTo] = useState("20:00");
+  const [done, setDone] = useState(false);
+  const [alreadyRegistered, setAlreadyRegistered] = useState(false);
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      join({
+        data: {
+          date,
+          name: name.trim(),
+          email: email.trim(),
+          available_from: availableFrom,
+          available_to: availableTo,
+        },
+      }),
+    onSuccess: (result) => {
+      setAlreadyRegistered(Boolean(result.alreadyRegistered));
+      setDone(true);
+    },
+  });
+
+  if (done) {
+    return (
+      <div className="border border-champagne/35 bg-champagne/5 p-4">
+        <div className="mb-2 flex items-center gap-2 text-champagne">
+          <CheckCircle2 size={16} />
+          <span className="eyebrow">{tr("Warteliste", "Waitlist")}</span>
+        </div>
+        <p className="text-sm leading-relaxed text-vanilla/75">
+          {alreadyRegistered
+            ? tr(
+                "Du stehst für diesen Tag bereits auf der Warteliste.",
+                "You are already on the waitlist for this date.",
+              )
+            : tr(
+                "Danke. Du bist jetzt auf der Warteliste. Wenn etwas frei wird, kann ich dich anhand deines angegebenen Zeitfensters kontaktieren.",
+                "Thank you. You are now on the waitlist. If something becomes available, I can contact you based on your availability window.",
+              )}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border border-champagne/35 bg-champagne/5 p-4">
+      <div className="eyebrow mb-2 text-champagne">{tr("Warteliste", "Waitlist")}</div>
+      <h3 className="font-display text-xl text-vanilla">
+        {tr("Dieser Tag ist belegt", "This date is fully booked")}
+      </h3>
+      <p className="mt-2 text-sm leading-relaxed text-vanilla/60">
+        {tr(
+          "Trag dich ein, wenn du am " + dateLabel + " einspringen könntest. Gib bitte auch an, von wann bis wann du an diesem Tag verfügbar wärst.",
+          "Join the waitlist if you could make " + dateLabel + ". Please also tell me what time window you would be available that day.",
+        )}
+      </p>
+
+      <form
+        className="mt-4 grid gap-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!name.trim() || !email.trim() || availableFrom >= availableTo) return;
+          mutation.mutate();
+        }}
+      >
+        <label className="grid gap-1 text-xs text-vanilla/65">
+          {tr("Name", "Name")}
+          <input
+            required
+            maxLength={100}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            className="input-luxe"
+          />
+        </label>
+
+        <label className="grid gap-1 text-xs text-vanilla/65">
+          {tr("E-Mail", "Email")}
+          <input
+            required
+            type="email"
+            maxLength={200}
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            className="input-luxe"
+          />
+        </label>
+
+        <div className="grid grid-cols-2 gap-3">
+          <label className="grid gap-1 text-xs text-vanilla/65">
+            {tr("Verfügbar ab", "Available from")}
+            <input
+              required
+              type="time"
+              value={availableFrom}
+              onChange={(event) => setAvailableFrom(event.target.value)}
+              className="input-luxe"
+            />
+          </label>
+          <label className="grid gap-1 text-xs text-vanilla/65">
+            {tr("Verfügbar bis", "Available until")}
+            <input
+              required
+              type="time"
+              value={availableTo}
+              onChange={(event) => setAvailableTo(event.target.value)}
+              className="input-luxe"
+            />
+          </label>
+        </div>
+
+        {availableFrom >= availableTo && (
+          <p className="text-xs text-bordeaux">
+            {tr("Die Endzeit muss nach der Startzeit liegen.", "The end time must be after the start time.")}
+          </p>
+        )}
+
+        {mutation.error && (
+          <p className="text-xs text-bordeaux">{(mutation.error as Error).message}</p>
+        )}
+
+        <button
+          type="submit"
+          disabled={
+            mutation.isPending ||
+            !name.trim() ||
+            !email.trim() ||
+            availableFrom >= availableTo
+          }
+          className="btn-gold w-fit disabled:opacity-40"
+        >
+          {mutation.isPending
+            ? tr("Wird eingetragen…", "Joining…")
+            : tr("Auf Warteliste setzen", "Join waitlist")}
+        </button>
+      </form>
+    </div>
   );
 }
 

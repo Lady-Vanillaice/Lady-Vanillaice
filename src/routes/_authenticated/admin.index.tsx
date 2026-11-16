@@ -28,7 +28,7 @@ export const Route = createFileRoute("/_authenticated/admin/")({
 });
 
 type HubCard = {
-  to: "/admin/kalender" | "/admin/terminplan" | "/admin/termine" | "/admin/duo" | "/admin/contentdreh" | "/admin/custom" | "/admin/fotoshooting" | "/admin/journal" | "/admin/kassenbuch" | "/admin/erfahrungsberichte" | "/admin/umplanen" | "/admin/kunden" | "/admin/agb" | "/admin/newsletter";
+  to: "/admin/kalender" | "/admin/warteliste" | "/admin/terminplan" | "/admin/termine" | "/admin/duo" | "/admin/contentdreh" | "/admin/custom" | "/admin/fotoshooting" | "/admin/journal" | "/admin/kassenbuch" | "/admin/erfahrungsberichte" | "/admin/umplanen" | "/admin/kunden" | "/admin/agb" | "/admin/newsletter";
   title: string;
   description: string;
   Icon: typeof Calendar;
