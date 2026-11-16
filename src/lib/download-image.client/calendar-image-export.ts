@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { getSlotAvailability } from "@/lib/public-booking.functions";
+import { listCalendarSpecials, type CalendarSpecial } from "@/lib/calendar-special.functions";
 import { saveCanvasAsPng } from "./core";
 
 type SlotRow = {
@@ -97,6 +98,27 @@ function timeLabel(value: string | Date | number) {
     minute: "2-digit",
     hourCycle: "h23",
   }).format(new Date(value));
+}
+
+function wrapCanvasLines(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+) {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let line = "";
+  for (const word of words) {
+    const candidate = line ? line + " " + word : word;
+    if (line && ctx.measureText(candidate).width > maxWidth) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = candidate;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
 }
 
 function studioDetails(location: string) {
@@ -277,6 +299,11 @@ async function loadData(mode: CalendarExportMode) {
   });
   if (slots.length === 0) throw new Error("Für diese Auswahl gibt es keine offenen Termine.");
 
+  const specials = await listCalendarSpecials();
+  const specialsByDay = new Map<string, CalendarSpecial>(
+    specials.map((special) => [special.date, special]),
+  );
+
   const representativeByDay = new Map<string, SlotRow>();
   for (const slot of slots) {
     const key = dateParts(slot.starts_at).dayKey;
@@ -298,7 +325,7 @@ async function loadData(mode: CalendarExportMode) {
   // excludes vacations that have ended.
   const vacations = (vacationRows ?? []) as SlotRow[];
 
-  return { slots, availabilityByDay, vacations };
+  return { slots, availabilityByDay, vacations, specialsByDay };
 }
 
 export async function exportCalendarImage(mode: CalendarExportMode) {
