@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import { Calendar, CalendarClock, Crown, Instagram, Mail } from "lucide-react";
 import heroImage from "../assets/CARL0938-2.jpeg";
 import { AdminLoginWidget } from "@/components/site/AdminLoginWidget";
-import { useT, useTr } from "@/i18n";
+import { useT, useTr, useLang } from "@/i18n";
 import { recordHomepageVisit } from "@/lib/visitor-stats.functions";
 import { listUpcomingSlots } from "@/lib/public-booking.functions";
 
@@ -47,6 +47,7 @@ function Index() {
   const beholdRef = useRef<HTMLDivElement>(null);
   const t = useT();
   const tr = useTr();
+  const { lang } = useLang();
   const recordVisit = useServerFn(recordHomepageVisit);
   const listSlots = useServerFn(listUpcomingSlots);
   const nextSlotsQ = useQuery({
