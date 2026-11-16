@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Calendar, CalendarClock, Crown, Instagram, Mail } from "lucide-react";
 import heroImage from "../assets/CARL0938-2.jpeg";
 import { AdminLoginWidget } from "@/components/site/AdminLoginWidget";
@@ -50,32 +49,46 @@ function Index() {
   const { lang } = useLang();
   const recordVisit = useServerFn(recordHomepageVisit);
   const listSlots = useServerFn(listUpcomingSlots);
-  const nextSlotsQ = useQuery({
-    queryKey: ["homepage-next-free-slots"],
-    queryFn: () => listSlots(),
-    staleTime: 30_000,
-  });
+  const [nextFreeDays, setNextFreeDays] = useState<any[]>([]);
 
-  const nextFreeDays = (() => {
-    const rows = (nextSlotsQ.data ?? []).filter(
-      (slot: any) => !slot.is_vacation && !slot.is_fully_booked,
-    );
-    const seen = new Set<string>();
-    const result: any[] = [];
-    for (const slot of rows) {
-      const key = new Intl.DateTimeFormat("sv-SE", {
-        timeZone: "Europe/Berlin",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }).format(new Date(slot.starts_at));
-      if (seen.has(key)) continue;
-      seen.add(key);
-      result.push({ ...slot, dayKey: key });
-      if (result.length === 3) break;
-    }
-    return result;
-  })();
+  useEffect(() => {
+    let cancelled = false;
+
+    void listSlots()
+      .then((slots) => {
+        if (cancelled || !Array.isArray(slots)) return;
+
+        const seen = new Set<string>();
+        const result: any[] = [];
+
+        for (const slot of slots) {
+          try {
+            if (!slot || slot.is_vacation || slot.is_fully_booked || !slot.starts_at) continue;
+            const key = new Intl.DateTimeFormat("sv-SE", {
+              timeZone: "Europe/Berlin",
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+            }).format(new Date(slot.starts_at));
+            if (seen.has(key)) continue;
+            seen.add(key);
+            result.push({ ...slot, dayKey: key });
+            if (result.length === 3) break;
+          } catch {
+            // Ein fehlerhafter Termin darf die Startseite nie blockieren.
+          }
+        }
+
+        if (!cancelled) setNextFreeDays(result);
+      })
+      .catch(() => {
+        if (!cancelled) setNextFreeDays([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [listSlots]);
 
   useEffect(() => {
     try {
