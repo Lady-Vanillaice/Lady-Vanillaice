@@ -1,11 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import { Calendar, Crown, Instagram, Mail } from "lucide-react";
+import { Calendar, CalendarClock, Crown, Instagram, Mail } from "lucide-react";
 import heroImage from "../assets/CARL0938-2.jpeg";
 import { AdminLoginWidget } from "@/components/site/AdminLoginWidget";
 import { useT, useTr } from "@/i18n";
 import { recordHomepageVisit } from "@/lib/visitor-stats.functions";
+import { listUpcomingSlots } from "@/lib/public-booking.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -46,6 +48,33 @@ function Index() {
   const t = useT();
   const tr = useTr();
   const recordVisit = useServerFn(recordHomepageVisit);
+  const listSlots = useServerFn(listUpcomingSlots);
+  const nextSlotsQ = useQuery({
+    queryKey: ["homepage-next-free-slots"],
+    queryFn: () => listSlots(),
+    staleTime: 30_000,
+  });
+
+  const nextFreeDays = (() => {
+    const rows = (nextSlotsQ.data ?? []).filter(
+      (slot: any) => !slot.is_vacation && !slot.is_fully_booked,
+    );
+    const seen = new Set<string>();
+    const result: any[] = [];
+    for (const slot of rows) {
+      const key = new Intl.DateTimeFormat("sv-SE", {
+        timeZone: "Europe/Berlin",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date(slot.starts_at));
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push({ ...slot, dayKey: key });
+      if (result.length === 3) break;
+    }
+    return result;
+  })();
 
   useEffect(() => {
     try {
@@ -272,6 +301,57 @@ function Index() {
           {t<string>("home.hero.scroll")}
         </div>
       </section>
+
+      {nextFreeDays.length > 0 && (
+        <section className="border-b border-champagne/15 bg-card/30">
+          <div className="container-luxe py-8">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-md">
+                <div className="eyebrow mb-2">{tr("Kurzfristig verfügbar", "Available soon")}</div>
+                <h2 className="font-display text-2xl md:text-3xl gold-text">
+                  {tr("Heute / diese Woche frei", "Free today / this week")}
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-vanilla/55">
+                  {tr(
+                    "Die nächsten freien Tage auf einen Blick. Tippe auf einen Termin, um die aktuell verfügbaren Zeiten im Kalender zu sehen.",
+                    "See the next available days at a glance. Tap a date to view the currently available times in the calendar.",
+                  )}
+                </p>
+              </div>
+
+              <div className="grid flex-1 gap-2 sm:grid-cols-3">
+                {nextFreeDays.map((slot: any) => {
+                  const date = new Date(slot.starts_at);
+                  const weekday = new Intl.DateTimeFormat(
+                    lang === "en" ? "en-US" : "de-DE",
+                    { timeZone: "Europe/Berlin", weekday: "short" },
+                  ).format(date);
+                  const day = new Intl.DateTimeFormat(
+                    lang === "en" ? "en-US" : "de-DE",
+                    { timeZone: "Europe/Berlin", day: "2-digit", month: "2-digit" },
+                  ).format(date);
+                  return (
+                    <Link
+                      key={slot.dayKey}
+                      to="/kalender"
+                      className="group border border-champagne/25 bg-background/70 p-4 transition hover:border-champagne/70 hover:bg-champagne/5"
+                    >
+                      <div className="flex items-center gap-2 text-champagne">
+                        <CalendarClock size={15} />
+                        <span className="text-xs uppercase tracking-[0.16em]">{weekday}</span>
+                      </div>
+                      <div className="mt-2 font-display text-2xl text-vanilla">{day}</div>
+                      <div className="mt-1 text-xs text-vanilla/50 group-hover:text-champagne">
+                        {tr("Freie Zeiten ansehen", "View free times")}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* MÜNCHEN */}
       <section className="py-20 border-b border-champagne/15">
