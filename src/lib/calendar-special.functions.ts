@@ -8,12 +8,14 @@ export type CalendarSpecial = {
   date: string;
   title: string;
   description: string;
+  outfit?: string | null;
 };
 
 const specialSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   title: z.string().trim().min(1).max(80),
   description: z.string().trim().min(1).max(1200),
+  outfit: z.string().trim().max(200).optional().nullable(),
 });
 
 function normalizeSpecials(value: unknown): CalendarSpecial[] {
