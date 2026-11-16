@@ -267,9 +267,7 @@ function KalenderPage() {
                           : "border-transparent text-vanilla/25 cursor-default"
                       } ${isOther ? "opacity-40" : ""}`}
                     >
-                      <span className={special || (slot?.is_duo && !isFullyBooked) || (slot?.is_content_shoot && !isFullyBooked) ? "translate-y-2" : ""}>
-                        {format(day, "d")}
-                      </span>
+                      <span>{format(day, "d")}</span>
                       {isVacation && !isPast ? (
                         <span className="absolute bottom-1.5 rounded-sm border border-orange-500/70 bg-orange-950/55 px-1.5 py-0.5 text-[0.46rem] font-semibold uppercase tracking-[0.12em] text-vanilla">
                           {tr("Urlaub", "Away")}
@@ -280,7 +278,7 @@ function KalenderPage() {
                         </span>
                       ) : null}
                       {!isPast && (
-                        <span className="absolute top-1 inset-x-1 flex items-center justify-center gap-1.5 pointer-events-none">
+                        <span className="absolute top-0.5 inset-x-1 flex items-center justify-center gap-1.5 pointer-events-none">
                           {special && (
                             <span className="text-[0.48rem] uppercase tracking-[0.12em] text-champagne">
                               SPECIAL
@@ -299,7 +297,7 @@ function KalenderPage() {
                         </span>
                       )}
                       {has && !isPast && !isFullyBooked && !isVacation && (
-                        <span className="absolute bottom-1.5 w-1 h-1 rounded-full bg-champagne" />
+                        <span className="absolute bottom-1 w-1 h-1 rounded-full bg-champagne" />
                       )}
                     </button>
 
