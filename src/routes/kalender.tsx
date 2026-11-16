@@ -277,19 +277,23 @@ function KalenderPage() {
                           {tr("belegt", "booked")}
                         </span>
                       ) : null}
-                      {special && !isPast && (
-                        <span className="absolute top-1 left-1 rounded-sm border border-champagne/60 bg-champagne/15 px-1 py-0.5 text-[0.42rem] font-semibold uppercase tracking-[0.08em] text-champagne">
-                          SPECIAL
-                        </span>
-                      )}
-                      {slot?.is_duo && !isPast && !isFullyBooked && (
-                        <span className="absolute top-1 right-1 text-[0.48rem] uppercase tracking-[0.12em] text-champagne">
-                          Duo
-                        </span>
-                      )}
-                      {slot?.is_content_shoot && !isPast && !isFullyBooked && (
-                        <span className={`absolute ${special ? "top-5" : "top-1"} left-1 text-[0.48rem] uppercase tracking-[0.12em] text-champagne`}>
-                          Content
+                      {!isPast && (
+                        <span className="absolute top-2 inset-x-1 flex items-center justify-center gap-1.5 pointer-events-none">
+                          {special && (
+                            <span className="text-[0.48rem] uppercase tracking-[0.12em] text-champagne">
+                              SPECIAL
+                            </span>
+                          )}
+                          {slot?.is_duo && !isFullyBooked && (
+                            <span className="text-[0.48rem] uppercase tracking-[0.12em] text-champagne">
+                              Duo
+                            </span>
+                          )}
+                          {slot?.is_content_shoot && !isFullyBooked && (
+                            <span className="text-[0.48rem] uppercase tracking-[0.12em] text-champagne">
+                              Content
+                            </span>
+                          )}
                         </span>
                       )}
                       {has && !isPast && !isFullyBooked && !isVacation && (
