@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+const WAITLIST_SLUG = "calendar-waitlist";
+
 export type CalendarWaitlistEntry = {
   id: string;
   waitlist_date: string;
@@ -35,28 +37,71 @@ async function ensureAdmin(supabase: any, userId: string) {
   if (!data) throw new Error("Forbidden");
 }
 
+function normalizeEntries(value: unknown): CalendarWaitlistEntry[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is CalendarWaitlistEntry => {
+    if (!entry || typeof entry !== "object") return false;
+    const row = entry as Record<string, unknown>;
+    return (
+      typeof row.id === "string" &&
+      typeof row.waitlist_date === "string" &&
+      typeof row.name === "string" &&
+      typeof row.email === "string" &&
+      typeof row.available_from === "string" &&
+      typeof row.available_to === "string" &&
+      (row.status === "waiting" || row.status === "contacted") &&
+      typeof row.created_at === "string"
+    );
+  });
+}
+
+async function loadEntries() {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin
+    .from("site_content")
+    .select("body")
+    .eq("slug", WAITLIST_SLUG)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data?.body) return [] as CalendarWaitlistEntry[];
+  try {
+    return normalizeEntries(JSON.parse(data.body));
+  } catch {
+    return [] as CalendarWaitlistEntry[];
+  }
+}
+
+async function saveEntries(entries: CalendarWaitlistEntry[]) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { error } = await supabaseAdmin.from("site_content").upsert({
+    slug: WAITLIST_SLUG,
+    body: JSON.stringify(entries),
+    updated_at: new Date().toISOString(),
+  });
+  if (error) throw new Error(error.message);
+}
+
 export const joinCalendarWaitlist = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => joinSchema.parse(input))
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const email = data.email.toLowerCase();
-    const { error } = await supabaseAdmin
-      .from("calendar_waitlist" as any)
-      .insert({
-        waitlist_date: data.date,
-        name: data.name.trim(),
-        email,
-        available_from: data.available_from,
-        available_to: data.available_to,
-        status: "waiting",
-      } as any);
+    const entries = await loadEntries();
+    const email = data.email.trim().toLowerCase();
+    const duplicate = entries.some(
+      (entry) => entry.waitlist_date === data.date && entry.email.toLowerCase() === email,
+    );
+    if (duplicate) return { ok: true, alreadyRegistered: true };
 
-    if (error) {
-      if (error.code === "23505") {
-        return { ok: true, alreadyRegistered: true };
-      }
-      throw new Error(error.message);
-    }
+    entries.push({
+      id: crypto.randomUUID(),
+      waitlist_date: data.date,
+      name: data.name.trim(),
+      email,
+      available_from: data.available_from,
+      available_to: data.available_to,
+      status: "waiting",
+      created_at: new Date().toISOString(),
+    });
+    await saveEntries(entries);
     return { ok: true, alreadyRegistered: false };
   });
 
@@ -64,14 +109,13 @@ export const listCalendarWaitlist = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await ensureAdmin(context.supabase, context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin
-      .from("calendar_waitlist" as any)
-      .select("id, waitlist_date, name, email, available_from, available_to, status, created_at")
-      .order("waitlist_date", { ascending: true })
-      .order("created_at", { ascending: true });
-    if (error) throw new Error(error.message);
-    return (data ?? []) as CalendarWaitlistEntry[];
+    const entries = await loadEntries();
+    return [...entries].sort(
+      (a, b) =>
+        a.waitlist_date.localeCompare(b.waitlist_date) ||
+        a.available_from.localeCompare(b.available_from) ||
+        a.created_at.localeCompare(b.created_at),
+    );
   });
 
 export const setCalendarWaitlistStatus = createServerFn({ method: "POST" })
@@ -84,12 +128,11 @@ export const setCalendarWaitlistStatus = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await ensureAdmin(context.supabase, context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
-      .from("calendar_waitlist" as any)
-      .update({ status: data.status, updated_at: new Date().toISOString() } as any)
-      .eq("id", data.id);
-    if (error) throw new Error(error.message);
+    const entries = await loadEntries();
+    const next = entries.map((entry) =>
+      entry.id === data.id ? { ...entry, status: data.status } : entry,
+    );
+    await saveEntries(next);
     return { ok: true };
   });
 
@@ -98,11 +141,7 @@ export const deleteCalendarWaitlistEntry = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     await ensureAdmin(context.supabase, context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
-      .from("calendar_waitlist" as any)
-      .delete()
-      .eq("id", data.id);
-    if (error) throw new Error(error.message);
+    const entries = await loadEntries();
+    await saveEntries(entries.filter((entry) => entry.id !== data.id));
     return { ok: true };
   });
