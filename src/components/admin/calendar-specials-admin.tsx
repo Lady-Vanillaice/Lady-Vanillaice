@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Gift, Plus, Save, Trash2 } from "lucide-react";
+import { Gift, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import {
   deleteCalendarSpecial,
   listCalendarSpecials,
@@ -21,6 +21,15 @@ export function CalendarSpecialsAdmin() {
   const [title, setTitle] = useState("SPECIAL");
   const [description, setDescription] = useState("");
   const [outfit, setOutfit] = useState("");
+  const [editingDate, setEditingDate] = useState<string | null>(null);
+
+  const resetForm = () => {
+    setDate("");
+    setTitle("SPECIAL");
+    setDescription("");
+    setOutfit("");
+    setEditingDate(null);
+  };
 
   const sorted = useMemo(
     () => [...(specialsQ.data ?? [])].sort((a, b) => a.date.localeCompare(b.date)),
@@ -28,20 +37,22 @@ export function CalendarSpecialsAdmin() {
   );
 
   const saveMut = useMutation({
-    mutationFn: () =>
-      saveFn({
+    mutationFn: async () => {
+      if (editingDate && editingDate !== date) {
+        await deleteFn({ data: { date: editingDate } });
+      }
+      return saveFn({
         data: {
           date,
           title: title.trim() || "SPECIAL",
           description: description.trim(),
           outfit: outfit.trim() || null,
         },
-      }),
+      });
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["calendar-specials"] });
-      setDescription("");
-      setOutfit("");
-      setTitle("SPECIAL");
+      resetForm();
     },
   });
 
@@ -56,7 +67,9 @@ export function CalendarSpecialsAdmin() {
         <Gift className="text-champagne mt-0.5" size={20} />
         <div>
           <div className="eyebrow text-champagne">SPECIAL</div>
-          <h2 className="font-display text-xl text-vanilla">Kalender-Special anlegen</h2>
+          <h2 className="font-display text-xl text-vanilla">
+            {editingDate ? "Kalender-Special bearbeiten" : "Kalender-Special anlegen"}
+          </h2>
           <p className="mt-1 text-xs leading-relaxed text-vanilla/55">
             Zum Beispiel Weihnachten, Geburtstag oder ein Geschenk-Special. Öffentlich erscheint am Datum „SPECIAL“ und beim Anklicken dein Zusatztext.
           </p>
@@ -114,14 +127,31 @@ export function CalendarSpecialsAdmin() {
             className="luxe-input resize-y"
           />
         </label>
-        <button
-          type="submit"
-          disabled={saveMut.isPending || !date || !description.trim()}
-          className="btn-gold inline-flex w-fit items-center gap-2 disabled:opacity-40"
-        >
-          {saveMut.isPending ? <Save size={15} /> : <Plus size={15} />}
-          {saveMut.isPending ? "Speichere…" : "SPECIAL speichern"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="submit"
+            disabled={saveMut.isPending || !date || !description.trim()}
+            className="btn-gold inline-flex w-fit items-center gap-2 disabled:opacity-40"
+          >
+            {saveMut.isPending ? <Save size={15} /> : editingDate ? <Save size={15} /> : <Plus size={15} />}
+            {saveMut.isPending
+              ? "Speichere…"
+              : editingDate
+                ? "Änderungen speichern"
+                : "SPECIAL speichern"}
+          </button>
+          {editingDate && (
+            <button
+              type="button"
+              onClick={resetForm}
+              disabled={saveMut.isPending}
+              className="btn-outline-gold inline-flex w-fit items-center gap-2 disabled:opacity-40"
+            >
+              <X size={15} />
+              Abbrechen
+            </button>
+          )}
+        </div>
         {saveMut.error && (
           <p className="text-xs text-bordeaux">{(saveMut.error as Error).message}</p>
         )}
@@ -150,19 +180,38 @@ export function CalendarSpecialsAdmin() {
                   {special.description}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm("Dieses SPECIAL wirklich entfernen?")) {
-                    deleteMut.mutate(special.date);
-                  }
-                }}
-                disabled={deleteMut.isPending}
-                className="p-2 text-vanilla/45 hover:text-bordeaux disabled:opacity-40"
-                aria-label="SPECIAL löschen"
-              >
-                <Trash2 size={16} />
-              </button>
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingDate(special.date);
+                    setDate(special.date);
+                    setTitle(special.title);
+                    setOutfit(special.outfit ?? "");
+                    setDescription(special.description);
+                  }}
+                  disabled={saveMut.isPending || deleteMut.isPending}
+                  className="p-2 text-vanilla/45 hover:text-champagne disabled:opacity-40"
+                  aria-label="SPECIAL bearbeiten"
+                  title="SPECIAL bearbeiten"
+                >
+                  <Pencil size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm("Dieses SPECIAL wirklich entfernen?")) {
+                      deleteMut.mutate(special.date);
+                      if (editingDate === special.date) resetForm();
+                    }
+                  }}
+                  disabled={deleteMut.isPending || saveMut.isPending}
+                  className="p-2 text-vanilla/45 hover:text-bordeaux disabled:opacity-40"
+                  aria-label="SPECIAL löschen"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
           ))}
         </div>
