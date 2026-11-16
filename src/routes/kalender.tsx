@@ -327,6 +327,12 @@ function KalenderPage() {
                     <span className="eyebrow">SPECIAL</span>
                   </div>
                   <h3 className="font-display text-xl text-vanilla">{selectedSpecial.title}</h3>
+                  {selectedSpecial.outfit && (
+                    <p className="mt-2 text-sm text-champagne">
+                      <span className="font-medium">{tr("Outfit", "Outfit")}:</span>{" "}
+                      {selectedSpecial.outfit}
+                    </p>
+                  )}
                   <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-vanilla/75">
                     {selectedSpecial.description}
                   </p>
