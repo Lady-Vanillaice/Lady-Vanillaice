@@ -18,6 +18,7 @@ const groups = `const HUB_GROUPS: HubGroup[] = [
   { label: "1 · Heute & Planung", hint: "Alles rund um deinen Arbeitstag", cards: [
     { to: "/admin/terminplan", title: "Terminplan", description: "Deine bestätigten Termine – nach Datum und Uhrzeit.", Icon: CalendarClock },
     { to: "/admin/kalender", title: "Kalender & Verfügbarkeit", description: "Freie Zeiten, Sperren und neue Slots verwalten.", Icon: Calendar },
+    { to: "/admin/warteliste", title: "Warteliste", description: "Interessenten für belegte Tage mit Name, E-Mail und möglichem Zeitfenster.", Icon: Users },
   ]},
   { label: "2 · Anfragen & Termine", hint: "Alle eingehenden Buchungsarten an einem Ort", cards: [
     { to: "/admin/termine", title: "Termin-Anfragen", description: "Neu, Umplanen und Storniert – mit Namenssuche. Bestätigte Termine stehen im Terminplan.", Icon: Mail },
