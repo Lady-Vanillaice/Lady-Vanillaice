@@ -17,6 +17,7 @@ import {
 import { de, enUS } from "date-fns/locale";
 import { useTr, useLang } from "@/i18n";
 import { getTimelineLabelTicks } from "@/lib/calendar-timeline";
+import { listCalendarSpecials, type CalendarSpecial } from "@/lib/calendar-special.functions";
 
 type Slot = {
   id: string;
@@ -149,6 +150,12 @@ function KalenderPage() {
     queryFn: () => list(),
     staleTime: 30_000,
   });
+  const listSpecials = useServerFn(listCalendarSpecials);
+  const specialsQ = useQuery({
+    queryKey: ["calendar-specials"],
+    queryFn: () => listSpecials(),
+    staleTime: 30_000,
+  });
 
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
@@ -167,13 +174,25 @@ function KalenderPage() {
     return map;
   }, [slotsQ.data]);
 
+  const specialByDay = useMemo(() => {
+    const map = new Map<string, CalendarSpecial>();
+    (specialsQ.data ?? []).forEach((special) => map.set(special.date, special));
+    return map;
+  }, [specialsQ.data]);
+
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(cursor), { weekStartsOn: 1 });
     const end = endOfWeek(endOfMonth(cursor), { weekStartsOn: 1 });
     return eachDayOfInterval({ start, end });
   }, [cursor]);
 
-  const selectedSlot = selectedDay ? slotByDay.get(format(selectedDay, "yyyy-MM-dd")) ?? null : null;
+  const selectedKey = selectedDay ? format(selectedDay, "yyyy-MM-dd") : null;
+  const selectedDaySlot = selectedKey ? slotByDay.get(selectedKey) ?? null : null;
+  const selectedSlot =
+    selectedDaySlot && !selectedDaySlot.is_fully_booked && !selectedDaySlot.is_vacation
+      ? selectedDaySlot
+      : null;
+  const selectedSpecial = selectedKey ? specialByDay.get(selectedKey) ?? null : null;
 
   return (
     <>
@@ -217,6 +236,7 @@ function KalenderPage() {
                   const key = format(day, "yyyy-MM-dd");
                   const has = slotByDay.has(key);
                   const slot = slotByDay.get(key);
+                  const special = specialByDay.get(key);
                   const isFullyBooked = slot?.is_fully_booked ?? false;
                   const isVacation = slot?.is_vacation ?? false;
                   const hasBooking = slot?.has_booking ?? false;
@@ -227,8 +247,12 @@ function KalenderPage() {
                   return (
                     <button
                       key={key}
-                      onClick={() => has && !isFullyBooked && !isVacation && setSelectedDay(day)}
-                      disabled={!has || isPast || isFullyBooked || isVacation}
+                      onClick={() => {
+                        if (!isPast && !isVacation && (special || (has && !isFullyBooked))) {
+                          setSelectedDay(day);
+                        }
+                      }}
+                      disabled={isPast || isVacation || (!special && (!has || isFullyBooked))}
                       className={`aspect-square flex flex-col items-center justify-center border text-sm transition relative ${
                         isSel
                           ? "border-champagne bg-champagne/20 text-vanilla"
@@ -253,13 +277,18 @@ function KalenderPage() {
                           {tr("belegt", "booked")}
                         </span>
                       ) : null}
+                      {special && !isPast && (
+                        <span className="absolute top-1 left-1 rounded-sm border border-champagne/60 bg-champagne/15 px-1 py-0.5 text-[0.42rem] font-semibold uppercase tracking-[0.08em] text-champagne">
+                          SPECIAL
+                        </span>
+                      )}
                       {slot?.is_duo && !isPast && !isFullyBooked && (
                         <span className="absolute top-1 right-1 text-[0.48rem] uppercase tracking-[0.12em] text-champagne">
                           Duo
                         </span>
                       )}
                       {slot?.is_content_shoot && !isPast && !isFullyBooked && (
-                        <span className="absolute top-1 left-1 text-[0.48rem] uppercase tracking-[0.12em] text-champagne">
+                        <span className={`absolute ${special ? "top-5" : "top-1"} left-1 text-[0.48rem] uppercase tracking-[0.12em] text-champagne`}>
                           Content
                         </span>
                       )}
@@ -289,6 +318,25 @@ function KalenderPage() {
                     {tr("Klick im Kalender auf einen Tag mit goldenem Punkt — du wählst dann deine Wunsch-Startzeit und Dauer.", "Click a day with a golden dot in the calendar — then you choose your preferred start time and duration.")}
                   </p>
                 </>
+              )}
+
+              {selectedSpecial && (
+                <div className="mb-5 border border-champagne/50 bg-champagne/10 p-4">
+                  <div className="mb-1 flex items-center gap-2 text-champagne">
+                    <Sparkles size={16} />
+                    <span className="eyebrow">SPECIAL</span>
+                  </div>
+                  <h3 className="font-display text-xl text-vanilla">{selectedSpecial.title}</h3>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-vanilla/75">
+                    {selectedSpecial.description}
+                  </p>
+                </div>
+              )}
+
+              {selectedDay && !selectedSlot && selectedSpecial && (
+                <p className="text-sm leading-relaxed text-vanilla/55">
+                  {tr("Für dieses SPECIAL ist aktuell kein freies Zeitfenster mehr verfügbar.", "There is currently no free time window left for this special.")}
+                </p>
               )}
 
               {selectedSlot && (
