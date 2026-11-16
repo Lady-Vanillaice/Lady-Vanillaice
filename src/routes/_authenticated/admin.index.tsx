@@ -7,6 +7,7 @@ import { listAdminAccessRequests, decideAdminAccessRequest } from "@/lib/admin-a
 import { createStudio, deleteStudio, listStudios } from "@/lib/studio.functions";
 import { listCashBookEntries } from "@/lib/cashbook.functions";
 import { getHomepageVisitStats } from "@/lib/visitor-stats.functions";
+import { BusinessStatisticsDashboard } from "@/components/admin/business-statistics-dashboard";
 import {
   getPushConfiguration,
   removePushSubscription,
@@ -170,6 +171,7 @@ function AdminHubPage() {
 
       <PostSessionWhatsApp />
       <DashboardOverview />
+      <BusinessStatisticsDashboard />
       <HomepageVisitorStats />
 
       <section className="mb-10">
