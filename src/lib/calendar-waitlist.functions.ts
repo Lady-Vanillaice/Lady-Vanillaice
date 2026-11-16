@@ -7,6 +7,8 @@ export type CalendarWaitlistEntry = {
   waitlist_date: string;
   name: string;
   email: string;
+  available_from: string;
+  available_to: string;
   status: "waiting" | "contacted";
   created_at: string;
 };
@@ -15,6 +17,11 @@ const joinSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   name: z.string().trim().min(2).max(100),
   email: z.string().trim().email().max(200),
+  available_from: z.string().regex(/^\d{2}:\d{2}$/),
+  available_to: z.string().regex(/^\d{2}:\d{2}$/),
+}).refine((value) => value.available_from < value.available_to, {
+  message: "Die Endzeit muss nach der Startzeit liegen.",
+  path: ["available_to"],
 });
 
 async function ensureAdmin(supabase: any, userId: string) {
@@ -39,6 +46,8 @@ export const joinCalendarWaitlist = createServerFn({ method: "POST" })
         waitlist_date: data.date,
         name: data.name.trim(),
         email,
+        available_from: data.available_from,
+        available_to: data.available_to,
         status: "waiting",
       } as any);
 
@@ -58,7 +67,7 @@ export const listCalendarWaitlist = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("calendar_waitlist" as any)
-      .select("id, waitlist_date, name, email, status, created_at")
+      .select("id, waitlist_date, name, email, available_from, available_to, status, created_at")
       .order("waitlist_date", { ascending: true })
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
