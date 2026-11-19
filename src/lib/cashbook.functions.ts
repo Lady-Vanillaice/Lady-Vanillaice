@@ -289,16 +289,15 @@ const CASHBOOK_GIFTS_BUCKET = "private-cashbook-gifts";
 const giftSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().trim().min(1).max(200),
-  received_date: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/),
+  received_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   payment_method: z.string().trim().min(1).max(100),
   amount: z.number().positive().max(1_000_000),
-  purchase_date: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/).nullable().optional(),
+  purchase_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   purchase_item: z.string().trim().max(300).nullable().optional(),
   purchase_amount: z.number().min(0).max(1_000_000).optional(),
   note: z.string().max(2000).nullable().optional(),
   photo_data_url: z.string().max(7_000_000).nullable().optional(),
 });
-type CashbookGift = Omit<z.infer<typeof giftSchema>, "photo_data_url"> & { photo_url: string | null };
 async function privateGiftBucket(db: any, create = false) {
   const bucketName = CASHBOOK_GIFTS_BUCKET;
   let result = await db.storage.getBucket(bucketName);
@@ -320,7 +319,7 @@ export const listCashbookGifts = createServerFn({ method: "GET" })
     if (!bucket) return [];
     const { data: files, error } = await bucket.list("", { limit: 1000, sortBy: { column: "name", order: "desc" } });
     if (error) throw new Error("Geschenke konnten nicht geladen werden.");
-    const jsonFiles = (files ?? []).filter((file: any) => /^[a-f\\d-]{36}\\.json$/i.test(file.name));
+    const jsonFiles = (files ?? []).filter((file: any) => /^[a-f\d-]{36}\.json$/i.test(file.name));
     return await Promise.all(jsonFiles.map(async (file: any) => {
       const { data, error: downloadError } = await bucket.download(file.name);
       if (downloadError || !data) throw new Error("Ein Geschenk-Eintrag konnte nicht geladen werden.");
@@ -343,7 +342,7 @@ export const createCashbookGift = createServerFn({ method: "POST" })
     const id = data.id ?? crypto.randomUUID();
     let hasPhoto = false;
     if (data.photo_data_url) {
-      const match = data.photo_data_url.match(/^data:(image\\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
+      const match = data.photo_data_url.match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
       if (!match) throw new Error("Bitte ein JPG-, PNG- oder WebP-Bild auswählen.");
       const photo = Buffer.from(match[2], "base64");
       if (photo.length > 5 * 1024 * 1024) throw new Error("Das Bild darf höchstens 5 MB groß sein.");
