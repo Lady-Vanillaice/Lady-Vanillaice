@@ -284,6 +284,89 @@ export const createStudioRentExpense = createServerFn({ method: "POST" })
     return row;
   });
 
+
+const CASHBOOK_GIFTS_BUCKET = "private-cashbook-gifts";
+const giftSchema = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string().trim().min(1).max(200),
+  received_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  payment_method: z.string().trim().min(1).max(100),
+  amount: z.number().positive().max(1_000_000),
+  purchase_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  purchase_item: z.string().trim().max(300).nullable().optional(),
+  purchase_amount: z.number().min(0).max(1_000_000).optional(),
+  note: z.string().max(2000).nullable().optional(),
+  photo_data_url: z.string().max(7_000_000).nullable().optional(),
+});
+async function privateGiftBucket(db: any, create = false) {
+  const bucketName = CASHBOOK_GIFTS_BUCKET;
+  let result = await db.storage.getBucket(bucketName);
+  const missing = result.error && (String(result.error.statusCode) === "404" || result.error.code === "NoSuchBucket" || result.error.message === "Bucket not found");
+  if (missing) {
+    if (!create) return null;
+    const made = await db.storage.createBucket(bucketName, { public: false });
+    if (made.error && !["400", "409"].includes(String(made.error.statusCode))) throw new Error("Der private Geschenkespeicher konnte nicht angelegt werden.");
+    result = await db.storage.getBucket(bucketName);
+  }
+  if (result.error || !result.data || result.data.public !== false) throw new Error("Der geschützte Geschenkespeicher ist nicht verfügbar.");
+  return db.storage.from(bucketName);
+}
+export const listCashbookGifts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await ensureAdmin(context.supabase, context.userId);
+    const bucket = await privateGiftBucket(context.supabase);
+    if (!bucket) return [];
+    const { data: files, error } = await bucket.list("", { limit: 1000, sortBy: { column: "name", order: "desc" } });
+    if (error) throw new Error("Geschenke konnten nicht geladen werden.");
+    const jsonFiles = (files ?? []).filter((file: any) => /^[a-f\d-]{36}\.json$/i.test(file.name));
+    return await Promise.all(jsonFiles.map(async (file: any) => {
+      const { data, error: downloadError } = await bucket.download(file.name);
+      if (downloadError || !data) throw new Error("Ein Geschenk-Eintrag konnte nicht geladen werden.");
+      const gift = giftSchema.omit({ photo_data_url: true }).parse(JSON.parse(await data.text()));
+      let photo_url: string | null = null;
+      if (gift.id) {
+        const photo = await bucket.createSignedUrl(`${gift.id}.photo`, 3600);
+        if (!photo.error) photo_url = photo.data.signedUrl;
+      }
+      return { ...gift, photo_url };
+    }));
+  });
+export const createCashbookGift = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) => giftSchema.parse(raw))
+  .handler(async ({ data, context }) => {
+    await ensureAdmin(context.supabase, context.userId);
+    const bucket = await privateGiftBucket(context.supabase, true);
+    if (!bucket) throw new Error("Der Geschenkespeicher ist nicht verfügbar.");
+    const id = data.id ?? crypto.randomUUID();
+    let hasPhoto = false;
+    if (data.photo_data_url) {
+      const match = data.photo_data_url.match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
+      if (!match) throw new Error("Bitte ein JPG-, PNG- oder WebP-Bild auswählen.");
+      const photo = Buffer.from(match[2], "base64");
+      if (photo.length > 5 * 1024 * 1024) throw new Error("Das Bild darf höchstens 5 MB groß sein.");
+      const { error } = await bucket.upload(`${id}.photo`, photo, { contentType: match[1], cacheControl: "0", upsert: true });
+      if (error) throw new Error("Das Geschenkfoto konnte nicht gespeichert werden.");
+      hasPhoto = true;
+    }
+    const record = { id, name: data.name, received_date: data.received_date, payment_method: data.payment_method, amount: data.amount, purchase_date: data.purchase_date ?? null, purchase_item: data.purchase_item ?? null, purchase_amount: data.purchase_amount ?? 0, note: data.note ?? null, has_photo: hasPhoto };
+    const { error } = await bucket.upload(`${id}.json`, JSON.stringify(record), { contentType: "application/json", cacheControl: "0", upsert: false });
+    if (error) throw new Error("Der Geschenkeintrag konnte nicht gespeichert werden.");
+    return { ok: true };
+  });
+export const deleteCashbookGift = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) => z.object({ id: z.string().uuid() }).parse(raw))
+  .handler(async ({ data, context }) => {
+    await ensureAdmin(context.supabase, context.userId);
+    const bucket = await privateGiftBucket(context.supabase);
+    if (!bucket) return { ok: true };
+    const { error } = await bucket.remove([`${data.id}.json`, `${data.id}.photo`]);
+    if (error) throw new Error("Der Geschenkeintrag konnte nicht gelöscht werden.");
+    return { ok: true };
+  });
+
 export const deleteCashBookEntry = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => z.object({ id: z.string().uuid() }).parse(data))
