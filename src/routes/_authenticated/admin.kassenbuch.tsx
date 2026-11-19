@@ -10,7 +10,7 @@ import autoTable from "jspdf-autotable";
 import { PageHeader } from "@/components/site/PageHeader";
 import { FinancialSlaveEntryForm } from "@/components/admin/financial-slave-entry-form";
 import { updateBookingAccounting } from "@/lib/accounting.functions";
-import { createCashBookEntry, createStudioRentExpense, deleteCashBookEntry, listCashBookEntries, updateCashBookEntry, listCashbookGifts, createCashbookGift, deleteCashbookGift, type CashBookEntry, type DepositExemptionReason } from "@/lib/cashbook.functions";
+import { createAdvertisingExpense, createCashBookEntry, createStudioRentExpense, deleteCashBookEntry, listCashBookEntries, updateCashBookEntry, listCashbookGifts, createCashbookGift, deleteCashbookGift, type CashBookEntry, type DepositExemptionReason } from "@/lib/cashbook.functions";
 import { hideBookingFromCashbook, listHiddenCashbookBookings } from "@/lib/cashbook-visibility.functions";
 import { listBookingRestPaymentMethods } from "@/lib/rest-payment.functions";
 import { listPrivateBookingDestinations } from "@/lib/private-booking-location.functions";
@@ -77,6 +77,7 @@ function KassenbuchPage() {
   const create = useServerFn(createCashBookEntry);
   const updateManual = useServerFn(updateCashBookEntry);
   const createExpense = useServerFn(createStudioRentExpense);
+  const createAdvertising = useServerFn(createAdvertisingExpense);
   const calculateDistances = useServerFn(calculateStudioDistances);
   const calculateLegs = useServerFn(calculateTravelLegs);
   const del = useServerFn(deleteCashBookEntry);
