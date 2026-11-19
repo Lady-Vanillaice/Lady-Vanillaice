@@ -10,7 +10,7 @@ import autoTable from "jspdf-autotable";
 import { PageHeader } from "@/components/site/PageHeader";
 import { FinancialSlaveEntryForm } from "@/components/admin/financial-slave-entry-form";
 import { updateBookingAccounting } from "@/lib/accounting.functions";
-import { createCashBookEntry, createStudioRentExpense, deleteCashBookEntry, listCashBookEntries, updateCashBookEntry, type CashBookEntry, type DepositExemptionReason } from "@/lib/cashbook.functions";
+import { createCashBookEntry, createStudioRentExpense, deleteCashBookEntry, listCashBookEntries, updateCashBookEntry, listCashbookGifts, createCashbookGift, deleteCashbookGift, type CashBookEntry, type DepositExemptionReason } from "@/lib/cashbook.functions";
 import { hideBookingFromCashbook, listHiddenCashbookBookings } from "@/lib/cashbook-visibility.functions";
 import { listBookingRestPaymentMethods } from "@/lib/rest-payment.functions";
 import { listPrivateBookingDestinations } from "@/lib/private-booking-location.functions";
@@ -68,6 +68,9 @@ function download(name: string, content: string, type: string) {
 function KassenbuchPage() {
   const qc = useQueryClient();
   const list = useServerFn(listCashBookEntries);
+  const listGifts = useServerFn(listCashbookGifts);
+  const createGift = useServerFn(createCashbookGift);
+  const removeGift = useServerFn(deleteCashbookGift);
   const listRestPayments = useServerFn(listBookingRestPaymentMethods);
   const listHiddenBookings = useServerFn(listHiddenCashbookBookings);
   const hideBooking = useServerFn(hideBookingFromCashbook);
@@ -79,6 +82,7 @@ function KassenbuchPage() {
   const del = useServerFn(deleteCashBookEntry);
   const saveAccounting = useServerFn(updateBookingAccounting);
   const { data = [], isLoading, error } = useQuery({ queryKey: ["cashbook"], queryFn: () => list() });
+  const { data: gifts = [], error: giftsError } = useQuery({ queryKey: ["cashbook-gifts"], queryFn: () => listGifts() });
   const { data: restPaymentMethods = {} } = useQuery({ queryKey: ["booking-rest-payment-methods"], queryFn: () => listRestPayments() });
   const { data: hiddenBookingIds = [] } = useQuery({ queryKey: ["cashbook-hidden-bookings"], queryFn: () => listHiddenBookings() });
   const now = new Date();
@@ -92,6 +96,8 @@ function KassenbuchPage() {
   const [anzahlung, setAnzahlung] = useState("0"); const [anzahlungMethod, setAnzahlungMethod] = useState("Überweisung"); const [anzahlungDatum, setAnzahlungDatum] = useState(""); const [manualDepositReason, setManualDepositReason] = useState<DepositExemptionReason | "">(""); const [bar, setBar] = useState("0"); const [manualRestMethod, setManualRestMethod] = useState("Bar"); const [manualRestDate, setManualRestDate] = useState(""); const [notiz, setNotiz] = useState("");
   const [expenseStudio, setExpenseStudio] = useState(""); const [expenseDate, setExpenseDate] = useState(today());
   const [expenseAmount, setExpenseAmount] = useState(""); const [expenseMethod, setExpenseMethod] = useState(""); const [expenseNote, setExpenseNote] = useState("");
+  const [giftName, setGiftName] = useState(""); const [giftDate, setGiftDate] = useState(today()); const [giftMethod, setGiftMethod] = useState("Überweisung"); const [giftAmount, setGiftAmount] = useState("");
+  const [giftPurchaseDate, setGiftPurchaseDate] = useState(""); const [giftPurchaseItem, setGiftPurchaseItem] = useState(""); const [giftPurchaseAmount, setGiftPurchaseAmount] = useState(""); const [giftNote, setGiftNote] = useState(""); const [giftPhoto, setGiftPhoto] = useState<string | null>(null);
   const loadPrivateDestinations = useServerFn(listPrivateBookingDestinations);
   const [travelLogPending, setTravelLogPending] = useState(false);
   const [travelLegs, setTravelLegs] = useState<TravelLeg[]>([]);
@@ -170,8 +176,11 @@ function KassenbuchPage() {
   const expenseEntries = filtered.filter(e => e.entry_type === "expense");
   const totals = receivedIncomeEntries.reduce((a, e) => { const deposit = e.source === "manual" || e.anzahlung_datum?.startsWith(month) ? e.anzahlung : 0; const cash = e.source === "manual" || e.bar_datum?.startsWith(month) ? e.bar : 0; a.anzahlung += deposit; a.bar += cash; a.gesamt += deposit + cash; if (e.status === "cancelled") a.storno += deposit; return a; }, { anzahlung: 0, bar: 0, gesamt: 0, storno: 0 });
   const completedAppointments = new Set(data.filter(e => e.booking_id && e.status === "completed" && e.termin_datum.startsWith(month)).map(e => e.booking_id)).size;
-  const totalExpenses = expenseEntries.reduce((sum, e) => sum + e.expense_amount, 0);
-  const balance = totals.gesamt - totalExpenses;
+  const giftIncomeForMonth = gifts.filter((gift: any) => gift.received_date?.startsWith(month)).reduce((sum: number, gift: any) => sum + Number(gift.amount || 0), 0);
+  const giftExpensesForMonth = gifts.filter((gift: any) => gift.purchase_date?.startsWith(month)).reduce((sum: number, gift: any) => sum + Number(gift.purchase_amount || 0), 0);
+  const totalExpenses = expenseEntries.reduce((sum, e) => sum + e.expense_amount, 0) + giftExpensesForMonth;
+  const totalIncomeWithGifts = totals.gesamt + giftIncomeForMonth;
+  const balance = totalIncomeWithGifts - totalExpenses;
   const totalNet = totals.gesamt / 1.19;
   const totalVat = totals.gesamt - totalNet;
   const dailyCash = data.filter(e => e.entry_type === "income")
@@ -214,6 +223,8 @@ function KassenbuchPage() {
   const createMut = useMutation({ mutationFn: () => create({ data: { studio, datum, kunde, anzahlung: manualDepositReason ? 0 : Number(anzahlung.replace(",", ".")) || 0, anzahlung_method: manualDepositReason ? null : anzahlungMethod || null, anzahlung_datum: manualDepositReason ? null : anzahlungDatum || null, deposit_exemption_reason: manualDepositReason || null, bar: Number(bar.replace(",", ".")) || 0, restzahlung_method: Number(bar.replace(",", ".")) > 0 ? manualRestMethod || null : null, restzahlung_datum: Number(bar.replace(",", ".")) > 0 ? manualRestDate || null : null, notiz: notiz || null } }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["cashbook"] }); setKunde(""); setAnzahlung("0"); setAnzahlungDatum(""); setManualDepositReason(""); setAnzahlungMethod("Überweisung"); setBar("0"); setManualRestMethod("Bar"); setManualRestDate(""); setNotiz(""); } });
   const expenseMut = useMutation({ mutationFn: () => createExpense({ data: { studio: expenseStudio, datum: expenseDate, betrag: Number(expenseAmount.replace(",", ".")), zahlungsart: expenseMethod, notiz: expenseNote || null } }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["cashbook"] }); setExpenseAmount(""); setExpenseMethod(""); setExpenseNote(""); } });
   const deleteMut = useMutation({ mutationFn: (id: string) => del({ data: { id } }), onSuccess: () => qc.invalidateQueries({ queryKey: ["cashbook"] }) });
+  const giftMut = useMutation({ mutationFn: () => createGift({ data: { name: giftName, received_date: giftDate, payment_method: giftMethod, amount: Number(giftAmount.replace(",", ".")) || 0, purchase_date: giftPurchaseDate || null, purchase_item: giftPurchaseItem || null, purchase_amount: Number(giftPurchaseAmount.replace(",", ".")) || 0, note: giftNote || null, photo_data_url: giftPhoto } }), onSuccess: async () => { await qc.invalidateQueries({ queryKey: ["cashbook-gifts"] }); setGiftName(""); setGiftDate(today()); setGiftAmount(""); setGiftPurchaseDate(""); setGiftPurchaseItem(""); setGiftPurchaseAmount(""); setGiftNote(""); setGiftPhoto(null); } });
+  const deleteGiftMut = useMutation({ mutationFn: (id: string) => removeGift({ data: { id } }), onSuccess: () => qc.invalidateQueries({ queryKey: ["cashbook-gifts"] }) });
   const hideBookingMut = useMutation({
     mutationFn: (booking_id: string) => hideBooking({ data: { booking_id } }),
     onSuccess: async () => {
@@ -410,7 +421,7 @@ function KassenbuchPage() {
     <section className="py-8 md:py-12"><div className="container-luxe max-w-[1500px] space-y-6">
       <Link to="/admin" className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-vanilla/60 hover:text-champagne"><ArrowLeft size={14} /> Zurück zum Admin</Link>
       {error && <div className="border border-bordeaux bg-bordeaux/10 p-4 text-bordeaux">Kassenbuchdaten konnten nicht geladen werden: {(error as Error).message}</div>}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3"><Stat label="Anzahlungen" value={eur(totals.anzahlung)} /><Stat label="Vor Ort" value={eur(totals.bar)} /><Stat label="Ausgaben" value={eur(totalExpenses)} /><Stat label="Saldo" value={eur(balance)} gold /><Stat label="Erledigte Termine" value={String(completedAppointments)} /></div>
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3"><Stat label="Anzahlungen" value={eur(totals.anzahlung)} /><Stat label="Vor Ort" value={eur(totals.bar)} /><Stat label="Geschenke" value={eur(giftIncomeForMonth)} /><Stat label="Ausgaben inkl. Geschenkkäufe" value={eur(totalExpenses)} /><Stat label="Saldo" value={eur(balance)} gold /><Stat label="Erledigte Termine" value={String(completedAppointments)} /></div>
       <div className="bg-card border border-champagne/30 p-4 flex flex-col sm:flex-row sm:items-end gap-4">
         <div className="sm:w-64"><Field label="Tag für Bareinzahlung"><input type="date" value={cashDay} onChange={e => setCashDay(e.target.value)} className="luxe-input" /></Field></div>
         <div className="flex-1 border border-champagne/20 px-4 py-3 min-h-[54px] flex items-center justify-between gap-4"><span className="eyebrow">Bar erhalten an diesem Tag</span><strong className="text-xl text-champagne whitespace-nowrap">{eur(dailyCash)}</strong></div>
@@ -458,6 +469,32 @@ function KassenbuchPage() {
         {travelLegs.filter(leg => leg.date.startsWith(month)).map(leg => <div key={leg.id} className="flex flex-wrap items-center justify-between gap-3 border-t border-champagne/15 py-2 text-sm"><span>{dateLabel(leg.date)} · {leg.startTime && leg.endTime ? `${leg.startTime}–${leg.endTime} Uhr · ` : ""}{leg.from} → {leg.to} · {leg.category} · <strong>{leg.kilometres} km</strong></span><button type="button" aria-label="Fahrt löschen" onClick={() => setTravelLegs(previous => previous.filter(item => item.id !== leg.id))}><Trash2 size={15} /></button></div>)}
         <p className="text-xs text-vanilla/50">Manuelle Fahrten werden in diesem Browser gespeichert und im Fahrtenbuch-PDF berücksichtigt. Auf anderen Geräten sind sie nicht automatisch verfügbar. Bitte tatsächliche Fahrten vor dem Speichern prüfen.</p>
       </div>
+      <section className="bg-card border border-champagne/30 p-4 md:p-6 space-y-5">
+        <div><h2 className="eyebrow text-champagne">Geschenke</h2><p className="text-sm text-vanilla/60 mt-2">Geldgeschenke und daraus gekaufte Dinge mit Datum, Betrag, Zahlungsweg, Notiz und optionalem Foto dokumentieren. Der Kaufbetrag wird als Ausgabe vom Saldo abgezogen.</p></div>
+        <form onSubmit={e => { e.preventDefault(); giftMut.mutate(); }} className="space-y-4">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <Field label="Name"><input required value={giftName} onChange={e => setGiftName(e.target.value)} className="luxe-input" /></Field>
+            <Field label="Geld erhalten am"><input required type="date" value={giftDate} onChange={e => setGiftDate(e.target.value)} className="luxe-input" /></Field>
+            <Field label="Geld erhalten per"><select value={giftMethod} onChange={e => setGiftMethod(e.target.value)} className="luxe-input">{PAYMENT_METHODS.map(v => <option key={v}>{v}</option>)}</select></Field>
+            <Field label="Geldbetrag (€)"><input required inputMode="decimal" value={giftAmount} onChange={e => setGiftAmount(e.target.value)} className="luxe-input" /></Field>
+            <Field label="Gekauft am"><input type="date" value={giftPurchaseDate} onChange={e => setGiftPurchaseDate(e.target.value)} className="luxe-input" /></Field>
+            <Field label="Was gekauft?"><input value={giftPurchaseItem} onChange={e => setGiftPurchaseItem(e.target.value)} className="luxe-input" /></Field>
+            <Field label="Ausgabebetrag (€)"><input inputMode="decimal" value={giftPurchaseAmount} onChange={e => setGiftPurchaseAmount(e.target.value)} className="luxe-input" /></Field>
+            <Field label="Foto (optional)"><input type="file" accept="image/jpeg,image/png,image/webp" className="luxe-input" onChange={e => { const file = e.target.files?.[0]; if (!file) { setGiftPhoto(null); return; } if (file.size > 5 * 1024 * 1024) { alert("Das Bild darf höchstens 5 MB groß sein."); e.currentTarget.value = ""; setGiftPhoto(null); return; } const reader = new FileReader(); reader.onload = () => setGiftPhoto(typeof reader.result === "string" ? reader.result : null); reader.readAsDataURL(file); }} /></Field>
+            <div className="sm:col-span-2 lg:col-span-4"><Field label="Notiz"><textarea rows={2} value={giftNote} onChange={e => setGiftNote(e.target.value)} className="luxe-input" /></Field></div>
+          </div>
+          {giftPhoto && <p className="text-xs text-champagne">Foto zum Speichern ausgewählt.</p>}
+          <button disabled={giftMut.isPending} className="btn-gold inline-flex gap-2"><Plus size={15} />{giftMut.isPending ? "Speichere…" : "Geschenk speichern"}</button>
+          {giftMut.error && <p className="text-sm text-bordeaux">{(giftMut.error as Error).message}</p>}
+        </form>
+        {giftsError && <p className="text-sm text-bordeaux">Geschenke konnten nicht geladen werden: {(giftsError as Error).message}</p>}
+        <div className="space-y-3">{gifts.filter((gift: any) => !month || gift.received_date?.startsWith(month) || gift.purchase_date?.startsWith(month)).map((gift: any) => <article key={gift.id} className="border border-champagne/20 p-4 grid md:grid-cols-[1fr_auto] gap-4">
+          <div className="space-y-1"><strong className="text-champagne">{gift.name}</strong><p className="text-sm">Erhalten: {dateLabel(gift.received_date)} · {gift.payment_method} · {eur(Number(gift.amount))}</p>
+          {gift.purchase_item && <p className="text-sm">Gekauft: {gift.purchase_item} am {gift.purchase_date ? dateLabel(gift.purchase_date) : "—"} · Ausgabe: − {eur(Number(gift.purchase_amount || 0))}</p>}
+          {gift.note && <p className="text-sm text-vanilla/60">Notiz: {gift.note}</p>}</div>
+          <div className="flex items-start gap-3">{gift.photo_url && <a href={gift.photo_url} target="_blank" rel="noreferrer"><img src={gift.photo_url} alt={"Geschenk von " + gift.name} className="w-20 h-20 object-cover border border-champagne/30" /></a>}<button type="button" aria-label="Geschenk löschen" onClick={() => confirm("Geschenkeintrag löschen?") && deleteGiftMut.mutate(gift.id)}><Trash2 size={15} /></button></div>
+        </article>)}</div>
+      </section>
       <FinancialSlaveEntryForm />
       <form onSubmit={e => { e.preventDefault(); createMut.mutate(); }} className="bg-card border border-champagne/20 p-4 space-y-4"><h2 className="eyebrow">Manueller Eintrag</h2><div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3"><Field label="Datum"><input required type="date" value={datum} onChange={e => setDatum(e.target.value)} className="luxe-input" /></Field><Field label="Kunde"><input required value={kunde} onChange={e => setKunde(e.target.value)} className="luxe-input" /></Field><Field label="Studio"><input required value={studio} onChange={e => setStudio(e.target.value)} className="luxe-input" /></Field><Field label="Anzahlungsregel"><select value={manualDepositReason} onChange={e => { const v = e.target.value as DepositExemptionReason | ""; setManualDepositReason(v); if (v) { setAnzahlung("0"); setAnzahlungDatum(""); } }} className="luxe-input"><option value="">Normale Anzahlung</option><option value="regular_customer">Keine Anzahlung – Stammkunde</option><option value="trust">Keine Anzahlung – Vertrauensbasis</option><option value="exception">Keine Anzahlung – Ausnahme</option><option value="colleague_guarantees">Keine Anzahlung – Kollegin bürgt</option><option value="spontaneous">Keine Anzahlung – Spontaner Termin</option></select></Field><Field label="Anzahlung Betrag (€)"><input disabled={Boolean(manualDepositReason)} value={anzahlung} onChange={e => setAnzahlung(e.target.value)} className="luxe-input disabled:opacity-40" /></Field><Field label="Anzahlung erhalten am"><input disabled={Boolean(manualDepositReason)} type="date" value={anzahlungDatum} onChange={e => setAnzahlungDatum(e.target.value)} className="luxe-input disabled:opacity-40" /></Field><Field label="Anzahlungsmethode"><select disabled={Boolean(manualDepositReason)} value={anzahlungMethod} onChange={e => setAnzahlungMethod(e.target.value)} className="luxe-input disabled:opacity-40">{PAYMENT_METHODS.map(v => <option key={v}>{v}</option>)}</select></Field><Field label="Vor Ort Betrag (€)"><input value={bar} onChange={e => setBar(e.target.value)} className="luxe-input" /></Field><Field label="Vor Ort erhalten am"><input type="date" value={manualRestDate} onChange={e => setManualRestDate(e.target.value)} className="luxe-input" /></Field><Field label="Vor Ort Zahlungsmethode"><select value={manualRestMethod} onChange={e => setManualRestMethod(e.target.value)} className="luxe-input">{PAYMENT_METHODS.map(v => <option key={v}>{v}</option>)}</select></Field><div className="md:col-span-2"><Field label="Notiz"><input value={notiz} onChange={e => setNotiz(e.target.value)} className="luxe-input" /></Field></div></div><button className="btn-gold inline-flex gap-2"><Plus size={15} /> Eintrag speichern</button></form>
       <form onSubmit={e => { e.preventDefault(); expenseMut.mutate(); }} className="bg-card border border-bordeaux/50 p-4 space-y-4"><h2 className="eyebrow text-champagne">Ausgabe – Studiomiete</h2><div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3"><Field label="Datum"><input required type="date" value={expenseDate} onChange={e => setExpenseDate(e.target.value)} className="luxe-input" /></Field><Field label="Studio"><input required value={expenseStudio} onChange={e => setExpenseStudio(e.target.value)} placeholder="z. B. Studio60" className="luxe-input" /></Field><Field label="Betrag (€)"><input required inputMode="decimal" value={expenseAmount} onChange={e => setExpenseAmount(e.target.value)} className="luxe-input" /></Field><Field label="Bezahlt mit"><input required value={expenseMethod} onChange={e => setExpenseMethod(e.target.value)} placeholder="Bar, Karte, Überweisung …" className="luxe-input" /></Field><div className="md:col-span-4"><Field label="Notiz (optional)"><input value={expenseNote} onChange={e => setExpenseNote(e.target.value)} className="luxe-input" /></Field></div></div><button disabled={expenseMut.isPending} className="btn-gold inline-flex gap-2"><Plus size={15} />{expenseMut.isPending ? "Speichere…" : "Studiomiete speichern"}</button>{expenseMut.error && <p className="text-sm text-bordeaux">{(expenseMut.error as Error).message}</p>}</form>
@@ -479,7 +516,7 @@ function KassenbuchPage() {
           </div>
         </details>
       )}
-      <div className="border border-champagne/30 bg-card p-4"><div className="eyebrow text-champagne mb-3">Gesamtsumme</div><div className="grid sm:grid-cols-3 gap-3"><Stat label="Gesamt brutto" value={eur(totals.gesamt)} gold /><Stat label="Ausgaben Studiomiete" value={eur(totalExpenses)} /><Stat label="Saldo" value={eur(balance)} gold /></div></div>
+      <div className="border border-champagne/30 bg-card p-4"><div className="eyebrow text-champagne mb-3">Gesamtsumme</div><div className="grid sm:grid-cols-3 gap-3"><Stat label="Einnahmen inkl. Geschenke" value={eur(totalIncomeWithGifts)} gold /><Stat label="Ausgaben inkl. Geschenkkäufe" value={eur(totalExpenses)} /><Stat label="Saldo nach Ausgaben" value={eur(balance)} gold /></div></div>
     </div></section>
     {editing?.source === "booking" && <AccountingDialog entry={editing} restMethod={restMethodFor(editing)} onClose={() => setEditing(null)} onSave={async payload => { await saveAccounting({ data: payload }); await Promise.all([qc.invalidateQueries({ queryKey: ["cashbook"] }), qc.invalidateQueries({ queryKey: ["booking-rest-payment-methods"] })]); setEditing(null); }} />}
     {editing?.source === "manual" && editing.entry_type === "income" && <ManualEntryDialog entry={editing} onClose={() => setEditing(null)} onSave={async payload => { await updateManual({ data: payload }); await qc.invalidateQueries({ queryKey: ["cashbook"] }); setEditing(null); }} />}
