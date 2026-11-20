@@ -253,7 +253,7 @@ function KassenbuchPage() {
     return true;
   }
 
-  function exportPdf(mobile = false) {
+  async function exportPdf(mobile = false) {
     if (!canExport()) return false;
     type Receipt = { date: string; customer: string; kind: string; method: string; amount: number; appointment: string; status: CashBookEntry["status"] };
     const receipts: Receipt[] = [];
@@ -266,15 +266,18 @@ function KassenbuchPage() {
         receipts.push({ date: entry.bar_datum, customer: entry.kunde, kind: "Rest-/Vor-Ort-Zahlung", method: restMethodFor(entry) || "Nicht angegeben", amount: entry.bar, appointment, status: entry.status });
     }
     receipts.sort((a, b) => a.date.localeCompare(b.date) || a.customer.localeCompare(b.customer) || a.kind.localeCompare(b.kind));
-    if (!receipts.length) { alert("Keine datierten Zahlungseingänge in diesem Monat vorhanden."); return false; }
+    const monthGifts = gifts.filter((gift: any) => gift.received_date?.startsWith(month) || gift.purchase_date?.startsWith(month));
+    if (!receipts.length && !monthGifts.length) { alert("Für diesen Monat sind keine Zahlungseingänge oder Geschenke vorhanden."); return false; }
+    const giftIncome = monthGifts.filter((gift: any) => gift.received_date?.startsWith(month));
+    const giftPurchases = monthGifts.filter((gift: any) => gift.purchase_date?.startsWith(month) && (Number(gift.purchase_amount || 0) > 0 || gift.purchase_item));
     const isCash = (method: string) => ["bar", "bargeld"].includes(method.trim().toLowerCase());
     const doc = new jsPDF({ orientation: mobile ? "portrait" : "landscape", unit: "pt", format: "a4" });
     const monthLabel = format(parseISO(month + "-01"), "LLLL yyyy", { locale: de });
-    const sections = [
+    const sections = receipts.length ? [
       { title: "1. ALLE ZAHLUNGSEINGÄNGE", entries: receipts },
       { title: "2. BARZAHLUNGEN", entries: receipts.filter(e => isCash(e.method)) },
       { title: "3. ONLINE-ZAHLUNGEN (BANK, PAYPAL ETC.)", entries: receipts.filter(e => !isCash(e.method)) },
-    ];
+    ] : [];
     sections.forEach((section, index) => {
       if (index > 0) doc.addPage();
       addPdfLogo(doc);
@@ -285,9 +288,7 @@ function KassenbuchPage() {
       autoTable(doc, {
         startY: 94,
         head: [["Zahlungseingang", "Kunde", "Vorgang", "Zahlungsart", "Termin am", "Status", "Betrag"]],
-        body: section.entries.length
-          ? section.entries.map(e => [dateLabel(e.date), e.customer, e.kind, e.method, e.appointment, statusLabel[e.status], eur(e.amount)])
-          : [["—", "Keine Zahlungseingänge", "", "", "", "", ""]],
+        body: section.entries.map(e => [dateLabel(e.date), e.customer, e.kind, e.method, e.appointment, statusLabel[e.status], eur(e.amount)]),
         foot: [["SUMME", "", "", "", "", "", eur(sum)]],
         styles: { fontSize: mobile ? 8 : 9, cellPadding: 5, overflow: "linebreak" },
         headStyles: { fillColor: [15, 15, 15] },
@@ -305,6 +306,29 @@ function KassenbuchPage() {
         margin: { left: 28, right: 28 },
       });
     });
+    if (monthGifts.length) {
+      if (sections.length) doc.addPage();
+      addPdfLogo(doc);
+      doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.text("GESCHENKE & VERWENDUNG", 28, 40);
+      doc.setFontSize(11); doc.text(monthLabel, 28, 58);
+      doc.setFontSize(9); doc.text("Geldgeschenke sowie dokumentierte Käufe. Fotos bleiben im Admin-Kassenbuch gespeichert.", 28, 76);
+      const giftRows = [
+        ...giftIncome.map((gift: any) => [dateLabel(gift.received_date), gift.name, "Geldgeschenk", "Erhalten per " + gift.payment_method + (gift.note ? " · Notiz: " + gift.note : ""), eur(Number(gift.amount || 0))]),
+        ...giftPurchases.map((gift: any) => [dateLabel(gift.purchase_date), gift.name, "Kauf / Ausgabe", (gift.purchase_item || "Kauf") + (gift.note ? " · Notiz: " + gift.note : ""), "− " + eur(Number(gift.purchase_amount || 0))]),
+      ].sort((a, b) => String(a[0]).localeCompare(String(b[0])) || String(a[1]).localeCompare(String(b[1])));
+      autoTable(doc, {
+        startY: 92,
+        head: [["Datum", "Name", "Vorgang", "Zahlungsweg / Verwendung / Notiz", "Betrag"]],
+        body: giftRows.length ? giftRows : [["—", "Keine Geschenk-Einträge", "", "", ""]],
+        foot: [["GESCHENKE EINGEGANGEN", "", "", "", eur(giftIncome.reduce((sum: number, gift: any) => sum + Number(gift.amount || 0), 0))],
+          ["GESCHENKKÄUFE", "", "", "", "− " + eur(giftPurchases.reduce((sum: number, gift: any) => sum + Number(gift.purchase_amount || 0), 0))]],
+        styles: { fontSize: mobile ? 7 : 8, cellPadding: 5, overflow: "linebreak" },
+        headStyles: { fillColor: [15, 15, 15] },
+        footStyles: { fillColor: [239, 229, 207], textColor: 15 },
+        columnStyles: { 4: { halign: "right" } },
+        margin: { left: 28, right: 28 },
+      });
+    }
     doc.save("kassenbuch-" + month + (mobile ? "-mobil" : "") + ".pdf");
     return true;
   }
