@@ -20,6 +20,11 @@ import { calculateStudioDistances, calculateTravelLegs } from "@/lib/travel-log.
 export const Route = createFileRoute("/_authenticated/admin/kassenbuch")({ component: KassenbuchPage });
 
 const eur = (n: number) => new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(n);
+const parseEuroAmount = (value: string) => {
+  const normalized = value.trim().replace(/[€\s]/g, "").replace(/\.(?=\d{3}(?:,|$))/g, "").replace(",", ".");
+  const amount = Number(normalized);
+  return Number.isFinite(amount) ? amount : 0;
+};
 const today = () => new Date().toISOString().slice(0, 10);
 const dateLabel = (v: string | null) => v ? format(parseISO(v), "dd.MM.yyyy", { locale: de }) : "—";
 const timeLabel = (v: string | null) => v ? format(parseISO(v), "HH:mm", { locale: de }) : null;
@@ -225,7 +230,7 @@ function KassenbuchPage() {
   const createMut = useMutation({ mutationFn: () => create({ data: { studio, datum, kunde, anzahlung: manualDepositReason ? 0 : Number(anzahlung.replace(",", ".")) || 0, anzahlung_method: manualDepositReason ? null : anzahlungMethod || null, anzahlung_datum: manualDepositReason ? null : anzahlungDatum || null, deposit_exemption_reason: manualDepositReason || null, bar: Number(bar.replace(",", ".")) || 0, restzahlung_method: Number(bar.replace(",", ".")) > 0 ? manualRestMethod || null : null, restzahlung_datum: Number(bar.replace(",", ".")) > 0 ? manualRestDate || null : null, notiz: notiz || null } }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["cashbook"] }); setKunde(""); setAnzahlung("0"); setAnzahlungDatum(""); setManualDepositReason(""); setAnzahlungMethod("Überweisung"); setBar("0"); setManualRestMethod("Bar"); setManualRestDate(""); setNotiz(""); } });
   const expenseMut = useMutation({ mutationFn: () => createExpense({ data: { studio: expenseStudio, datum: expenseDate, betrag: Number(expenseAmount.replace(",", ".")), zahlungsart: expenseMethod, notiz: expenseNote || null } }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["cashbook"] }); setExpenseAmount(""); setExpenseMethod(""); setExpenseNote(""); } });
   const deleteMut = useMutation({ mutationFn: (id: string) => del({ data: { id } }), onSuccess: () => qc.invalidateQueries({ queryKey: ["cashbook"] }) });
-  const giftMut = useMutation({ mutationFn: () => createGift({ data: { name: giftName, received_date: giftDate, payment_method: giftMethod, amount: Number(giftAmount.replace(",", ".")) || 0, purchase_date: giftPurchaseDate || null, purchase_item: giftPurchaseItem || null, purchase_amount: Number(giftPurchaseAmount.replace(",", ".")) || 0, note: giftNote || null, photo_data_url: giftPhoto } }), onSuccess: async () => { await qc.invalidateQueries({ queryKey: ["cashbook-gifts"] }); setGiftName(""); setGiftDate(today()); setGiftAmount(""); setGiftPurchaseDate(""); setGiftPurchaseItem(""); setGiftPurchaseAmount(""); setGiftNote(""); setGiftPhoto(null); } });
+  const giftMut = useMutation({ mutationFn: () => createGift({ data: { name: giftName, received_date: giftDate, payment_method: giftMethod, amount: parseEuroAmount(giftAmount), purchase_date: giftPurchaseDate || null, purchase_item: giftPurchaseItem || null, purchase_amount: parseEuroAmount(giftPurchaseAmount), note: giftNote || null, photo_data_url: giftPhoto } }), onSuccess: async () => { await qc.invalidateQueries({ queryKey: ["cashbook-gifts"] }); setGiftName(""); setGiftDate(today()); setGiftAmount(""); setGiftPurchaseDate(""); setGiftPurchaseItem(""); setGiftPurchaseAmount(""); setGiftNote(""); setGiftPhoto(null); } });
   const deleteGiftMut = useMutation({ mutationFn: (id: string) => removeGift({ data: { id } }), onSuccess: () => qc.invalidateQueries({ queryKey: ["cashbook-gifts"] }) });
   const hideBookingMut = useMutation({
     mutationFn: (booking_id: string) => hideBooking({ data: { booking_id } }),
