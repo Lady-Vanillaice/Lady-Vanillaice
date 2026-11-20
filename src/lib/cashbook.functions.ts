@@ -298,6 +298,11 @@ const giftSchema = z.object({
   note: z.string().max(2000).nullable().optional(),
   photo_data_url: z.string().max(7_000_000).nullable().optional(),
 });
+async function cashbookGiftAdminDb(context: { supabase: any; userId: string }) {
+  await ensureAdmin(context.supabase, context.userId);
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return supabaseAdmin;
+}
 async function privateGiftBucket(db: any, create = false) {
   const bucketName = CASHBOOK_GIFTS_BUCKET;
   let result = await db.storage.getBucket(bucketName);
@@ -314,8 +319,8 @@ async function privateGiftBucket(db: any, create = false) {
 export const listCashbookGifts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await ensureAdmin(context.supabase, context.userId);
-    const bucket = await privateGiftBucket(context.supabase);
+    const db = await cashbookGiftAdminDb(context);
+    const bucket = await privateGiftBucket(db);
     if (!bucket) return [];
     const { data: files, error } = await bucket.list("", { limit: 1000, sortBy: { column: "name", order: "desc" } });
     if (error) throw new Error("Geschenke konnten nicht geladen werden.");
@@ -336,8 +341,8 @@ export const createCashbookGift = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((raw: unknown) => giftSchema.parse(raw))
   .handler(async ({ data, context }) => {
-    await ensureAdmin(context.supabase, context.userId);
-    const bucket = await privateGiftBucket(context.supabase, true);
+    const db = await cashbookGiftAdminDb(context);
+    const bucket = await privateGiftBucket(db, true);
     if (!bucket) throw new Error("Der Geschenkespeicher ist nicht verfügbar.");
     const id = data.id ?? crypto.randomUUID();
     let hasPhoto = false;
@@ -359,8 +364,8 @@ export const deleteCashbookGift = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((raw: unknown) => z.object({ id: z.string().uuid() }).parse(raw))
   .handler(async ({ data, context }) => {
-    await ensureAdmin(context.supabase, context.userId);
-    const bucket = await privateGiftBucket(context.supabase);
+    const db = await cashbookGiftAdminDb(context);
+    const bucket = await privateGiftBucket(db);
     if (!bucket) return { ok: true };
     const { error } = await bucket.remove([`${data.id}.json`, `${data.id}.photo`]);
     if (error) throw new Error("Der Geschenkeintrag konnte nicht gelöscht werden.");
