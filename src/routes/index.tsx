@@ -72,6 +72,17 @@ function Index() {
 
         const seen = new Set<string>();
         const candidates: any[] = [];
+        // Nur heute bis einschließlich Sonntag dieser Woche (Berliner Zeit).
+        const berlinDayKey = (date: Date) => new Intl.DateTimeFormat("sv-SE", {
+          timeZone: "Europe/Berlin",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(date);
+        const berlinWeekday = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Berlin", weekday: "short" }).format(new Date());
+        const weekdayIndex = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(berlinWeekday);
+        const daysUntilSunday = weekdayIndex >= 0 ? 6 - weekdayIndex : 6;
+        const sundayKey = berlinDayKey(new Date(Date.now() + daysUntilSunday * 24 * 60 * 60_000));
 
         for (const slot of slots) {
           try {
@@ -82,10 +93,10 @@ function Index() {
               month: "2-digit",
               day: "2-digit",
             }).format(new Date(slot.starts_at));
+            if (key > sundayKey) continue;
             if (seen.has(key)) continue;
             seen.add(key);
             candidates.push({ ...slot, dayKey: key });
-            if (candidates.length === 3) break;
           } catch {
             // Ein fehlerhafter Termin darf die Startseite nie blockieren.
           }
@@ -132,7 +143,7 @@ function Index() {
           }),
         );
 
-        if (!cancelled) setNextFreeDays(result);
+        if (!cancelled) setNextFreeDays(result.filter((day) => day.freeRanges?.length));
       })
       .catch(() => {
         if (!cancelled) setNextFreeDays([]);
@@ -380,8 +391,8 @@ function Index() {
                 </h2>
                 <p className="mt-2 text-sm leading-relaxed text-vanilla/55">
                   {tr(
-                    "Die nächsten freien Tage auf einen Blick. Tippe auf einen Termin, um die aktuell verfügbaren Zeiten im Kalender zu sehen.",
-                    "See the next available days at a glance. Tap a date to view the currently available times in the calendar.",
+                    "Die freien Tage bis Sonntag auf einen Blick. Tippe auf einen Termin, um die aktuell verfügbaren Zeiten im Kalender zu sehen.",
+                    "Available days until Sunday at a glance. Tap a date to view the currently available times in the calendar.",
                   )}
                 </p>
               </div>

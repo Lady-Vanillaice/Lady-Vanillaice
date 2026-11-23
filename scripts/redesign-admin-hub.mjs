@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 const path = "src/routes/_authenticated/admin.index.tsx";
 let text = readFileSync(path, "utf8");
 
-if (!text.includes(" Search,")) {
+if (!text.includes("Trash2, Search,")) {
   text = text.replace(
     "  CircleAlert, ArrowRight, ChevronDown, Download, Share, Bell, BellOff, Send, Building2, Plus, Trash2,",
     "  CircleAlert, ArrowRight, ChevronDown, Download, Share, Bell, BellOff, Send, Building2, Plus, Trash2, Search,",
@@ -50,8 +50,11 @@ if (hubStart < 0 || hubEnd < 0) throw new Error("AdminHubPage not found");
 
 const hub = `function AdminHubPage() { /* Weitere Admin-Bereiche */
   const navigate = useNavigate();
-  const [adminSearch, setAdminSearch] = useState("");
-  const query = adminSearch.trim().toLowerCase();
+  // Die Suche wurde auf Wunsch entfernt; alle Bereiche sind immer sichtbar.
+  // Die folgende Zeile bleibt als Markierung stehen, damit fix-admin-hub-search.mjs
+  // die alte Suche nicht wieder einbaut: const [adminSearch, setAdminSearch] = useState("");
+  const adminSearch = "";
+  const query = adminSearch;
   const visibleGroups = HUB_GROUPS.map(group => ({
     ...group,
     cards: group.cards.filter(card =>
@@ -73,22 +76,6 @@ const hub = `function AdminHubPage() { /* Weitere Admin-Bereiche */
         <button onClick={onLogout} className="btn-outline-gold !py-2 !px-4 !text-[0.65rem]"><LogOut size={12} /> Abmelden</button>
       </div>
 
-      <div className="mb-8 border border-champagne/30 bg-card p-4 sm:p-5">
-        <label className="block">
-          <span className="eyebrow block mb-2">Im Adminbereich suchen</span>
-          <div className="relative">
-            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-champagne/70" />
-            <input
-              value={adminSearch}
-              onChange={event => setAdminSearch(event.target.value)}
-              className="input-luxe w-full !pl-11"
-              placeholder="z. B. Kunde, Zahlung, Custom, Newsletter, Kalender …"
-            />
-          </div>
-        </label>
-        <p className="mt-2 text-xs text-vanilla/45">Die Suche zeigt dir sofort den passenden Bereich – ohne Menüs durchklicken zu müssen.</p>
-      </div>
-
       <section className="mb-10">
         <div className="mb-4">
           <div className="eyebrow">Heute wichtig</div>
@@ -98,22 +85,6 @@ const hub = `function AdminHubPage() { /* Weitere Admin-Bereiche */
         <HomepageVisitorStats />
         <BusinessStatisticsDashboard />
       </section>
-
-      {!query && <section className="mb-10">
-        <div className="eyebrow mb-3">Direkt loslegen</div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          {[
-            { to: "/admin/terminplan" as const, title: "Terminplan", subtitle: "Was steht an?", Icon: CalendarClock },
-            { to: "/admin/termine" as const, title: "Termin-Anfragen", subtitle: "Neu, Umplanen & Storniert", Icon: Mail },
-            { to: "/admin/kunden" as const, title: "Kunden / CRM", subtitle: "Person und Sessions suchen", Icon: Users },
-            { to: "/admin/kassenbuch" as const, title: "Kassenbuch", subtitle: "Zahlungen prüfen", Icon: Wallet },
-          ].map(({ to, title, subtitle, Icon }) => <Link key={to} to={to} className="group border border-champagne/30 bg-card p-4 sm:p-5 hover:border-champagne/70 transition">
-            <Icon size={20} className="text-champagne mb-3" />
-            <div className="font-display text-lg sm:text-xl text-vanilla group-hover:text-champagne transition">{title}</div>
-            <div className="mt-1 text-xs text-vanilla/45">{subtitle}</div>
-          </Link>)}
-        </div>
-      </section>}
 
       <section className="mb-12">
         <div className="mb-5 border-b border-champagne/20 pb-4">
@@ -168,10 +139,10 @@ if (!text.includes('to: "/admin/journal"')) {
 const quickKassenbuch = `            { to: "/admin/kassenbuch" as const, title: "Kassenbuch", subtitle: "Zahlungen prüfen", Icon: Wallet },`;
 const quickJournal = quickKassenbuch + `
             { to: "/admin/journal" as const, title: "Journal", subtitle: "Statusbild herunterladen", Icon: BookOpen },`;
-if (!text.includes('to: "/admin/journal" as const')) {
-  if (!text.includes(quickKassenbuch)) throw new Error("Journal quick access insertion point not found");
+// „Direkt loslegen“ wurde entfernt; nur ergänzen, falls der Block noch existiert.
+if (text.includes(quickKassenbuch) && !text.includes('to: "/admin/journal" as const')) {
   text = text.replace(quickKassenbuch, quickJournal);
 }
 
 writeFileSync(path, text);
-console.log("Admin hub redesigned with clear A-to-Z workflow and search.");
+console.log("Admin hub redesigned with clear A-to-Z workflow.");
