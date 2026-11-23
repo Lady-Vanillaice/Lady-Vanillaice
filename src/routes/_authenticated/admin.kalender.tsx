@@ -232,6 +232,13 @@ function AdminKalenderPage() {
           </div>
 
           <div className="mb-8">
+            <FreeSlotImageExport
+              slots={regularSlots}
+              loading={slotsQ.isLoading}
+            />
+          </div>
+
+          <div className="mb-8">
             <NewSlotForm
               onCreate={(v) => createMut.mutateAsync(v)}
               pending={createMut.isPending}
@@ -249,11 +256,6 @@ function AdminKalenderPage() {
           <CalendarSpecialsAdmin />
 
           <CalendarWaitlistAdmin />
-
-          <FreeSlotImageExport
-            slots={regularSlots}
-            loading={slotsQ.isLoading}
-          />
 
           <div className="mt-8 space-y-6">
             {slotsQ.isLoading && (
