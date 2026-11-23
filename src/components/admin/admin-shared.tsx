@@ -620,6 +620,18 @@ export function ManualBookingForm({
   const [shortSessionPrice, setShortSessionPrice] = useState("");
   const [onsiteMethod, setOnsiteMethod] = useState("Bar");
 const [liegezeitDuration, setLiegezeitDuration] = useState("60");
+  const [liegezeitFrom, setLiegezeitFrom] = useState("");
+  const [liegezeitTo, setLiegezeitTo] = useState("");
+  // Minuten zwischen zwei Uhrzeiten (über Mitternacht: z. B. 22:00–08:00 = 600).
+  const minutesBetween = (from: string, to: string) => {
+    if (!/^\d{2}:\d{2}$/.test(from) || !/^\d{2}:\d{2}$/.test(to)) return null;
+    const [fh, fm] = from.split(":").map(Number);
+    const [th, tm] = to.split(":").map(Number);
+    let diff = th * 60 + tm - (fh * 60 + fm);
+    if (diff <= 0) diff += 24 * 60;
+    return diff;
+  };
+  const liegezeitRangeMinutes = liegezeitOnly ? minutesBetween(start, liegezeitTo) : minutesBetween(liegezeitFrom, liegezeitTo);
   const [liegezeitType, setLiegezeitType] = useState<"beaufsichtigt" | "unbeaufsichtigt">("unbeaufsichtigt");
   const [liegezeitSurcharge, setLiegezeitSurcharge] = useState("");
   const [depositExemptionReason, setDepositExemptionReason] = useState<ManualBookingValues["deposit_exemption_reason"]>(null);
@@ -690,7 +702,11 @@ const [liegezeitDuration, setLiegezeitDuration] = useState("60");
     const surcharge = hasLiegezeit || liegezeitOnly ? Number(liegezeitSurcharge.replace(",", ".")) : 0;
     const total = liegezeitOnly ? surcharge : sessionPrice + surcharge;
     const deposit = Number(depositAmount.replace(",", "."));
-    const liegezeitMinutes = Number(liegezeitDuration);
+    const liegezeitMinutes = liegezeitOnly || hasLiegezeit ? liegezeitRangeMinutes ?? NaN : Number(liegezeitDuration);
+    if (hasLiegezeit && (!Number.isInteger(liegezeitMinutes) || liegezeitMinutes < 15)) {
+      setErr("Bitte bei der Liegezeit die Uhrzeit von und bis eintragen.");
+      return;
+    }
     if (!liegezeitOnly && (!Number.isFinite(sessionPrice) || sessionPrice <= 0)) {
       setErr("Bitte den Sessionpreis eintragen.");
       return;
@@ -740,7 +756,8 @@ const [liegezeitDuration, setLiegezeitDuration] = useState("60");
         source: source.trim() || null,
         internal_note: [
           note.trim() || null,
-          hasLiegezeit ? `Liegezeit: ${liegezeitDuration} Minuten · ${liegezeitType} · Aufschlag ${surcharge.toLocaleString("de-DE", { style: "currency", currency: "EUR" })} · Sessionpreis ${sessionPrice.toLocaleString("de-DE", { style: "currency", currency: "EUR" })} · Gesamt ${total.toLocaleString("de-DE", { style: "currency", currency: "EUR" })}` : null,
+          liegezeitOnly ? `Liegezeit: ${start}–${liegezeitTo} Uhr` : null,
+          hasLiegezeit ? `Liegezeit: ${liegezeitFrom}–${liegezeitTo} Uhr (${liegezeitMinutes} Minuten) · ${liegezeitType} · Aufschlag ${surcharge.toLocaleString("de-DE", { style: "currency", currency: "EUR" })} · Sessionpreis ${sessionPrice.toLocaleString("de-DE", { style: "currency", currency: "EUR" })} · Gesamt ${total.toLocaleString("de-DE", { style: "currency", currency: "EUR" })}` : null,
         ].filter(Boolean).join("\n\n") || null,
         preferences: preferences.trim() || null,
         outfit: outfit.trim() || null,
@@ -786,6 +803,8 @@ const [liegezeitDuration, setLiegezeitDuration] = useState("60");
       setOnsiteMethod("Bar");
 
       setLiegezeitDuration("60");
+      setLiegezeitFrom("");
+      setLiegezeitTo("");
       setLiegezeitType("unbeaufsichtigt");
       setLiegezeitSurcharge("");
       setDepositExemptionReason(null);
@@ -838,8 +857,9 @@ const [liegezeitDuration, setLiegezeitDuration] = useState("60");
 
         {liegezeitOnly ? (
           <div>
-            <label className="eyebrow block mb-1">Dauer (Minuten)</label>
-            <input type="number" min={15} max={1440} step={15} required value={liegezeitDuration} onChange={(e) => setLiegezeitDuration(e.target.value)} className="input-luxe !py-2" />
+            <label className="eyebrow block mb-1">Bis</label>
+            <input type="time" required value={liegezeitTo} onChange={(e) => setLiegezeitTo(e.target.value)} className="input-luxe !py-2" />
+            {liegezeitRangeMinutes != null && <p className="mt-1 text-[0.65rem] text-vanilla/50">Dauer: {liegezeitRangeMinutes} Minuten</p>}
           </div>
         ) : (
           <div>
@@ -1154,8 +1174,15 @@ const [liegezeitDuration, setLiegezeitDuration] = useState("60");
           <div className="space-y-3 border-t border-champagne/15 pt-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="eyebrow block mb-1">Dauer</label>
-                <input type="number" min={15} step={15} value={liegezeitDuration} onChange={(e) => setLiegezeitDuration(e.target.value)} className="input-luxe !py-2" />
+                <label className="eyebrow block mb-1">Liegezeit von</label>
+                <input type="time" required value={liegezeitFrom} onFocus={() => { if (!liegezeitFrom) setLiegezeitFrom(end); }} onChange={(e) => setLiegezeitFrom(e.target.value)} className="input-luxe !py-2" />
+              </div>
+              <div>
+                <label className="eyebrow block mb-1">Liegezeit bis</label>
+                <input type="time" required value={liegezeitTo} onChange={(e) => setLiegezeitTo(e.target.value)} className="input-luxe !py-2" />
+              </div>
+              <div className="col-span-2 -mt-1 text-[0.65rem] text-vanilla/50">
+                {liegezeitRangeMinutes != null ? `Dauer: ${liegezeitRangeMinutes} Minuten` : "Dauer wird automatisch berechnet."}
               </div>
               <div>
                 <label className="eyebrow block mb-1">Art</label>
