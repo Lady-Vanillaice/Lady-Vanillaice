@@ -224,6 +224,39 @@ const proposeInput = z.object({
  *   start + duration fits before window end (minus end-buffer),
  *   AND no overlap (including buffer) with existing pending/confirmed bookings.
  */
+// Belegte (versteckte) Termin-Slots blockieren nur die Zeit ihrer aktiven Buchung.
+// Wurde ein Termin nachträglich gekürzt oder verschoben, kann der Slot noch die
+// alte, längere Zeit umfassen – dann zählt die tatsächliche Buchungszeit.
+// Slots ohne aktive Buchung blockieren weiterhin ihren ganzen Zeitraum.
+async function closedSlotBusyRanges(
+  db: any,
+  closedSlots: Array<{ id: string; starts_at: string; ends_at: string }>,
+): Promise<Map<string, Array<{ s: number; e: number }>>> {
+  const result = new Map<string, Array<{ s: number; e: number }>>();
+  if (closedSlots.length === 0) return result;
+  const { data: linked } = await db
+    .from("bookings")
+    .select("slot_id, requested_start, duration_minutes, status, updated_at")
+    .in("slot_id", closedSlots.map((slot) => slot.id))
+    .in("status", ["pending", "waiting_deposit", "confirmed"])
+    .not("requested_start", "is", null)
+    .not("duration_minutes", "is", null);
+  for (const booking of (linked ?? []) as Array<{ slot_id: string | null; requested_start: string | null; duration_minutes: number | null; status: string | null; updated_at: string | null }>) {
+    if (!booking.slot_id || !booking.requested_start || !booking.duration_minutes) continue;
+    if (!isActiveBlockingBooking(booking)) continue;
+    const start = new Date(booking.requested_start).getTime();
+    const list = result.get(booking.slot_id) ?? [];
+    list.push({ s: start, e: start + booking.duration_minutes * 60_000 });
+    result.set(booking.slot_id, list);
+  }
+  for (const slot of closedSlots) {
+    if (!result.has(slot.id)) {
+      result.set(slot.id, [{ s: new Date(slot.starts_at).getTime(), e: new Date(slot.ends_at).getTime() }]);
+    }
+  }
+  return result;
+}
+
 export const listAvailableStartTimes = createServerFn({ method: "POST" })
   .inputValidator((d) => startTimesInput.parse(d))
   .handler(async ({ data }) => {
@@ -484,8 +517,10 @@ export const proposeBookingTime = createServerFn({ method: "POST" })
     const busyRanges: Array<{ s: number; e: number }> = busy
       .map((b) => ({ s: new Date(b.starts_at).getTime(), e: new Date(b.ends_at).getTime() }))
       .sort((a, b) => a.s - b.s);
-    for (const closed of (daySlots ?? []).filter((s) => s.status === "booked")) {
-      busyRanges.push({ s: new Date(closed.starts_at).getTime(), e: new Date(closed.ends_at).getTime() });
+    const bookedDaySlots = (daySlots ?? []).filter((s) => s.status === "booked");
+    const bookedRanges = await closedSlotBusyRanges(supabaseAdmin, bookedDaySlots);
+    for (const closed of bookedDaySlots) {
+      busyRanges.push(...(bookedRanges.get(closed.id) ?? []));
     }
     busyRanges.sort((a, b) => a.s - b.s);
 
@@ -812,6 +847,8 @@ export const listUpcomingSlots = createServerFn({ method: "GET" }).handler(async
     .gt("ends_at", rangeStart.toISOString())
     .order("starts_at", { ascending: true });
 
+  const closedRangesBySlot = await closedSlotBusyRanges(supabaseAdmin, closedSlots ?? []);
+
   const bookingsBySlot = new Map<string, BusyRange[]>();
   if (slotIds.length > 0) {
     const { data: bookings } = await supabaseAdmin
@@ -858,10 +895,9 @@ export const listUpcomingSlots = createServerFn({ method: "GET" }).handler(async
       e: new Date(b.ends_at).getTime() + buffer,
     }));
       for (const closed of sameDayClosed) {
-        busyRanges.push({
-          s: new Date(closed.starts_at).getTime() - buffer,
-          e: new Date(closed.ends_at).getTime() + buffer,
-        });
+        for (const range of closedRangesBySlot.get(closed.id) ?? []) {
+          busyRanges.push({ s: range.s - buffer, e: range.e + buffer });
+        }
       }
 
     let hasFree = false;
