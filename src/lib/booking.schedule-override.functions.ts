@@ -19,6 +19,38 @@ function isBlockingBooking(booking: { status?: string | null; updated_at?: strin
   return new Date(booking.updated_at).getTime() + 24 * 60 * 60_000 > Date.now();
 }
 
+type ReleaseDb = any;
+
+// Gibt einen frei gewordenen Zeitraum wieder öffentlich frei, indem ein
+// angrenzendes offenes, sichtbares Zeitfenster verlängert wird. Ohne direkt
+// angrenzendes Zeitfenster bleibt die Zeit gesperrt – so wird nie Zeit
+// veröffentlicht, die vorher nicht im Kalender freigegeben war.
+async function releaseRangeToPublicCalendar(db: ReleaseDb, startMs: number, endMs: number) {
+  if (endMs <= startMs) return;
+  const startIso = new Date(startMs).toISOString();
+  const endIso = new Date(endMs).toISOString();
+  const { data: neighbours, error } = await db
+    .from("availability_slots")
+    .select("id, starts_at, ends_at")
+    .eq("status", "open")
+    .eq("is_hidden", false)
+    .lte("starts_at", endIso)
+    .gte("ends_at", startIso);
+  if (error) throw new Error(error.message);
+  const rows = (neighbours ?? []) as Array<{ id: string; starts_at: string; ends_at: string }>;
+  const ms = (value: string) => new Date(value).getTime();
+  if (rows.some((row) => ms(row.starts_at) <= startMs && ms(row.ends_at) >= endMs)) return;
+  const left = rows.find((row) => ms(row.ends_at) === startMs);
+  const right = rows.find((row) => ms(row.starts_at) === endMs);
+  if (left) {
+    const { error: updErr } = await db.from("availability_slots").update({ ends_at: endIso }).eq("id", left.id);
+    if (updErr) throw new Error(updErr.message);
+  } else if (right) {
+    const { error: updErr } = await db.from("availability_slots").update({ starts_at: startIso }).eq("id", right.id);
+    if (updErr) throw new Error(updErr.message);
+  }
+}
+
 export const updateBookingSchedule = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
@@ -89,16 +121,62 @@ export const updateBookingSchedule = createServerFn({ method: "POST" })
       is_content_shoot: boolean | null;
       duo_partner: string | null;
       is_hidden: boolean | null;
+      status?: string | null;
     } | null = null;
 
     if (booking.slot_id) {
       const { data: slot, error: currentSlotErr } = await supabaseAdmin
         .from("availability_slots")
-        .select("id, starts_at, ends_at, location, location_address, is_duo, is_content_shoot, duo_partner, is_hidden")
+        .select("id, starts_at, ends_at, location, location_address, is_duo, is_content_shoot, duo_partner, is_hidden, status")
         .eq("id", booking.slot_id)
         .maybeSingle();
       if (currentSlotErr) throw new Error(currentSlotErr.message);
       currentSlot = slot;
+    }
+
+    // Eigener (versteckter, gebuchter) Termin-Slot, z. B. aus „Termin eintragen“
+    // im Terminplan: Er wird an die neue Uhrzeit/Dauer angepasst, und die frei
+    // gewordene Zeit erscheint automatisch wieder im öffentlichen Kalender.
+    if (currentSlot && currentSlot.status === "booked" && currentSlot.is_hidden) {
+      const { data: others, error: othersErr } = await supabaseAdmin
+        .from("bookings")
+        .select("id, status, updated_at")
+        .eq("slot_id", currentSlot.id)
+        .neq("id", data.id)
+        .in("status", ["pending", "waiting_deposit", "confirmed"]);
+      if (othersErr) throw new Error(othersErr.message);
+      const sharedSlot = (others ?? []).some((other) => isBlockingBooking(other));
+      if (!sharedSlot) {
+        const oldStart = new Date(currentSlot.starts_at).getTime();
+        const oldEnd = new Date(currentSlot.ends_at).getTime();
+        const newStart = requestedStart.getTime();
+        const newEnd = requestedEnd.getTime();
+
+        const { error: resizeErr } = await supabaseAdmin
+          .from("availability_slots")
+          .update({ starts_at: requestedStart.toISOString(), ends_at: requestedEnd.toISOString() })
+          .eq("id", currentSlot.id);
+        if (resizeErr) throw new Error(resizeErr.message);
+
+        const { error: updateOwnErr } = await context.supabase
+          .from("bookings")
+          .update({
+            requested_start: requestedStart.toISOString(),
+            duration_minutes: data.duration_minutes,
+            ...(booking.status === "rescheduling" ? { status: "confirmed" } : {}),
+          })
+          .eq("id", data.id);
+        if (updateOwnErr) throw new Error(updateOwnErr.message);
+
+        // Frei gewordene Teile des alten Zeitraums (vorne und/oder hinten).
+        if (newEnd <= oldStart || newStart >= oldEnd) {
+          await releaseRangeToPublicCalendar(supabaseAdmin, oldStart, oldEnd);
+        } else {
+          await releaseRangeToPublicCalendar(supabaseAdmin, oldStart, Math.min(oldEnd, newStart));
+          await releaseRangeToPublicCalendar(supabaseAdmin, Math.max(oldStart, newEnd), oldEnd);
+        }
+        return { ok: true, slot_id: currentSlot.id };
+      }
     }
 
     const dayStart = new Date(requestedStart);
