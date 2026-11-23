@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { realLocation } from "@/lib/slot-location";
 
 const HOUR = 60 * 60 * 1000;
 const REVIEW_URL = "https://www.lady-vanillaice.com/erfahrungsberichte";
@@ -74,7 +75,7 @@ export const Route = createFileRoute("/api/cron/booking-emails")({
           const start = new Date(booking.requested_start).getTime();
           const durationMinutes = Number(booking.duration_minutes ?? 0);
           const end = start + Math.max(durationMinutes, 0) * 60_000;
-          const studio = booking.studio_override?.trim() || slot?.location || undefined;
+          const studio = booking.studio_override?.trim() || realLocation(slot?.location) || undefined;
           const studioAddress = booking.studio_address_override?.trim() || slot?.location_address || undefined;
           const common = {
             guestName: booking.guest_name ?? undefined,

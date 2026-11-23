@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { isPrivateLocation, realLocation } from "@/lib/slot-location";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
@@ -361,7 +362,7 @@ function AdminKalenderPage() {
                           <div className="text-xs text-vanilla/55 mt-1 flex flex-wrap items-center gap-3">
                             <span className="inline-flex items-center gap-1 min-w-0">
                               <MapPin size={11} />{" "}
-                              <span className="truncate">{s.location}</span>
+                              <span className="truncate">{realLocation(s.location)}{isPrivateLocation(s.location) ? " (öffentlich verborgen)" : ""}</span>
                             </span>
                             {s.is_duo && (
                               <span className="text-champagne uppercase tracking-[0.2em]">

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { realLocation } from "@/lib/slot-location";
 import { timingSafeEqual } from "node:crypto";
 
 function safeEq(a: string, b: string) {
@@ -81,7 +82,7 @@ export const Route = createFileRoute("/api/public/calendar/$")({
             ? new Date(slot.ends_at)
             : new Date(startDate.getTime() + 60 * 60_000);
 
-          const location = slot?.location ?? "";
+          const location = realLocation(slot?.location) ?? "";
           const tags: string[] = [];
           if (slot?.is_duo) tags.push(`Duo${slot.duo_partner ? ` mit ${slot.duo_partner}` : ""}`);
           if (slot?.is_content_shoot) tags.push("Content");

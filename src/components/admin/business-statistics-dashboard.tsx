@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { realLocation } from "@/lib/slot-location";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -103,7 +104,7 @@ export function BusinessStatisticsDashboard() {
     const slot = Array.isArray(booking.availability_slots)
       ? booking.availability_slots[0]
       : booking.availability_slots;
-    const studio = (booking.studio_override || slot?.location || "").trim();
+    const studio = (booking.studio_override || realLocation(slot?.location) || "").trim();
     if (studio && studio !== "__URLAUB__") {
       studioCounts.set(studio, (studioCounts.get(studio) ?? 0) + 1);
     }

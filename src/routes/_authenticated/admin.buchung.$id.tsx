@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useRouter, useNavigate } from "@tanstack/react-router";
+import { realLocation } from "@/lib/slot-location";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
@@ -241,7 +242,7 @@ setDuoPartner(b.availability_slots?.duo_partner ?? "");
       setBarInput(b.bar != null ? String(b.bar) : "0");
       setRestPaymentMethod(b.restzahlung_method ?? "Bar");
       setBarPaidDate(b.cash_received_at ? String(b.cash_received_at).slice(0, 10) : "");
-      setStudioName(b.studio_override?.trim() || b.availability_slots?.location || "");
+      setStudioName(b.studio_override?.trim() || realLocation(b.availability_slots?.location) || "");
       setStudioAddress(b.studio_address_override?.trim() || b.availability_slots?.location_address || "");
     }
   }, [detailQ.data?.booking?.id]);
@@ -592,7 +593,7 @@ const depositDateMut = useMutation({
     const durationText = durationValue > 0
       ? `${durationValue} Minuten${durationValue % 60 === 0 ? ` (${durationValue / 60} Std.)` : ""}`
       : "noch nicht eingetragen";
-    const resolvedStudio = studioName.trim() || slot?.location?.trim() || "noch nicht eingetragen";
+    const resolvedStudio = studioName.trim() || realLocation(slot?.location)?.trim() || "noch nicht eingetragen";
     const resolvedAddress = studioAddress.trim();
     const isStudio60 = /studio\s*60/i.test(resolvedStudio);
     const lines = [
@@ -918,7 +919,7 @@ const depositDateMut = useMutation({
                   </div>
                   <div className="flex items-center gap-2">
                     <MapPin size={12} className="text-champagne" />
-                    {slot.location}
+                    {realLocation(slot.location)}
                   </div>
                   {booking.duration && (
                     <div className="text-vanilla/55 text-xs mt-2">

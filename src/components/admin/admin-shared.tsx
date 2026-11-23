@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import type { CustomerRow } from "@/lib/customers.functions";
 import { DEFAULT_STUDIOS, type StudioOption } from "@/lib/studio.functions";
+import { isPrivateLocation, markPrivateLocation, realLocation } from "@/lib/slot-location";
 
 const ADMIN_TIME_ZONE = "Europe/Berlin";
 
@@ -248,7 +249,7 @@ export function BookingCard({
                 ? `${format(new Date(slot.starts_at), "dd.MM.yyyy", { locale: de })} · ${format(new Date(slot.starts_at), "HH:mm", { locale: de })} – ${format(new Date(slot.ends_at), "HH:mm", { locale: de })}`
                 : ""}
           </span>
-          {slot && <span><MapPin size={11} className="inline mr-1" />{slot.location}</span>}
+          {slot && <span><MapPin size={11} className="inline mr-1" />{realLocation(slot.location)}{isPrivateLocation(slot.location) && <span className="ml-1 text-champagne/70">(öffentlich verborgen)</span>}</span>}
           {b.duration && <span>· {b.duration}</span>}
         </div>
       )}
@@ -327,6 +328,7 @@ export function NewSlotForm({
   const [secondEnd, setSecondEnd] = useState("22:00");
   const [location, setLocation] = useState("Studio60, Gärtnerstraße 60, 80992 München");
   const [room, setRoom] = useState("");
+  const [hideLocation, setHideLocation] = useState(false);
   const [isDuo, setIsDuo] = useState(false);
   const [isDuoOptional, setIsDuoOptional] = useState(false);
   const [duoPartner, setDuoPartner] = useState("");
@@ -362,7 +364,7 @@ export function NewSlotForm({
     try {
       const fullLocation = room.trim() ? `${location} — Raum ${room.trim()}` : location;
       const sharedValues = {
-        location: fullLocation,
+        location: markPrivateLocation(fullLocation, hideLocation),
         is_duo: isDuo || isDuoOptional,
         is_content_shoot: isContentShoot,
         duo_partner: isDuoOptional ? `OPTIONAL_DUO::${duoPartner.trim()}` : isDuo ? duoPartner.trim() : null,
@@ -382,7 +384,7 @@ export function NewSlotForm({
           ...sharedValues,
         });
       }
-      setDate(""); setRoom(""); setNote(""); setIsDuo(false); setIsDuoOptional(false); setDuoPartner(""); setIsContentShoot(false); setBuffer(30); setIsHidden(true); setHasSecondWindow(false);
+      setDate(""); setRoom(""); setHideLocation(false); setNote(""); setIsDuo(false); setIsDuoOptional(false); setDuoPartner(""); setIsContentShoot(false); setBuffer(30); setIsHidden(true); setHasSecondWindow(false);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Fehler");
     }
@@ -442,6 +444,17 @@ export function NewSlotForm({
           {studios.map((studio) => <option key={studio.id} value={`${studio.name}, ${studio.address}`}>{studio.name} · {studio.address}</option>)}
         </select>
       </div>
+      <label className="flex items-start gap-3 text-xs text-vanilla/70 cursor-pointer border border-champagne/15 bg-anthracite/30 p-3">
+        <input
+          type="checkbox"
+          checked={hideLocation}
+          onChange={(e) => setHideLocation(e.target.checked)}
+          className="mt-0.5 accent-[var(--color-champagne)]"
+        />
+        <span>
+          Standort <span className="text-champagne">öffentlich nicht anzeigen</span> — im Kalender auf der Homepage steht dann „Ort wird nach der Buchungsbestätigung bekannt gegeben“. Du siehst den Standort weiterhin hier im Admin, und er steht in der Bestätigung an den Kunden.
+        </span>
+      </label>
       <div>
         <label className="eyebrow block mb-1">Raum (optional)</label>
         <input

@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { realLocation } from "@/lib/slot-location";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
@@ -113,7 +114,7 @@ export function BookingsList({ kind }: { kind: BookingKind }) {
           id: row.id,
           starts_at: row.starts_at,
           ends_at: row.ends_at,
-          location: row.location,
+          location: realLocation(row.location),
           is_duo: row.is_duo,
           is_content_shoot: row.is_content_shoot,
           duo_partner: row.duo_partner,

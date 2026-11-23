@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { isPrivateLocation, PRIVATE_LOCATION_PUBLIC_TEXT } from "@/lib/slot-location";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -841,7 +842,7 @@ function BookingPanel({
         </div>
         <div className="flex items-start gap-1.5">
           <MapPin size={11} className="text-champagne mt-0.5 shrink-0" />
-          <span>{slot.location}</span>
+          <span>{isPrivateLocation(slot.location) ? tr(PRIVATE_LOCATION_PUBLIC_TEXT.de, PRIVATE_LOCATION_PUBLIC_TEXT.en) : slot.location}</span>
         </div>
       </div>
 

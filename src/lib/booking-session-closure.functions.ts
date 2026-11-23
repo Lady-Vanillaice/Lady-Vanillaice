@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { realLocation } from "./slot-location";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -45,7 +46,7 @@ export const completeBookingSession = createServerFn({ method: "POST" })
     const time = new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(start));
     await writeCustomerSession(db, email, {
       id: data.bookingId, bookingId: data.bookingId, date, time,
-      place: previous?.place || booking.studio_override || slot?.location || "",
+      place: previous?.place || booking.studio_override || realLocation(slot?.location) || "",
       room: previous?.room || "",
       activities: data.crmNotes,
       liked: previous?.liked || "",
@@ -89,7 +90,7 @@ export const saveBookingSessionCrm = createServerFn({ method: "POST" })
     const time = new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(start));
     await writeCustomerSession(db, email, {
       id: data.bookingId, bookingId: data.bookingId, date, time,
-      place: previous?.place || booking.studio_override || slot?.location || "",
+      place: previous?.place || booking.studio_override || realLocation(slot?.location) || "",
       room: previous?.room || "",
       activities: data.crmNotes,
       liked: previous?.liked || "",

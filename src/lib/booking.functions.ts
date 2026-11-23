@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { realLocation } from "./slot-location";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { splitCustomerAdminNote } from "@/lib/customer-special-rules";
 import { z } from "zod";
@@ -526,7 +527,7 @@ export const deleteBooking = createServerFn({ method: "POST" })
         .from("cash_book_entries")
         .upsert({
           id: booking.id,
-          studio: booking.studio_override?.trim() || slot?.location || "—",
+          studio: booking.studio_override?.trim() || realLocation(slot?.location) || "—",
           // A received deposit belongs to the month in which it was paid,
           // not to the appointment month. Fall back to the appointment date
           // only when there is no dated payment to archive.

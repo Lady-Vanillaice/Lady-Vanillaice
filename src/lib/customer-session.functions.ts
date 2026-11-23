@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { realLocation } from "./slot-location";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { customerEmailSchema, customerSessionSchema } from "./customer-session.schema";
@@ -30,7 +31,7 @@ export const getCustomerSessionHistory = createServerFn({ method: "POST" })
         id: booking.id,
         date: start ? new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(start)) : "",
         time: start ? new Intl.DateTimeFormat("de-DE", { timeZone: "Europe/Berlin", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(start)) : "",
-        place: booking.studio_override || slot?.location || "",
+        place: booking.studio_override || realLocation(slot?.location) || "",
         status: booking.status,
       };
     });

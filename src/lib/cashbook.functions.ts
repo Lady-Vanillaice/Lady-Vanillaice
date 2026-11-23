@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { realLocation } from "./slot-location";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
@@ -152,7 +153,7 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
         source: "booking" as const, entry_type: "income" as const, expense_category: null,
         expense_amount: 0, payment_method: null, booking_id: b.id, termin_datum: termin,
         termin_start: appointmentStart, termin_ende: appointmentEnd,
-        studio: b.studio_override?.trim() || slot?.location || "—",
+        studio: b.studio_override?.trim() || realLocation(slot?.location) || "—",
         studio_address: b.studio_address_override?.trim() || slot?.location_address || null,
         kunde: b.guest_name, art, dauer: durationLabel(b.duration_minutes, b.duration),
         anzahlung_vorgemerkt: plannedDeposit,

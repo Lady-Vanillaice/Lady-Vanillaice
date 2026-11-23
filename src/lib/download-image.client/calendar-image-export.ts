@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { isPrivateLocation } from "@/lib/slot-location";
 import { getSlotAvailability } from "@/lib/public-booking.functions";
 import { listCalendarSpecials, type CalendarSpecial } from "@/lib/calendar-special.functions";
 import { saveCanvasAsPng } from "./core";
@@ -122,6 +123,8 @@ function wrapCanvasLines(
 }
 
 function studioDetails(location: string) {
+  // Verborgene Standorte erscheinen nie auf exportierten Bildern.
+  if (isPrivateLocation(location)) return { studio: "Ort folgt nach Bestätigung", address: "" };
   const normalized = location.trim();
   const lower = normalized.toLocaleLowerCase("de-DE");
   if (lower.startsWith("studio60")) {

@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { realLocation } from "@/lib/slot-location";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
@@ -131,7 +132,7 @@ function TerminplanPage() {
           duration: b.duration,
           duration_minutes: durationMinutes,
           is_liegezeit_only: isLiegezeitOnly,
-          location: b.studio_override?.trim() || slot?.location || null,
+          location: b.studio_override?.trim() || realLocation(slot?.location) || null,
           location_address: b.studio_address_override?.trim() || slot?.location_address || null,
           is_duo: slot?.is_duo ?? false,
           duo_partner: slot?.duo_partner ?? null,

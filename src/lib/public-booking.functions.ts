@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { publicLocation } from "./slot-location";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
@@ -783,10 +784,11 @@ export const listUpcomingSlots = createServerFn({ method: "GET" }).handler(async
       .limit(200);
 
     if (fallbackError) throw new Error("Termine konnten nicht geladen werden.");
-    return (fallback ?? []).map((s) => ({ ...s, windows: [s], is_fully_booked: false, has_booking: false, is_reserved: false, reserved_until: null as string | null }));
+    return (fallback ?? []).map((raw) => ({ ...raw, location: publicLocation(raw.location) })).map((s) => ({ ...s, windows: [s], is_fully_booked: false, has_booking: false, is_reserved: false, reserved_until: null as string | null }));
   }
 
-  const slots = data ?? [];
+  // Verborgene Standorte nie öffentlich ausliefern (nur Markierung ohne Adresse).
+  const slots = (data ?? []).map((s) => ({ ...s, location: publicLocation(s.location) }));
   if (slots.length === 0) return vacationEntries;
 
   const openSlots = slots;
