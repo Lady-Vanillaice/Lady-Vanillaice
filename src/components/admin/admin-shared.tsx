@@ -444,6 +444,8 @@ export function NewSlotForm({
           {studios.map((studio) => <option key={studio.id} value={`${studio.name}, ${studio.address}`}>{studio.name} · {studio.address}</option>)}
         </select>
       </div>
+      {/* Eigener Wrapper: styles.css überschreibt den Text des ersten <label> direkt im Formular (Duo-Schalter). */}
+      <div>
       <label className="flex items-start gap-3 text-xs text-vanilla/70 cursor-pointer border border-champagne/15 bg-anthracite/30 p-3">
         <input
           type="checkbox"
@@ -455,6 +457,7 @@ export function NewSlotForm({
           Standort <span className="text-champagne">öffentlich nicht anzeigen</span> — im Kalender auf der Homepage steht dann „Ort wird nach der Buchungsbestätigung bekannt gegeben“. Du siehst den Standort weiterhin hier im Admin, und er steht in der Bestätigung an den Kunden.
         </span>
       </label>
+      </div>
       <div>
         <label className="eyebrow block mb-1">Raum (optional)</label>
         <input
