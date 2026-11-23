@@ -732,7 +732,13 @@ const depositDateMut = useMutation({
                 </div>
               </div>
             </div>
-            {booking.status === "waiting_deposit" && (() => {
+            {booking.status === "waiting_deposit" && !booking.slot_id && (
+              <div className="mb-4 border border-champagne/40 bg-champagne/[0.06] p-3 text-xs leading-relaxed text-vanilla/80">
+                <Hourglass size={12} className="inline mr-1 text-champagne" />
+                <strong className="text-champagne">Anzahlung offen</strong> — dieser Termin ist noch <strong>nicht im Kalender blockiert</strong>. Trage unten „Anzahlung erhalten am“ ein und tippe dann auf „Anzahlung eingegangen“.
+              </div>
+            )}
+            {booking.status === "waiting_deposit" && Boolean(booking.slot_id) && (() => {
               const untilMs = new Date(booking.updated_at).getTime() + 24 * 60 * 60_000;
               const diff = untilMs - Date.now();
               const expired = diff <= 0;
@@ -1771,12 +1777,20 @@ const depositDateMut = useMutation({
                     {reminderMut.isPending ? "Sende…" : "Zahlungserinnerung senden"}
                   </button>
                 )}
-                {(booking.anzahlung || 0) > 0 && !booking.anzahlung_paid && booking.status === "confirmed" && (
+                {(booking.anzahlung || 0) > 0 && !booking.anzahlung_paid && (booking.status === "confirmed" || (booking.status === "waiting_deposit" && !booking.slot_id)) && (
                   <button
                     type="button"
-                    disabled={depositPaidMut.isPending}
+                    disabled={depositPaidMut.isPending || !anzahlungPaidDate}
+                    title={!anzahlungPaidDate ? "Bitte zuerst „Anzahlung erhalten am“ eintragen." : undefined}
                     onClick={() => {
-                      if (confirm("Anzahlung als eingegangen markieren? Der Gast bekommt dann die finale Bestätigung mit Hinweis auf den Restbetrag bar vor Ort.")) {
+                      const deferred = booking.status === "waiting_deposit" && !booking.slot_id;
+                      const internalEmail = /@intern\.local$/i.test(booking.guest_email ?? "");
+                      const question = [
+                        "Anzahlung als eingegangen markieren?",
+                        deferred ? "Der Termin wird jetzt im Kalender blockiert." : null,
+                        internalEmail ? null : "Der Gast bekommt die finale Bestätigung mit Hinweis auf den Restbetrag vor Ort.",
+                      ].filter(Boolean).join(" ");
+                      if (confirm(question)) {
                         depositPaidMut.mutate();
                       }
                     }}

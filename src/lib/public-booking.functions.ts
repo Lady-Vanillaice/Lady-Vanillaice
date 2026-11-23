@@ -156,7 +156,9 @@ async function repairKnownManualOvernightBooking() {
   return true;
 }
 
-function isActiveBlockingBooking(booking: { status?: string | null; updated_at?: string | null }) {
+function isActiveBlockingBooking(booking: { status?: string | null; updated_at?: string | null; slot_id?: string | null }) {
+  // „Anzahlung fehlt noch“ (wartet auf Anzahlung, noch ohne Kalender-Slot) blockiert nichts.
+  if (booking.status === "waiting_deposit" && "slot_id" in booking && !booking.slot_id) return false;
   if (booking.status !== "waiting_deposit") return true;
   if (!booking.updated_at) return true;
   return new Date(booking.updated_at).getTime() + 24 * 60 * 60_000 > Date.now();

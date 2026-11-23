@@ -1115,6 +1115,14 @@ export const markDepositPaid = createServerFn({ method: "POST" })
       throw new Error("Es ist keine Anzahlung hinterlegt, die als eingegangen markiert werden könnte.");
     }
 
+    // „Anzahlung fehlt noch“: Jetzt erst im Kalender blockieren (vor dem Markieren,
+    // damit bei einer Überschneidung nichts halb gespeichert wird).
+    {
+      const { supabaseAdmin: deferredDb } = await import("@/integrations/supabase/client.server");
+      const { activateDeferredBooking } = await import("./deferred-booking.server");
+      await activateDeferredBooking(deferredDb, data.id, context.userId);
+    }
+
     const { error } = await context.supabase
       .from("bookings")
      .update({
@@ -1123,6 +1131,11 @@ export const markDepositPaid = createServerFn({ method: "POST" })
 })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
+
+    // Ohne echte E-Mail-Adresse (manuell eingetragen) keine Bestätigungsmail.
+    if (/@intern\.local$/i.test(booking.guest_email ?? "")) {
+      return { ok: true };
+    }
 
     // Send final confirmation email with rest-amount hint.
     try {
@@ -1260,6 +1273,8 @@ const manualBookingInput = z.object({
   deposit_exemption_reason: z.enum(["regular_customer", "trust", "exception", "colleague_guarantees", "spontaneous"]).nullable(),
   onsite_method: z.string().trim().min(1).max(100).nullable(),
   onsite_paid_at: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  // „Anzahlung fehlt noch“: Termin speichern, aber erst nach Zahlungseingang im Kalender blockieren.
+  deposit_pending: z.boolean().optional().default(false),
 }).superRefine((data, ctx) => {
   if (data.liegezeit_only && !data.liegezeit_duration_minutes) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["liegezeit_duration_minutes"], message: "Bitte eine gültige Liegezeit angeben." });
@@ -1268,6 +1283,103 @@ const manualBookingInput = z.object({
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["total_amount"], message: "Der Sessionpreis muss größer als 0 € sein." });
   }
 });
+
+// „Anzahlung fehlt noch“: Buchung mit Status „wartet auf Anzahlung“ anlegen,
+// ohne Zeitfenster zu blockieren. Erst markDepositPaid blockiert den Kalender.
+async function createDeferredManualBooking(
+  data: z.infer<typeof manualBookingInput>,
+  durationMinutes: number,
+) {
+  if (!(data.deposit_amount > 0)) {
+    throw new Error("Bitte den Betrag der offenen Anzahlung eintragen.");
+  }
+  if (data.deposit_amount > data.total_amount) {
+    throw new Error("Die Anzahlung darf nicht höher als der Gesamtpreis sein.");
+  }
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const contact = data.guest_contact?.trim() ?? "";
+  const guestEmail = data.guest_email?.trim() || `manuell+${crypto.randomUUID().slice(0, 8)}@intern.local`;
+  const profileSections = [
+    data.outfit ? `Outfit / Kleidung:\n${data.outfit}` : null,
+    data.preferences ? `Vorlieben & Wünsche:\n${data.preferences}` : null,
+    data.taboos ? `Tabus & Grenzen:\n${data.taboos}` : null,
+    data.health_notes ? `Gesundheitliche Hinweise:\n${data.health_notes}` : null,
+  ].filter(Boolean);
+  const originLines = [
+    data.source ? `Quelle: ${data.source}` : null,
+    contact ? `Kontakt: ${contact}` : null,
+  ].filter(Boolean);
+  const message = [
+    ...originLines,
+    ...profileSections,
+    "—\nManuell durch Admin eingetragen. Anzahlung fehlt noch – Termin wird erst nach Zahlungseingang im Kalender blockiert.",
+  ].join("\n\n").slice(0, 2000);
+  const combinedInternalNote = [
+    data.outfit ? `Outfit / Kleidung:\n${data.outfit}` : null,
+    data.preferences ? `Vorlieben & Wünsche:\n${data.preferences}` : null,
+    data.taboos ? `Tabus & Grenzen:\n${data.taboos}` : null,
+    data.health_notes ? `Gesundheitliche Hinweise:\n${data.health_notes}` : null,
+    data.internal_note ? `Weitere Notiz:\n${data.internal_note}` : null,
+    data.onsite_method ? `Vor Ort Zahlungsmethode: ${data.onsite_method}` : null,
+  ].filter(Boolean).join("\n\n") || null;
+  const duoPartner = data.booking_type === "duo"
+    ? data.duo_partner?.trim() || data.calendar_duo_partner?.trim() || null
+    : data.booking_type === "single" && data.calendar_day_type === "duo"
+      ? data.calendar_duo_partner?.trim() || null
+      : null;
+  if ((data.booking_type === "duo" || (data.booking_type === "single" && data.calendar_day_type === "duo")) && !duoPartner) {
+    throw new Error("Bitte die Duo-Partnerin für diesen Tag angeben.");
+  }
+
+  const { data: inserted, error } = await supabaseAdmin
+    .from("bookings")
+    .insert({
+      slot_id: null,
+      guest_name: data.guest_name,
+      guest_email: guestEmail,
+      duration:
+        data.booking_type === "duo"
+          ? "Duo Session"
+          : data.booking_type === "custom_content"
+            ? "Custom Content"
+            : data.booking_type === "content"
+              ? "Content Dreh"
+              : `${durationMinutes} Minuten`,
+      duration_minutes: durationMinutes,
+      requested_start: data.starts_at,
+      message,
+      status: "waiting_deposit",
+      admin_note: combinedInternalNote,
+      studio_override: data.location,
+      anzahlung: data.deposit_amount,
+      anzahlung_method: null,
+      anzahlung_paid: false,
+      anzahlung_paid_at: null,
+      deposit_exemption_reason: null,
+      bar: data.total_amount - data.deposit_amount,
+      cash_received_at: data.onsite_paid_at ? `${data.onsite_paid_at}T12:00:00.000Z` : null,
+      fully_paid: false,
+    })
+    .select("id")
+    .single();
+  if (error || !inserted) throw new Error(error?.message ?? "Termin konnte nicht gespeichert werden.");
+
+  try {
+    const { saveDeferredSlot } = await import("./deferred-booking.server");
+    await saveDeferredSlot(supabaseAdmin, inserted.id, {
+      starts_at: data.starts_at,
+      ends_at: data.ends_at,
+      location: data.location,
+      booking_type: data.booking_type,
+      duo_partner: duoPartner,
+      internal_note: combinedInternalNote,
+    });
+  } catch (saveError) {
+    await supabaseAdmin.from("bookings").delete().eq("id", inserted.id);
+    throw saveError;
+  }
+  return { ok: true, slot_id: null, deposit_pending: true };
+}
 
 export const createManualBooking = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -1290,6 +1402,9 @@ export const createManualBooking = createServerFn({ method: "POST" })
       : Math.round((endsAt.getTime() - startsAt.getTime()) / 60_000);
     if (durationMinutes < 15) {
       throw new Error("Termin muss mindestens 15 Minuten dauern.");
+    }
+    if (data.deposit_pending && !data.liegezeit_only) {
+      return createDeferredManualBooking(data, durationMinutes);
     }
     if (!depositExemptionReason && data.deposit_amount > 0 && !data.deposit_paid_at) {
       throw new Error("Das Eingangsdatum der Zahlung fehlt.");

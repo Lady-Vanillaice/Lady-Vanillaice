@@ -574,6 +574,7 @@ export type ManualBookingValues = {
   deposit_exemption_reason: "regular_customer" | "trust" | "exception" | "colleague_guarantees" | "spontaneous" | null;
   onsite_method: string | null;
   onsite_paid_at: string | null;
+  deposit_pending?: boolean;
   liegezeit_only: boolean;
   liegezeit_duration_minutes: number | null;
   liegezeit_type: "beaufsichtigt" | "unbeaufsichtigt" | null;
@@ -625,6 +626,8 @@ const [liegezeitDuration, setLiegezeitDuration] = useState("60");
   const [depositMethod, setDepositMethod] = useState("Überweisung");
   const [depositPaidAt, setDepositPaidAt] = useState(() => new Date().toISOString().slice(0, 10));
   const [onsitePaidAt, setOnsitePaidAt] = useState("");
+  const [depositPending, setDepositPending] = useState(false);
+  const [savedAsPending, setSavedAsPending] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
   const [customerOpen, setCustomerOpen] = useState(false);
@@ -704,7 +707,8 @@ const [liegezeitDuration, setLiegezeitDuration] = useState("60");
       setErr("Die erhaltene Anzahlung muss größer als 0 € und höchstens so hoch wie der Gesamtpreis sein.");
       return;
     }
-    if (!depositExemptionReason && (!depositMethod.trim() || !depositPaidAt)) {
+    const pendingDeposit = depositPending && !liegezeitOnly;
+    if (!pendingDeposit && !depositExemptionReason && (!depositMethod.trim() || !depositPaidAt)) {
       setErr("Bitte Zahlungsart und Eingangsdatum der Anzahlung angeben.");
       return;
     }
@@ -748,8 +752,9 @@ const [liegezeitDuration, setLiegezeitDuration] = useState("60");
         total_amount: total,
         deposit_amount: depositExemptionReason ? 0 : deposit,
         deposit_method: depositMethod.trim(),
-        deposit_paid_at: depositExemptionReason ? null : depositPaidAt,
-        deposit_exemption_reason: depositExemptionReason,
+        deposit_paid_at: depositExemptionReason || pendingDeposit ? null : depositPaidAt,
+        deposit_exemption_reason: pendingDeposit ? null : depositExemptionReason,
+        deposit_pending: pendingDeposit,
         onsite_method: onsiteMethod.trim() || null,
         onsite_paid_at: onsitePaidAt || null,
         liegezeit_only: liegezeitOnly,
@@ -757,7 +762,9 @@ const [liegezeitDuration, setLiegezeitDuration] = useState("60");
         liegezeit_type: liegezeitOnly ? liegezeitType : null,
       });
 
+      setSavedAsPending(pendingDeposit);
       setOk(true);
+      setDepositPending(false);
       setDate("");
       setRoom("");
       setGuestName("");
@@ -1121,11 +1128,22 @@ const [liegezeitDuration, setLiegezeitDuration] = useState("60");
       <div className="border border-champagne/25 bg-champagne/[0.04] p-4 space-y-3">
         <div>
           <div className="eyebrow text-champagne">Preis & Zahlung</div>
-          <p className="mt-1 text-[0.7rem] text-vanilla/55">Die Anzahlung wird als bereits erhalten gespeichert. Der Restbetrag wird automatisch berechnet und ins Kassenbuch übernommen.</p>
+          <p className="mt-1 text-[0.7rem] text-vanilla/55">Die Anzahlung wird als bereits erhalten gespeichert (außer bei „Anzahlung fehlt noch“). Der Restbetrag wird automatisch berechnet und ins Kassenbuch übernommen.</p>
         </div>
+        <label className="flex items-start gap-3 text-xs text-vanilla/75 cursor-pointer border border-champagne/15 bg-anthracite/30 p-3">
+          <input
+            type="checkbox"
+            checked={depositPending}
+            onChange={(e) => { setDepositPending(e.target.checked); if (e.target.checked) setDepositExemptionReason(null); }}
+            className="mt-0.5 accent-[var(--color-champagne)]"
+          />
+          <span>
+            <strong className="text-champagne">Anzahlung fehlt noch</strong> — der Termin wird als „Anzahlung offen“ gespeichert und erst im Kalender blockiert, wenn du in der Buchung „Anzahlung eingegangen“ antippst.
+          </span>
+        </label>
         <div className="grid sm:grid-cols-2 gap-3">
           <div><label className="eyebrow block mb-1">Kurzsession</label><select value={shortSessionPrice} onChange={(e) => { const value = e.target.value; setShortSessionPrice(value); if (value) setTotalAmount(value); }} className="input-luxe !py-2"><option value="">Preis auswählen</option><option value="60">60 €</option><option value="75">75 €</option><option value="100">100 €</option></select></div>
-          <div><label className="eyebrow block mb-1">Anzahlungsregel</label><select value={depositExemptionReason ?? ""} onChange={(e) => { const value = e.target.value as ManualBookingValues["deposit_exemption_reason"] | ""; setDepositExemptionReason(value || null); if (value) setDepositAmount("0"); }} className="input-luxe !py-2"><option value="">Normale Anzahlung</option><option value="regular_customer">Keine Anzahlung – Stammkunde</option><option value="trust">Keine Anzahlung – Vertrauensbasis</option><option value="exception">Keine Anzahlung – Ausnahme</option><option value="colleague_guarantees">Keine Anzahlung – Kollegin bürgt</option><option value="spontaneous">Keine Anzahlung – Spontaner Termin</option></select></div>
+          <div><label className="eyebrow block mb-1">Anzahlungsregel</label><select disabled={depositPending} value={depositExemptionReason ?? ""} onChange={(e) => { const value = e.target.value as ManualBookingValues["deposit_exemption_reason"] | ""; setDepositExemptionReason(value || null); if (value) setDepositAmount("0"); }} className="input-luxe !py-2"><option value="">Normale Anzahlung</option><option value="regular_customer">Keine Anzahlung – Stammkunde</option><option value="trust">Keine Anzahlung – Vertrauensbasis</option><option value="exception">Keine Anzahlung – Ausnahme</option><option value="colleague_guarantees">Keine Anzahlung – Kollegin bürgt</option><option value="spontaneous">Keine Anzahlung – Spontaner Termin</option></select></div>
           <div className={shortSessionPrice ? "hidden" : ""}><label className="eyebrow block mb-1">Sessionpreis (€)</label><input required={!shortSessionPrice} inputMode="decimal" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} placeholder="z. B. 500" className="input-luxe !py-2" /></div>
           {/* LIEGEZEIT_BOOKING_FEATURE */}
       <div className="border border-champagne/25 bg-champagne/[0.03] p-4 space-y-3">
@@ -1161,9 +1179,9 @@ const [liegezeitDuration, setLiegezeitDuration] = useState("60");
         )}
       </div>
 
-      <div className={depositExemptionReason === "spontaneous" ? "hidden" : ""}><label className="eyebrow block mb-1">Anzahlung Betrag (€)</label><input required={!depositExemptionReason} disabled={Boolean(depositExemptionReason)} inputMode="decimal" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} placeholder="z. B. 150" className="input-luxe !py-2 disabled:opacity-40" /></div><div className={depositExemptionReason === "spontaneous" ? "hidden" : ""}><label className="eyebrow block mb-1">Anzahlungsmethode</label><select disabled={Boolean(depositExemptionReason)} value={depositMethod} onChange={(e) => setDepositMethod(e.target.value)} className="input-luxe !py-2 disabled:opacity-40"><option>Überweisung</option><option>PayPal</option><option>Bar</option><option>Karte</option><option>Sonstige</option></select></div>
+      <div className={depositExemptionReason === "spontaneous" ? "hidden" : ""}><label className="eyebrow block mb-1">Anzahlung Betrag (€)</label><input required={!depositExemptionReason} disabled={Boolean(depositExemptionReason)} inputMode="decimal" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} placeholder="z. B. 150" className="input-luxe !py-2 disabled:opacity-40" /></div><div className={depositExemptionReason === "spontaneous" || depositPending ? "hidden" : ""}><label className="eyebrow block mb-1">Anzahlungsmethode</label><select disabled={Boolean(depositExemptionReason)} value={depositMethod} onChange={(e) => setDepositMethod(e.target.value)} className="input-luxe !py-2 disabled:opacity-40"><option>Überweisung</option><option>PayPal</option><option>Bar</option><option>Karte</option><option>Sonstige</option></select></div>
           
-          <div className={depositExemptionReason === "spontaneous" ? "hidden" : ""}><label className="eyebrow block mb-1">Anzahlung erhalten am</label><input required={!depositExemptionReason} disabled={Boolean(depositExemptionReason)} type="date" value={depositPaidAt} onChange={(e) => setDepositPaidAt(e.target.value)} className="input-luxe !py-2 disabled:opacity-40" /></div><div><label className="eyebrow block mb-1">Vor Ort Betrag (€)</label><div className="input-luxe !py-2 opacity-80">{Math.max(0, (Number(totalAmount.replace(",", ".")) || 0) + (hasLiegezeit ? (Number(liegezeitSurcharge.replace(",", ".")) || 0) : 0) - (depositExemptionReason ? 0 : (Number(depositAmount.replace(",", ".")) || 0))).toLocaleString("de-DE")} €</div></div><div><label className="eyebrow block mb-1">Vor Ort erhalten am</label><input type="date" value={onsitePaidAt} onChange={(e) => setOnsitePaidAt(e.target.value)} className="input-luxe !py-2" /></div><div><label className="eyebrow block mb-1">Vor Ort Zahlungsmethode</label><select value={onsiteMethod} onChange={(e) => setOnsiteMethod(e.target.value)} className="input-luxe !py-2"><option>Bar</option><option>PayPal</option><option>Überweisung</option><option>Karte</option><option>Sonstige</option></select></div>
+          <div className={depositExemptionReason === "spontaneous" || depositPending ? "hidden" : ""}><label className="eyebrow block mb-1">Anzahlung erhalten am</label><input required={!depositExemptionReason && !depositPending} disabled={Boolean(depositExemptionReason)} type="date" value={depositPaidAt} onChange={(e) => setDepositPaidAt(e.target.value)} className="input-luxe !py-2 disabled:opacity-40" /></div><div><label className="eyebrow block mb-1">Vor Ort Betrag (€)</label><div className="input-luxe !py-2 opacity-80">{Math.max(0, (Number(totalAmount.replace(",", ".")) || 0) + (hasLiegezeit ? (Number(liegezeitSurcharge.replace(",", ".")) || 0) : 0) - (depositExemptionReason ? 0 : (Number(depositAmount.replace(",", ".")) || 0))).toLocaleString("de-DE")} €</div></div><div><label className="eyebrow block mb-1">Vor Ort erhalten am</label><input type="date" value={onsitePaidAt} onChange={(e) => setOnsitePaidAt(e.target.value)} className="input-luxe !py-2" /></div><div><label className="eyebrow block mb-1">Vor Ort Zahlungsmethode</label><select value={onsiteMethod} onChange={(e) => setOnsiteMethod(e.target.value)} className="input-luxe !py-2"><option>Bar</option><option>PayPal</option><option>Überweisung</option><option>Karte</option><option>Sonstige</option></select></div>
         </div>
       </div>
 
@@ -1173,7 +1191,11 @@ const [liegezeitDuration, setLiegezeitDuration] = useState("60");
 
       {ok && (
         <div className="text-xs text-green-300">
-          {liegezeitOnly ? "Liegezeit wurde eingetragen – Session-Zeit bleibt frei." : "Termin wurde eingetragen und im Kalender gesperrt."}
+          {liegezeitOnly
+            ? "Liegezeit wurde eingetragen – Session-Zeit bleibt frei."
+            : savedAsPending
+              ? "Termin wurde gespeichert – Anzahlung offen. Er wird erst im Kalender blockiert, wenn die Anzahlung eingegangen ist."
+              : "Termin wurde eingetragen und im Kalender gesperrt."}
         </div>
       )}
 

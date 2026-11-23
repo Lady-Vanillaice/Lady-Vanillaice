@@ -93,11 +93,16 @@ function TerminplanPage() {
       const { data, error } = await supabase
         .from("bookings")
         .select(
-          "id, guest_name, guest_email, guest_phone, duration, duration_minutes, requested_start, admin_note, anzahlung_paid, deposit_exemption_reason, anzahlung, bar, cash_received_at, message, studio_override, studio_address_override, availability_slots(starts_at, ends_at, location, location_address, is_duo, duo_partner, is_content_shoot)",
+          "id, status, slot_id, guest_name, guest_email, guest_phone, duration, duration_minutes, requested_start, admin_note, anzahlung_paid, deposit_exemption_reason, anzahlung, bar, cash_received_at, message, studio_override, studio_address_override, availability_slots(starts_at, ends_at, location, location_address, is_duo, duo_partner, is_content_shoot)",
         )
-        .eq("status", "confirmed");
+        .in("status", ["confirmed", "rescheduling", "waiting_deposit"]);
       if (error) throw error;
-      const rows = (data ?? []).map((b) => {
+      // Aus „wartet auf Anzahlung“ nur selbst eingetragene Termine mit
+      // „Anzahlung fehlt noch“ zeigen (noch ohne Kalender-Slot).
+      const visibleBookings = (data ?? []).filter((b: any) =>
+        b.status !== "waiting_deposit" || (!b.slot_id && /Manuell durch Admin eingetragen/.test(b.message ?? "")),
+      );
+      const rows = visibleBookings.map((b) => {
         const slot = Array.isArray(b.availability_slots)
           ? b.availability_slots[0]
           : (b.availability_slots as {

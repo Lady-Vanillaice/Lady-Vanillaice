@@ -13,7 +13,9 @@ async function ensureAdmin(supabase: any, userId: string) {
   if (!data) throw new Error("Forbidden");
 }
 
-function isBlockingBooking(booking: { status?: string | null; updated_at?: string | null }) {
+function isBlockingBooking(booking: { status?: string | null; updated_at?: string | null; slot_id?: string | null }) {
+  // „Anzahlung fehlt noch“ (wartet auf Anzahlung, noch ohne Kalender-Slot) blockiert nichts.
+  if (booking.status === "waiting_deposit" && "slot_id" in booking && !booking.slot_id) return false;
   if (booking.status !== "waiting_deposit") return true;
   if (!booking.updated_at) return true;
   return new Date(booking.updated_at).getTime() + 24 * 60 * 60_000 > Date.now();
@@ -59,9 +61,28 @@ export const updateBookingSchedule = createServerFn({ method: "POST" })
     }
     const requestedEnd = new Date(requestedStart.getTime() + data.duration_minutes * 60_000);
 
+    // „Anzahlung fehlt noch“: Termin blockiert noch nichts – nur Zeit/Dauer merken.
+    if (booking.status === "waiting_deposit" && !booking.slot_id) {
+      const { error: deferredErr } = await context.supabase
+        .from("bookings")
+        .update({ requested_start: requestedStart.toISOString(), duration_minutes: data.duration_minutes })
+        .eq("id", data.id);
+      if (deferredErr) throw new Error(deferredErr.message);
+      const { readDeferredSlot, saveDeferredSlot } = await import("./deferred-booking.server");
+      const stored = await readDeferredSlot(supabaseAdmin, data.id);
+      if (stored) {
+        await saveDeferredSlot(supabaseAdmin, data.id, {
+          ...stored,
+          starts_at: requestedStart.toISOString(),
+          ends_at: requestedEnd.toISOString(),
+        });
+      }
+      return { ok: true, slot_id: null };
+    }
+
     const { data: blockers, error: blockersErr } = await supabaseAdmin
       .from("bookings")
-      .select("id, requested_start, duration_minutes, status, updated_at")
+      .select("id, slot_id, requested_start, duration_minutes, status, updated_at")
       .neq("id", data.id)
       .in("status", ["pending", "waiting_deposit", "confirmed"])
       .not("requested_start", "is", null)
