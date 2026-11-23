@@ -797,6 +797,17 @@ export const listUpcomingSlots = createServerFn({ method: "GET" }).handler(async
     return entries;
   });
 
+  // Gekürzte oder verschobene Termine automatisch nachziehen, damit frei
+  // gewordene Zeit sofort öffentlich sichtbar ist. Fehler hier dürfen den
+  // Kalender nie blockieren.
+  try {
+    const { supabaseAdmin: syncDb } = await import("@/integrations/supabase/client.server");
+    const { syncBookedSlotsToBookings } = await import("./slot-sync.server");
+    await syncBookedSlotsToBookings(syncDb);
+  } catch (syncError) {
+    console.error("Slot sync failed", syncError);
+  }
+
   const { data, error } = await supabase
     .from("availability_slots")
     .select("id, starts_at, ends_at, location, buffer_minutes, status, is_duo, is_content_shoot, duo_partner")

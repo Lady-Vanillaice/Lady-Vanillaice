@@ -19,38 +19,6 @@ function isBlockingBooking(booking: { status?: string | null; updated_at?: strin
   return new Date(booking.updated_at).getTime() + 24 * 60 * 60_000 > Date.now();
 }
 
-type ReleaseDb = any;
-
-// Gibt einen frei gewordenen Zeitraum wieder öffentlich frei, indem ein
-// angrenzendes offenes, sichtbares Zeitfenster verlängert wird. Ohne direkt
-// angrenzendes Zeitfenster bleibt die Zeit gesperrt – so wird nie Zeit
-// veröffentlicht, die vorher nicht im Kalender freigegeben war.
-async function releaseRangeToPublicCalendar(db: ReleaseDb, startMs: number, endMs: number) {
-  if (endMs <= startMs) return;
-  const startIso = new Date(startMs).toISOString();
-  const endIso = new Date(endMs).toISOString();
-  const { data: neighbours, error } = await db
-    .from("availability_slots")
-    .select("id, starts_at, ends_at")
-    .eq("status", "open")
-    .eq("is_hidden", false)
-    .lte("starts_at", endIso)
-    .gte("ends_at", startIso);
-  if (error) throw new Error(error.message);
-  const rows = (neighbours ?? []) as Array<{ id: string; starts_at: string; ends_at: string }>;
-  const ms = (value: string) => new Date(value).getTime();
-  if (rows.some((row) => ms(row.starts_at) <= startMs && ms(row.ends_at) >= endMs)) return;
-  const left = rows.find((row) => ms(row.ends_at) === startMs);
-  const right = rows.find((row) => ms(row.starts_at) === endMs);
-  if (left) {
-    const { error: updErr } = await db.from("availability_slots").update({ ends_at: endIso }).eq("id", left.id);
-    if (updErr) throw new Error(updErr.message);
-  } else if (right) {
-    const { error: updErr } = await db.from("availability_slots").update({ starts_at: startIso }).eq("id", right.id);
-    if (updErr) throw new Error(updErr.message);
-  }
-}
-
 export const updateBookingSchedule = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
@@ -169,12 +137,8 @@ export const updateBookingSchedule = createServerFn({ method: "POST" })
         if (updateOwnErr) throw new Error(updateOwnErr.message);
 
         // Frei gewordene Teile des alten Zeitraums (vorne und/oder hinten).
-        if (newEnd <= oldStart || newStart >= oldEnd) {
-          await releaseRangeToPublicCalendar(supabaseAdmin, oldStart, oldEnd);
-        } else {
-          await releaseRangeToPublicCalendar(supabaseAdmin, oldStart, Math.min(oldEnd, newStart));
-          await releaseRangeToPublicCalendar(supabaseAdmin, Math.max(oldStart, newEnd), oldEnd);
-        }
+        const { releaseFreedParts } = await import("./slot-sync.server");
+        await releaseFreedParts(supabaseAdmin, oldStart, oldEnd, newStart, newEnd);
         return { ok: true, slot_id: currentSlot.id };
       }
     }

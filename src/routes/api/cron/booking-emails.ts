@@ -48,6 +48,13 @@ export const Route = createFileRoute("/api/cron/booking-emails")({
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { enqueueTransactionalEmail } = await import("@/lib/email/enqueue.server");
 
+        try {
+          const { syncBookedSlotsToBookings } = await import("@/lib/slot-sync.server");
+          await syncBookedSlotsToBookings(supabaseAdmin);
+        } catch (syncError) {
+          console.error("Slot sync failed", syncError);
+        }
+
         const { data: bookings, error } = await supabaseAdmin
           .from("bookings")
           .select("id, guest_name, guest_email, duration, duration_minutes, requested_start, status, studio_override, studio_address_override, availability_slots(location, location_address, is_duo, is_content_shoot, duo_partner)")
