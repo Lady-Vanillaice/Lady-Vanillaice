@@ -231,17 +231,19 @@ function AdminKalenderPage() {
             <CalendarSubscribeButton />
           </div>
 
+          <div className="mb-8">
+            <NewSlotForm
+              onCreate={(v) => createMut.mutateAsync(v)}
+              pending={createMut.isPending}
+              studios={studiosQ.data}
+            />
+          </div>
+
           <VacationForm
             vacations={vacationSlots}
             pending={vacationMut.isPending || deleteMut.isPending}
             onCreate={(v) => vacationMut.mutateAsync(v)}
             onDelete={(id) => deleteMut.mutateAsync(id)}
-          />
-
-          <NewSlotForm
-            onCreate={(v) => createMut.mutateAsync(v)}
-            pending={createMut.isPending}
-            studios={studiosQ.data}
           />
 
           <CalendarSpecialsAdmin />
