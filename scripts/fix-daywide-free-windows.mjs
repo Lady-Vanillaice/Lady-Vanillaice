@@ -244,15 +244,25 @@ const calendarPath = "src/routes/kalender.tsx";
 let calendar = fs.readFileSync(calendarPath, "utf8");
 const rawWindowLine = `{formatMunichTime(window.starts_at)} – {formatMunichTime(window.ends_at)}{lang === "en" ? "" : " Uhr"}`;
 const alwaysLabeledWindowLine = `{formatMunichTime(window.starts_at)} – {formatMunichTime(window.ends_at)}{lang === "en" ? "" : " Uhr"}{" — "}{window.is_duo ? tr("Duo verfügbar", "Duo available") : tr("Nur Einzel verfügbar", "Single only available")}`;
-const duoOnlyWindowLine = `{formatMunichTime(window.starts_at)} – {formatMunichTime(window.ends_at)}{lang === "en" ? "" : " Uhr"}{slot.is_duo ? <> {"— "}{window.is_duo ? tr("Duo verfügbar", "Duo available") : tr("Nur Einzel verfügbar", "Single only available")}</> : null}`;
+// Hinter der Uhrzeit: Duo+Single möglich → „Single verfügbar – Duo verfügbar“,
+// nur Duo → „Duo verfügbar“, nur Single → kein Zusatz.
+const duoOnlyWindowLine = `{formatMunichTime(window.starts_at)} – {formatMunichTime(window.ends_at)}{lang === "en" ? "" : " Uhr"}{window.is_duo ? <> {"— "}{windowAvailabilityLabel(window)}</> : null}`;
+const previousDuoOnlyWindowLine = `{formatMunichTime(window.starts_at)} – {formatMunichTime(window.ends_at)}{lang === "en" ? "" : " Uhr"}{slot.is_duo ? <> {"— "}{window.is_duo ? tr("Duo verfügbar", "Duo available") : tr("Nur Einzel verfügbar", "Single only available")}</> : null}`;
 
-if (calendar.includes(alwaysLabeledWindowLine)) {
+// Das Skript läuft beim Build zweimal (prebuild + build). rawWindowLine ist der
+// Anfang von duoOnlyWindowLine, daher nur ersetzen, wenn noch nicht gepatcht –
+// sonst steht „Duo verfügbar“ doppelt hinter der Uhrzeit.
+if (calendar.includes(duoOnlyWindowLine)) {
+  // bereits gepatcht
+} else if (calendar.includes(previousDuoOnlyWindowLine)) {
+  calendar = calendar.replace(previousDuoOnlyWindowLine, duoOnlyWindowLine);
+} else if (calendar.includes(alwaysLabeledWindowLine)) {
   calendar = calendar.replace(alwaysLabeledWindowLine, duoOnlyWindowLine);
 } else if (calendar.includes(rawWindowLine)) {
   calendar = calendar.replace(rawWindowLine, duoOnlyWindowLine);
 }
 
-if (!calendar.includes("slot.is_duo ? <>")) {
+if (!calendar.includes(duoOnlyWindowLine)) {
   throw new Error("Duo-only public free-window label patch could not be applied");
 }
 fs.writeFileSync(calendarPath, calendar);
