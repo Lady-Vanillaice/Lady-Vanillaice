@@ -130,9 +130,7 @@ function CamPage() {
               {[
                 [tr("5–10 Minuten", "5–10 minutes"), "50 €"],
                 [tr("15 Minuten", "15 minutes"), "75 €"],
-                [tr("30 Minuten", "30 minutes"), "150 €"],
-                [tr("45 Minuten", "45 minutes"), "225 €"],
-                [tr("60 Minuten", "60 minutes"), "300 €"],
+                [tr("20 Minuten", "20 minutes"), "100 €"],
               ].map(([time, price]) => (
                 <li key={time} className="flex justify-between py-2 text-sm text-vanilla/85">
                   <span>{time}</span>
@@ -140,6 +138,12 @@ function CamPage() {
                 </li>
               ))}
             </ul>
+            <p className="mt-6 text-sm leading-relaxed text-vanilla/75">
+              {tr(
+                "Und wenn du länger willst? Dann zahlst du für jede weitere Minute 5 €.",
+                "And if you want longer? Then you pay €5 for every additional minute.",
+              )}
+            </p>
             <p className="mt-4 text-xs text-vanilla/55">
               {tr("Bezahlt wird vor der Session.", "Payment is due before the session.")}
             </p>
