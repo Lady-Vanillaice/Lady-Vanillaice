@@ -7,7 +7,10 @@ export type StatusCard = {
   title: string;
   intro?: string;
   rows?: { label: string; value: string; note?: string }[];
+  /** "Titel" oder "Titel|kurze Erklärung" */
   bullets?: string[];
+  /** Kurzer Absatz unter der Liste */
+  closing?: string;
   note?: string;
   path: string;
 };
@@ -17,27 +20,29 @@ export const STATUS_CARDS: StatusCard[] = [
     key: "ueber-mich",
     eyebrow: "Über mich",
     title: "Lady Vanilla Ice",
-    intro: "Keine Domina nach Schema F. Hart. Weich. Unberechenbar.",
-    rows: [
-      { label: "Mein Spiel", value: "", note: "psychologisch, individuell, unberechenbar" },
-      { label: "Meine Art", value: "", note: "mal hart, mal weich, immer echt" },
-      { label: "Meine Haltung", value: "", note: "klar, respektvoll und aufmerksam" },
-      { label: "Meine Note", value: "", note: "elegant – mit einem Hauch Bayern" },
+    intro: "Keine Domina nach Schema F. Jede Session ist anders – weil jeder Mensch anders ist. Ich lese dich, ich führe dich, und ich entscheide, wie weit wir gehen.",
+    bullets: [
+      "Mein Spiel|Psychologisch, individuell, unberechenbar.",
+      "Meine Art|Mal hart. Mal weich. Immer echt.",
+      "Meine Haltung|Klar, respektvoll und aufmerksam.",
+      "Meine Note|Elegant – mit einem Hauch Bayern.",
     ],
-    note: "München & Umgebung",
+    closing: "Anfänger sind genauso willkommen wie Erfahrene.",
+    note: "München & Umgebung · Termine nach Vereinbarung",
     path: "ueber-mich",
   },
   {
     key: "leistungen",
     eyebrow: "Meine Spielwelten",
     title: "Leistungen",
-    intro: "Psychologisch, individuell, unberechenbar. Mal hart, mal weich, immer echt.",
+    intro: "Mal hart, mal weich, immer echt. Deine Wünsche und Grenzen besprechen wir vorher – den Rest bestimme ich.",
     bullets: [
-      "Für Einsteiger",
-      "Körper & Sinne",
-      "Schmerz & Disziplin",
-      "Macht & Kontrolle",
-      "Verwandlung & Rollenspiele",
+      "Dein erstes Loslassen|Ein sicherer, respektvoller Einstieg. Schritt für Schritt.",
+      "Mein Spiel mit deinem Kopf|Worte, Erwartungen und Kontrolle.",
+      "Sanfte Macht|Sinnlich, nah und verführerisch. Weich heißt nicht harmlos.",
+      "Wenn ich hart werde|Klare Regeln, Disziplin und Konsequenz.",
+      "Deine Verwandlung|Rollen, Aufgaben und neue Seiten an dir.",
+      "Nur für dich inszeniert|Dein Kopfkino – auf meine Art umgesetzt.",
     ],
     note: "Alle Details auf meiner Homepage",
     path: "leistungen",
@@ -46,15 +51,16 @@ export const STATUS_CARDS: StatusCard[] = [
     key: "preise",
     eyebrow: "Studio · Preise",
     title: "Meine Preise",
-    intro: "Exklusive Sessions in München & Umgebung. Diskret und ganz auf dich abgestimmt.",
+    intro: "Exklusive Sessions in München & Umgebung. Diskret, individuell und ganz auf dich abgestimmt. Ein Vorgespräch ist immer dabei.",
     rows: [
-      { label: "30 Minuten", value: "200 €" },
-      { label: "60 Minuten", value: "300 €" },
-      { label: "90 Minuten", value: "500 €" },
-      { label: "120 Minuten", value: "600 €" },
+      { label: "30 Minuten", value: "200 €", note: "kurzer, fokussierter Einstieg" },
+      { label: "60 Minuten", value: "300 €", note: "die erste intensive Begegnung" },
+      { label: "90 Minuten", value: "500 €", note: "mehr Raum für Atmosphäre" },
+      { label: "120 Minuten", value: "600 €", note: "die volle Bühne" },
       { label: "Liegezeit", value: "ab 150 €", note: "pro Stunde" },
       { label: "Doppelsession", value: "300 €", note: "je Stunde & Domina" },
     ],
+    closing: "Spezielle Wünsche und längere Sessions nach individueller Vereinbarung.",
     note: "Termin per WhatsApp anfragen",
     path: "preise",
   },
@@ -63,7 +69,12 @@ export const STATUS_CARDS: StatusCard[] = [
     eyebrow: "Freie Termine",
     title: "Kalender",
     intro: "Schau nach, wann ich Zeit für dich habe – und sichere dir deinen Termin, bevor ihn ein anderer bekommt.",
-    bullets: ["Freie Studio-Termine", "Cam-Zeiten", "Wunschzeit & Dauer selbst wählen"],
+    bullets: [
+      "Freie Studio-Termine|Tage mit goldenem Punkt sind buchbar.",
+      "Cam-Zeiten|Lila markiert – Online-Erziehung live.",
+      "Wunschzeit & Dauer|Du wählst Startzeit und Länge selbst.",
+    ],
+    closing: "Zwischen den Terminen plane ich automatisch eine Pause ein. Du musst dich um nichts kümmern.",
     note: "Online ansehen und diskret anfragen",
     path: "kalender",
   },
@@ -71,8 +82,13 @@ export const STATUS_CARDS: StatusCard[] = [
     key: "online",
     eyebrow: "Meine digitale Welt",
     title: "Online",
-    intro: "Authentisch. Exklusiv. Vanilla Ice.",
-    bullets: ["BestFans", "Clips4Sale", "Onlineshop", "Telegram"],
+    intro: "Du kannst nicht ins Studio kommen? Dann hol mich zu dir – mit exklusivem Content und direktem Kontakt.",
+    bullets: [
+      "BestFans|Meine private Welt – devote & dominante Seite.",
+      "Clips4Sale|Videos zu Sessions, Fetisch & mehr.",
+      "Onlineshop|Meine Kollektion von A bis Z.",
+      "Telegram|Updates, Einblicke & direkter Kontakt.",
+    ],
     note: "Alle Links auf meiner Homepage",
     path: "online",
   },
@@ -80,54 +96,69 @@ export const STATUS_CARDS: StatusCard[] = [
     key: "cam",
     eyebrow: "Online-Erziehung",
     title: "Cam-Sessions",
-    intro: "Live und persönlich, egal wo du gerade bist. Ich gebe die Anweisungen, du gehorchst.",
+    intro: "Live und persönlich, egal wo du gerade bist. Ich gebe dir Anweisungen, du gehorchst – und ich sehe genau, ob du es richtig machst.",
     rows: [
       { label: "5–10 Minuten", value: "50 €" },
       { label: "15 Minuten", value: "75 €" },
       { label: "20 Minuten", value: "100 €" },
     ],
-    note: "Länger? Vorher ausmachen · Bezahlt wird im Voraus",
+    closing: "Vorlieben und Tabus besprechen wir vorher. Länger? Dann sag es mir vorher – bezahlt wird immer im Voraus.",
+    note: "Cam-Zeiten stehen lila im Kalender",
     path: "cam",
   },
   {
     key: "langzeiterziehung",
     eyebrow: "Erziehung über Wochen & Monate",
     title: "Langzeiterziehung",
-    intro: "Du meldest dich, erledigst meine Aufgaben und weist sie nach. Ich kontrolliere, lobe und bestrafe.",
+    intro: "Du meldest dich regelmäßig, erledigst meine Aufgaben und weist sie nach. Ich kontrolliere, lobe und bestrafe.",
     rows: [
       { label: "Basis", value: "300 €", note: "täglich melden · 1 Aufgabe pro Woche" },
       { label: "Intensiv", value: "500 €", note: "morgens & abends · 3 Aufgaben pro Woche" },
       { label: "Premium", value: "750 €", note: "5 Aufgaben pro Woche · 1 Cam-Session" },
     ],
-    note: "pro Monat · Bezahlt wird im Voraus",
+    closing: "Bezahlt wird im Voraus. Tabus, Grenzen und dein Safeword besprechen wir, bevor es losgeht. Wann ich antworte, bestimme ich.",
+    note: "pro Monat · Bewerbung per WhatsApp",
     path: "langzeiterziehung",
   },
   {
     key: "duo",
     eyebrow: "Zwei Dominas · eine Session",
     title: "Duo-Sessions",
-    intro: "Doppelte Macht, doppelte Kontrolle. Eine gemeinsame Session mit zwei Dominas.",
+    intro: "Doppelte Macht, doppelte Kontrolle. Zwei Dominas, die sich die Bälle zuspielen – und du mittendrin.",
     rows: [{ label: "Pro Stunde", value: "300 €", note: "je Domina" }],
-    note: "90 bis 300 Minuten · Individuelle Absprache",
+    bullets: [
+      "90 bis 300 Minuten|Du wählst die Dauer, wir gestalten den Rest.",
+      "Individuelle Absprache|Deine Wünsche für die Duo-Session vorab.",
+    ],
+    note: "Duo-Session auf meiner Homepage anfragen",
     path: "duo-sessions",
   },
   {
     key: "content-dreh",
     eyebrow: "Mitwirken bei einem Dreh",
     title: "Content-Dreh",
-    intro: "Du willst Teil meines Contents werden? Dann bewirb dich.",
-    bullets: ["Volljährig (18+)", "Unterschriebene Einverständniserklärung", "Mit oder ohne Maske"],
-    note: "Tribut wird individuell besprochen",
+    intro: "Du willst Teil meines Contents werden? Dann bewirb dich – Termine vereinbare ich individuell.",
+    bullets: [
+      "Volljährig (18+)|Ausweis vorne und hinten als Foto.",
+      "Einverständniserklärung|Unterschriebenes Consent Form.",
+      "Mit oder ohne Maske|Wie du dich wohler fühlst.",
+    ],
+    closing: "Das Ganze ist natürlich nicht tributlos – die Konditionen besprechen wir vor dem Dreh.",
+    note: "Interesse auf meiner Homepage hinterlegen",
     path: "content-dreh",
   },
   {
     key: "custom",
     eyebrow: "Exklusiv für dich",
     title: "Custom Content",
-    intro: "Bilder und Videos, individuell nach deinen Wünschen produziert.",
+    intro: "Bilder und Videos, individuell nach deinen Wünschen produziert. Nur für dich – genau so, wie du es dir vorstellst.",
     rows: [
       { label: "Bilder", value: "10 €", note: "pro Bild" },
       { label: "Videos", value: "30 €", note: "pro Minute" },
+    ],
+    bullets: [
+      "Dein Outfitwunsch|Du sagst mir, was ich tragen soll.",
+      "Auf Wunsch mit Kollegin|Doppelt so viel Vergnügen.",
     ],
     note: "Diskrete Lieferung · Bezahlt wird im Voraus",
     path: "custom",
@@ -137,7 +168,12 @@ export const STATUS_CARDS: StatusCard[] = [
     eyebrow: "Für Fotografen",
     title: "Fotoshooting",
     intro: "Du bist Fotograf und hast ein Konzept, das zu mir passt? Dann schick mir deine Anfrage.",
-    bullets: ["TFP (Time for Print)", "Bezahltes Shooting", "Konzept & Location nach Absprache"],
+    bullets: [
+      "TFP (Time for Print)|Gemeinsam Bilder schaffen.",
+      "Bezahltes Shooting|Für deine Projekte und Kunden.",
+      "Konzept & Location|Alles nach Absprache.",
+    ],
+    closing: "Schick mir dein Konzept und deine Social-Media-Kanäle – ich melde mich bei dir.",
     note: "Anfrage über meine Homepage",
     path: "fotoshooting",
   },
@@ -145,8 +181,13 @@ export const STATUS_CARDS: StatusCard[] = [
     key: "geschenke",
     eyebrow: "Eine kleine Wunschliste",
     title: "Geschenke & Wünsche",
-    intro: "Du willst mir eine Freude machen? Hier findest du, was mir gefällt.",
-    bullets: ["Herzhaftes & Süßes", "Getränke", "Kleidung & Schuhe", "Parfüm & Schmuck"],
+    intro: "Du willst mir eine Freude machen? Hier findest du ein paar Ideen, die mir gefallen – von herzhaft bis goldfarben.",
+    bullets: [
+      "Herzhaftes & Süßes|Kleine Leckereien gehen immer.",
+      "Getränke|Etwas Feines zum Anstoßen.",
+      "Kleidung & Schuhe|Für meinen Auftritt.",
+      "Parfüm & Schmuck|Damit du an mich denkst.",
+    ],
     note: "Die ganze Liste auf meiner Homepage",
     path: "geschenke-wuensche",
   },
@@ -154,15 +195,25 @@ export const STATUS_CARDS: StatusCard[] = [
     key: "erfahrungsberichte",
     eyebrow: "Stimmen aus meinen Sessions",
     title: "Erfahrungsberichte",
-    intro: "Lies, was andere nach ihrer Session bei mir erlebt haben.",
-    note: "Warst du schon bei mir? Dann schreib deinen eigenen Bericht.",
+    intro: "Lies, was andere nach ihrer Session bei mir erlebt haben – ehrlich und in ihren eigenen Worten.",
+    bullets: [
+      "Echte Gäste|Jeder Bericht stammt von jemandem, der bei mir war.",
+      "Persönlich gelesen|Ich lese jeden einzelnen Bericht selbst.",
+      "Dein Bericht|Warst du schon bei mir? Dann bist du dran.",
+    ],
+    note: "Jetzt lesen oder selbst schreiben",
     path: "erfahrungsberichte",
   },
   {
     key: "journal",
     eyebrow: "Gedanken & Einblicke",
     title: "Journal",
-    intro: "Gedanken, Ratgeber und Session-Reports – ein Blick hinter die Kulissen.",
+    intro: "Ein Blick hinter die Kulissen: Was mich bewegt, was in meinen Sessions passiert und was du wissen solltest.",
+    bullets: [
+      "Gedanken|Persönliches aus meiner Welt.",
+      "Ratgeber|Wissen für Einsteiger und Erfahrene.",
+      "Session-Reports|Wie es wirklich bei mir abläuft.",
+    ],
     note: "Jetzt lesen auf meiner Homepage",
     path: "journal",
   },
@@ -171,7 +222,11 @@ export const STATUS_CARDS: StatusCard[] = [
     eyebrow: "Termin anfragen",
     title: "Buchung",
     intro: "Diskret, unverbindlich und persönlich. Alle Anfragen werden vertraulich behandelt.",
-    bullets: ["Antwort binnen 24 Stunden", "Keine Vorkasse für den Erstkontakt"],
+    bullets: [
+      "Antwort binnen 24 Stunden|Ich melde mich persönlich bei dir.",
+      "Keine Vorkasse für den Erstkontakt|Erst reden wir, dann planen wir.",
+      "Deine Wünsche|Erzähl mir, was dich reizt – und wo deine Grenzen sind.",
+    ],
     note: "Jetzt Termin anfragen",
     path: "buchung",
   },
@@ -179,8 +234,13 @@ export const STATUS_CARDS: StatusCard[] = [
     key: "kontakt",
     eyebrow: "Diskret · persönlich · ohne Umwege",
     title: "Kontakt",
-    intro: "So erreichst du mich. Termine nur nach Vereinbarung.",
-    bullets: ["WhatsApp", "Telegram", "E-Mail"],
+    intro: "So erreichst du mich. Termine gibt es nur nach Vereinbarung – in München und ausgewählten Städten.",
+    bullets: [
+      "WhatsApp|Der schnellste Weg zu mir.",
+      "Telegram|Diskret und direkt.",
+      "E-Mail|Für ausführliche Anfragen.",
+    ],
+    closing: "Schreib mir respektvoll und mit allen wichtigen Infos – dann bekommst du auch eine Antwort.",
     note: "Alle Kontaktdaten auf meiner Homepage",
     path: "kontakt",
   },
@@ -342,15 +402,36 @@ function renderCard(card: StatusCard) {
     if (card.bullets?.length) {
       ctx.textAlign = "center";
       for (const bullet of card.bullets) {
+        const [head, sub] = bullet.split("|");
         ctx.fillStyle = GOLD;
-        ctx.font = "400 22px Inter, sans-serif";
+        ctx.font = "400 18px Inter, sans-serif";
         ctx.fillText("◆", W / 2, y);
         ctx.fillStyle = IVORY;
-        ctx.font = '500 50px "Cormorant Garamond", serif';
-        ctx.fillText(bullet, W / 2, y + 34);
-        y += 122;
+        ctx.font = '500 46px "Cormorant Garamond", serif';
+        ctx.fillText(head, W / 2, y + 26);
+        y += 26 + 54;
+        if (sub) {
+          ctx.fillStyle = MUTED;
+          ctx.font = "400 25px Inter, sans-serif";
+          for (const l of wrapText(ctx, sub, 780)) {
+            ctx.fillText(l, W / 2, y);
+            y += 36;
+          }
+        }
+        y += 30;
       }
-      y += 20;
+      y += 10;
+    }
+
+    if (card.closing) {
+      ctx.textAlign = "center";
+      ctx.fillStyle = MUTED;
+      ctx.font = "400 28px Inter, sans-serif";
+      for (const l of wrapText(ctx, card.closing, 800)) {
+        ctx.fillText(l, W / 2, y);
+        y += 42;
+      }
+      y += 40;
     }
 
     if (card.note) {
@@ -370,7 +451,14 @@ function renderCard(card: StatusCard) {
   ctx.restore();
   const areaTop = 420;
   const areaBottom = 1600;
-  drawContent(Math.max(areaTop, areaTop + (areaBottom - areaTop - contentHeight) / 2));
+  const available = areaBottom - areaTop;
+  const scale = Math.min(1, available / contentHeight);
+  ctx.save();
+  ctx.translate(W / 2, areaTop);
+  ctx.scale(scale, scale);
+  ctx.translate(-W / 2, 0);
+  drawContent(Math.max(0, (available / scale - contentHeight) / 2));
+  ctx.restore();
 
   ctx.textAlign = "center";
   line(ctx, 1640, 0.35);

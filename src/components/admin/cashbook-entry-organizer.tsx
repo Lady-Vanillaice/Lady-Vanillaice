@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Building2, CalendarDays, ChevronDown, Megaphone, MinusCircle, PencilLine, Plus, PlusCircle, Phone, UserRound, Video } from "lucide-react";
+import { Building2, CalendarDays, ChevronDown, Crown, Megaphone, MinusCircle, PencilLine, Plus, PlusCircle, Phone, UserRound, Video } from "lucide-react";
 import { createAdvertisingExpense, createCashBookEntry, createOtherExpense, createStudioRentExpense } from "@/lib/cashbook.functions";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const METHODS = ["Bar", "PayPal", "Überweisung", "Karte", "Sonstige"] as const;
-type IncomeKind = "external" | "financial_slave" | "custom" | "phone" | "cam";
+type IncomeKind = "external" | "financial_slave" | "custom" | "phone" | "cam" | "longterm";
+const LONGTERM_PACKAGES = [
+  { name: "Basis", amount: 300 },
+  { name: "Intensiv", amount: 500 },
+  { name: "Premium", amount: 750 },
+] as const;
 type ExpenseKind = "studio" | "advertising" | "other";
 const parseAmount = (value: string) => Number(value.trim().replace(/\s/g, "").replace(",", "."));
 
@@ -27,21 +32,22 @@ export function CashbookEntryOrganizer() {
   const [note, setNote] = useState("");
   const [purpose, setPurpose] = useState("");
   const [minutes, setMinutes] = useState("");
+  const [pkg, setPkg] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
 
-  const reset = () => { setDate(today()); setName(""); setPlace(""); setValue(""); setMethod(""); setNote(""); setPurpose(""); setMinutes(""); };
+  const reset = () => { setDate(today()); setName(""); setPlace(""); setValue(""); setMethod(""); setNote(""); setPurpose(""); setMinutes(""); setPkg(""); };
 
   // Direkt aus dem Admin-Start öffnen, z. B. /admin/kassenbuch?neu=camsession
   useEffect(() => {
     const wanted = new URLSearchParams(window.location.search).get("neu");
-    const kind: IncomeKind | null = wanted === "camsession" ? "cam" : wanted === "zahlsklave" ? "financial_slave" : wanted === "telefon" ? "phone" : null;
+    const kind: IncomeKind | null = wanted === "camsession" ? "cam" : wanted === "langzeiterziehung" ? "longterm" : wanted === "zahlsklave" ? "financial_slave" : wanted === "telefon" ? "phone" : null;
     if (!kind) return;
     setMode("income");
     setIncomeKind(kind);
     window.setTimeout(() => rootRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
   }, []);
   const title = useMemo(() => mode === "income"
-    ? incomeKind === "cam" ? "Camsession" : incomeKind === "phone" ? "Telefon-Session" : incomeKind === "external" ? "Externer Termin" : incomeKind === "financial_slave" ? "Zahlsklave" : incomeKind === "custom" ? "Custom" : ""
+    ? incomeKind === "cam" ? "Camsession" : incomeKind === "longterm" ? "Langzeiterziehung" : incomeKind === "phone" ? "Telefon-Session" : incomeKind === "external" ? "Externer Termin" : incomeKind === "financial_slave" ? "Zahlsklave" : incomeKind === "custom" ? "Custom" : ""
     : expenseKind === "studio" ? "Studiomiete" : expenseKind === "advertising" ? "Werbung" : expenseKind === "other" ? "Sonstige Ausgabe" : "", [mode, incomeKind, expenseKind]);
 
   const mutation = useMutation({
@@ -57,6 +63,11 @@ export function CashbookEntryOrganizer() {
           if (!Number.isInteger(duration) || duration <= 0) throw new Error("Bitte die Dauer in Minuten eintragen.");
           const camNote = [`${duration} Min.`, note.trim() || null].filter(Boolean).join(" · ");
           return createIncome({ data: { studio: "Camsession", datum: date, kunde: name.trim(), anzahlung: parsed, anzahlung_method: method.trim(), anzahlung_datum: date, bar: 0, restzahlung_method: null, restzahlung_datum: null, notiz: camNote } });
+        }
+        if (incomeKind === "longterm") {
+          if (!pkg) throw new Error("Bitte das Paket auswählen (Basis, Intensiv oder Premium).");
+          const longtermNote = [`Paket ${pkg}`, note.trim() || null].filter(Boolean).join(" · ");
+          return createIncome({ data: { studio: "Langzeiterziehung", datum: date, kunde: name.trim(), anzahlung: parsed, anzahlung_method: method.trim(), anzahlung_datum: date, bar: 0, restzahlung_method: null, restzahlung_datum: null, notiz: longtermNote } });
         }
         const studio = incomeKind === "phone" ? "Telefon-Session" : incomeKind === "financial_slave" ? "Zahlsklave" : incomeKind === "custom" ? "Custom Content" : place.trim() || "Externer Termin";
         const categoryNote = incomeKind === "financial_slave" ? "Zahlsklave" : incomeKind === "custom" ? ["Custom Content", note.trim()].filter(Boolean).join(" · ") : note.trim() || null;
@@ -93,13 +104,18 @@ export function CashbookEntryOrganizer() {
       </div>
 
       {mode === "income" && <div className="space-y-3 border-t border-champagne/15 pt-3">
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
           <CategoryButton active={incomeKind === "cam"} onClick={() => { setIncomeKind("cam"); reset(); }} icon={<Video size={14}/>} label="Camsession" />
+          <CategoryButton active={incomeKind === "longterm"} onClick={() => { setIncomeKind("longterm"); reset(); }} icon={<Crown size={14}/>} label="Langzeiterziehung" />
           <CategoryButton active={incomeKind === "phone"} onClick={() => { setIncomeKind("phone"); reset(); }} icon={<Phone size={14}/>} label="Telefon-Session" />
           <CategoryButton active={incomeKind === "external"} onClick={() => { setIncomeKind("external"); reset(); }} icon={<CalendarDays size={14}/>} label="Externer Termin" />
           <CategoryButton active={incomeKind === "financial_slave"} onClick={() => { setIncomeKind("financial_slave"); reset(); }} icon={<UserRound size={14}/>} label="Zahlsklave" />
           <CategoryButton active={incomeKind === "custom"} onClick={() => { setIncomeKind("custom"); reset(); }} icon={<PencilLine size={14}/>} label="Custom" />
         </div>
+        {incomeKind === "longterm" && <div>
+          <div className="eyebrow mb-1.5 text-[0.6rem]">Paket</div>
+          <div className="grid grid-cols-3 gap-1.5">{LONGTERM_PACKAGES.map(p => <button key={p.name} type="button" onClick={() => { setPkg(p.name); setValue(String(p.amount)); }} className={`border px-2 py-2 text-xs ${pkg === p.name ? "border-champagne bg-champagne/10 text-champagne" : "border-champagne/25 text-vanilla/75"}`}>{p.name}<span className="block text-[0.65rem] text-vanilla/50">{p.amount} € / Monat</span></button>)}</div>
+        </div>}
         {incomeKind && <EntryForm fixedAmounts={incomeKind === "phone" ? [50, 75, 100] : undefined} mode="income" title={title} date={date} setDate={setDate} name={name} setName={setName} place={place} setPlace={setPlace} value={value} setValue={setValue} method={method} setMethod={setMethod} note={note} setNote={setNote} showPlace={incomeKind === "external"} placeLabel="Studio / Ort" showMinutes={incomeKind === "cam"} minutes={minutes} setMinutes={setMinutes} pending={mutation.isPending} error={mutation.error} onSubmit={() => mutation.mutate()} />}
       </div>}
 

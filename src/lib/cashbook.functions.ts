@@ -195,7 +195,7 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
           !entry.anzahlung_datum || entry.anzahlung_datum !== request.anzahlung_datum) continue;
       entry.status = "rescheduling";
     }
-    for (const entry of manual) { if (entry.studio === "Telefon-Session") entry.art = "Telefon-Session"; if (entry.studio === "Camsession") entry.art = "Camsession"; }
+    for (const entry of manual) { if (entry.studio === "Telefon-Session") entry.art = "Telefon-Session"; if (entry.studio === "Camsession") entry.art = "Camsession"; if (entry.studio === "Langzeiterziehung") entry.art = "Langzeiterziehung"; }
     return [...manual, ...bookings].sort((a, b) => {
       const ad = a.payment_date || a.termin_start || a.termin_datum;
       const bd = b.payment_date || b.termin_start || b.termin_datum;

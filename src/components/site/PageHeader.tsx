@@ -1,5 +1,5 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { CalendarClock, CalendarDays, CalendarPlus, Sparkles, Video, Wallet } from "lucide-react";
+import { CalendarClock, CalendarDays, CalendarPlus, Crown, Sparkles, Video, Wallet } from "lucide-react";
 import type { ReactNode } from "react";
 
 export function PageHeader({
@@ -35,21 +35,22 @@ export function PageHeader({
             <div className="mb-3 text-center text-[0.65rem] uppercase tracking-[0.22em] text-champagne/75">
               Sofort eintragen
             </div>
-            <div className="grid grid-cols-4 gap-1.5 sm:gap-3">
+            <div className="grid grid-cols-5 gap-1 sm:gap-3">
               {([
                 { to: "/admin/terminplan" as const, title: "Externer Termin", text: "Termin von Telegram, E-Mail oder Telefon eintragen.", Icon: CalendarPlus, search: undefined },
                 { to: "/admin/kassenbuch" as const, title: "Zahlsklave", text: "Zahlung direkt ins Kassenbuch eintragen.", Icon: Wallet, search: { neu: "zahlsklave" } },
                 { to: "/admin/custom" as const, title: "Custom", text: "Custom-Auftrag und Zahlung erfassen.", Icon: Sparkles, search: undefined },
                 { to: "/admin/kassenbuch" as const, title: "Camsession", text: "Name, Betrag, Zahlungsart und Dauer ins Kassenbuch eintragen.", Icon: Video, search: { neu: "camsession" } },
+                { to: "/admin/kassenbuch" as const, title: "Langzeit\u00ADerziehung", text: "Name, Paket, Betrag und Zahlungsart ins Kassenbuch eintragen.", Icon: Crown, search: { neu: "langzeiterziehung" } },
               ]).map(({ to, title, text, Icon, search }) => (
                 <Link
                   key={title}
                   to={to}
                   {...(search ? { search: search as never } : {})}
-                  className="group border border-champagne/35 bg-card/90 p-2.5 sm:p-4 transition hover:border-champagne hover:bg-card"
+                  className="group border border-champagne/35 bg-card/90 p-2 sm:p-4 transition hover:border-champagne hover:bg-card"
                 >
                   <Icon size={19} className="mb-2 text-champagne" />
-                  <div className="font-display text-sm sm:text-lg leading-tight text-vanilla transition group-hover:text-champagne break-words">
+                  <div className="font-display text-[0.8rem] sm:text-lg leading-tight text-vanilla transition group-hover:text-champagne break-words hyphens-auto" lang="de">
                     {title}
                   </div>
                   <p className="mt-1 hidden text-xs leading-relaxed text-vanilla/50 sm:block">{text}</p>
