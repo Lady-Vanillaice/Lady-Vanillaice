@@ -122,8 +122,8 @@ function CamPage() {
             <h2 className="font-display text-3xl text-vanilla mb-4">{tr("Meine Preise", "My prices")}</h2>
             <p className="text-sm leading-relaxed text-vanilla/75 mb-6">
               {tr(
-                "Meine Zeit ist kostbar. Du entscheidest, wie lange du vor mir knien darfst – und du zahlst für jede Minute.",
-                "My time is precious. You decide how long you may kneel before me – and you pay for every minute.",
+                "Meine Zeit ist kostbar. Du entscheidest vorher, wie lange du vor mir knien darfst – und zahlst im Voraus.",
+                "My time is precious. You decide beforehand how long you may kneel before me – and you pay in advance.",
               )}
             </p>
             <ul className="mx-auto max-w-xs divide-y divide-champagne/15 text-left">
@@ -140,8 +140,8 @@ function CamPage() {
             </ul>
             <p className="mt-6 text-sm leading-relaxed text-vanilla/75">
               {tr(
-                "Und wenn du länger willst? Dann zahlst du für jede weitere Minute 5 €.",
-                "And if you want longer? Then you pay €5 for every additional minute.",
+                "Und wenn du länger willst? Dann sag es mir vorher. Längere Sessions machen wir im Voraus aus – und du zahlst die ganze Zeit, bevor es losgeht.",
+                "And if you want longer? Then tell me beforehand. Longer sessions are agreed in advance – and you pay for the whole time before we start.",
               )}
             </p>
             <p className="mt-4 text-xs text-vanilla/55">
