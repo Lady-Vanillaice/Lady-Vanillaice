@@ -119,15 +119,27 @@ function CamPage() {
         <div className="container-luxe max-w-2xl">
           <div className="border border-champagne/40 bg-card p-6 md:p-10 text-center">
             <div className="eyebrow mb-2">{tr("Tribut", "Tribute")}</div>
-            <h2 className="font-display text-3xl text-vanilla mb-4">
-              {tr("5–10 Minuten", "5–10 minutes")} <span className="gold-text">50 €</span>
-            </h2>
-            <p className="text-sm leading-relaxed text-vanilla/75">
+            <h2 className="font-display text-3xl text-vanilla mb-4">{tr("Meine Preise", "My prices")}</h2>
+            <p className="text-sm leading-relaxed text-vanilla/75 mb-6">
               {tr(
-                "Für kurze Zeit gehörst du mir. Willst du länger vor mir knien? Jede weitere Minute kostet dich 5 €. Meine Zeit ist kostbar – und du zahlst für jede einzelne Minute.",
-                "For a short while you belong to me. Want to kneel before me longer? Every additional minute costs you €5. My time is precious – and you pay for every single minute.",
+                "Meine Zeit ist kostbar. Du entscheidest, wie lange du vor mir knien darfst – und du zahlst für jede Minute.",
+                "My time is precious. You decide how long you may kneel before me – and you pay for every minute.",
               )}
             </p>
+            <ul className="mx-auto max-w-xs divide-y divide-champagne/15 text-left">
+              {[
+                [tr("5–10 Minuten", "5–10 minutes"), "50 €"],
+                [tr("15 Minuten", "15 minutes"), "75 €"],
+                [tr("30 Minuten", "30 minutes"), "150 €"],
+                [tr("45 Minuten", "45 minutes"), "225 €"],
+                [tr("60 Minuten", "60 minutes"), "300 €"],
+              ].map(([time, price]) => (
+                <li key={time} className="flex justify-between py-2 text-sm text-vanilla/85">
+                  <span>{time}</span>
+                  <span className="gold-text font-display text-base">{price}</span>
+                </li>
+              ))}
+            </ul>
             <p className="mt-4 text-xs text-vanilla/55">
               {tr("Bezahlt wird vor der Session.", "Payment is due before the session.")}
             </p>
