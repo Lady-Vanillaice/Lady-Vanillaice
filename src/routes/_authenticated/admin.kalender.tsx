@@ -47,6 +47,7 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { listStudios } from "@/lib/studio.functions";
 import { CalendarSpecialsAdmin } from "@/components/admin/calendar-specials-admin";
+import { CalendarCamAdmin } from "@/components/admin/calendar-cam-admin";
 import { CalendarWaitlistAdmin } from "@/components/admin/calendar-waitlist-admin";
 import { CamInterestAdmin } from "@/components/admin/cam-interest-admin";
 
@@ -255,6 +256,7 @@ function AdminKalenderPage() {
           />
 
           <CalendarSpecialsAdmin />
+          <CalendarCamAdmin />
 
           <CalendarWaitlistAdmin />
           <CamInterestAdmin />

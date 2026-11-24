@@ -10,7 +10,8 @@ import {
   getSlotAvailability,
 } from "@/lib/public-booking.functions";
 import { PageHeader } from "../components/site/PageHeader";
-import { ChevronLeft, ChevronRight, MapPin, Clock, Crown, CheckCircle2, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, Clock, Crown, CheckCircle2, Sparkles, Video } from "lucide-react";
+import { listCalendarCamTimes, type CalendarCamTime } from "@/lib/calendar-cam.functions";
 import {
   addMonths, eachDayOfInterval, endOfMonth, endOfWeek, format, isSameDay,
   isSameMonth, startOfMonth, startOfWeek, subMonths,
@@ -159,6 +160,13 @@ function KalenderPage() {
     staleTime: 30_000,
   });
 
+  const listCamTimes = useServerFn(listCalendarCamTimes);
+  const camQ = useQuery({
+    queryKey: ["calendar-cam-times"],
+    queryFn: () => listCamTimes(),
+    staleTime: 30_000,
+  });
+
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [linkedStartTime, setLinkedStartTime] = useState<string | null>(null);
@@ -200,6 +208,12 @@ function KalenderPage() {
     return map;
   }, [specialsQ.data]);
 
+  const camByDay = useMemo(() => {
+    const map = new Map<string, CalendarCamTime[]>();
+    (camQ.data ?? []).forEach((cam) => map.set(cam.date, [...(map.get(cam.date) ?? []), cam]));
+    return map;
+  }, [camQ.data]);
+
   const days = useMemo(() => {
     const start = startOfWeek(startOfMonth(cursor), { weekStartsOn: 1 });
     const end = endOfWeek(endOfMonth(cursor), { weekStartsOn: 1 });
@@ -213,6 +227,7 @@ function KalenderPage() {
       ? selectedDaySlot
       : null;
   const selectedSpecial = selectedKey ? specialByDay.get(selectedKey) ?? null : null;
+  const selectedCams = selectedKey ? camByDay.get(selectedKey) ?? [] : [];
   const selectedIsFullyBooked = Boolean(
     selectedDaySlot?.is_fully_booked && !selectedDaySlot?.is_vacation,
   );
@@ -260,6 +275,7 @@ function KalenderPage() {
                   const has = slotByDay.has(key);
                   const slot = slotByDay.get(key);
                   const special = specialByDay.get(key);
+                  const cams = camByDay.get(key);
                   const isFullyBooked = slot?.is_fully_booked ?? false;
                   const isVacation = slot?.is_vacation ?? false;
                   const hasBooking = slot?.has_booking ?? false;
@@ -271,11 +287,11 @@ function KalenderPage() {
                     <button
                       key={key}
                       onClick={() => {
-                        if (!isPast && !isVacation && (special || has)) {
+                        if (!isPast && !isVacation && (special || has || cams)) {
                           setSelectedDay(day);
                         }
                       }}
-                      disabled={isPast || isVacation || (!special && !has)}
+                      disabled={isPast || isVacation || (!special && !has && !cams)}
                       className={`aspect-square flex flex-col items-center justify-center border text-sm transition relative ${
                         isSel
                           ? "border-champagne bg-champagne/20 text-vanilla"
@@ -287,6 +303,8 @@ function KalenderPage() {
                           ? "border-champagne/50 bg-champagne/10 text-vanilla hover:border-champagne hover:bg-champagne/15 cursor-pointer"
                           : has && !isPast
                           ? "border-champagne/30 text-vanilla hover:border-champagne hover:bg-champagne/10 cursor-pointer"
+                          : cams && !isPast
+                          ? "border-purple-400/50 bg-purple-500/10 text-vanilla hover:border-purple-300 hover:bg-purple-500/15 cursor-pointer"
                           : "border-transparent text-vanilla/25 cursor-default"
                       } ${isOther ? "opacity-40" : ""}`}
                     >
@@ -317,10 +335,18 @@ function KalenderPage() {
                               Content
                             </span>
                           )}
+                          {cams && (
+                            <span className="text-[0.48rem] uppercase tracking-[0.12em] text-purple-300">
+                              Cam
+                            </span>
+                          )}
                         </span>
                       )}
-                      {has && !isPast && !isFullyBooked && !isVacation && (
-                        <span className="absolute bottom-1 w-1 h-1 rounded-full bg-champagne" />
+                      {!isPast && !isVacation && ((has && !isFullyBooked) || cams) && (
+                        <span className="absolute bottom-1 flex items-center gap-1 pointer-events-none">
+                          {has && !isFullyBooked && <span className="w-1 h-1 rounded-full bg-champagne" />}
+                          {cams && <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_6px_rgba(192,132,252,0.8)]" />}
+                        </span>
                       )}
                     </button>
 
@@ -345,6 +371,25 @@ function KalenderPage() {
                     {tr("Klick im Kalender auf einen Tag mit goldenem Punkt — du wählst dann deine Wunsch-Startzeit und Dauer.", "Click a day with a golden dot in the calendar — then you choose your preferred start time and duration.")}
                   </p>
                 </>
+              )}
+
+              {selectedCams.length > 0 && (
+                <div className="mb-5 border border-purple-400/60 bg-purple-500/10 p-4">
+                  <div className="mb-1 flex items-center gap-2 text-purple-300">
+                    <Video size={16} />
+                    <span className="eyebrow !text-purple-300">{tr("Camsession", "Cam session")}</span>
+                  </div>
+                  {selectedCams.map((cam) => (
+                    <div key={cam.id} className="mt-1">
+                      <div className="font-display text-xl text-vanilla">{cam.from} – {cam.to} {lang === "en" ? "" : "Uhr"}</div>
+                      {cam.note && <p className="text-sm text-vanilla/70">{cam.note}</p>}
+                    </div>
+                  ))}
+                  <p className="mt-3 text-sm leading-relaxed text-vanilla/75">
+                    {tr("An diesem Tag biete ich Cam-Sessions an – Online-Erziehung live per Cam. ", "On this day I offer cam sessions – online training live via cam. ")}
+                    <Link to="/cam" className="text-purple-300 hover:underline">{tr("Mehr erfahren & Interesse eintragen", "Learn more & register interest")}</Link>
+                  </p>
+                </div>
               )}
 
               {selectedSpecial && (
