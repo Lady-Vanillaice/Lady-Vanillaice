@@ -9,164 +9,75 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
-import { Route as UeberMichRouteImport } from './routes/ueber-mich'
-import { Route as TabusRouteImport } from './routes/tabus'
-import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
-import { Route as PreiseRouteImport } from './routes/preise'
-import { Route as OnlineRouteImport } from './routes/online'
-import { Route as NewsletterBestaetigenRouteImport } from './routes/newsletter-bestaetigen'
-import { Route as McpRouteImport } from './routes/mcp'
-import { Route as LeistungenRouteImport } from './routes/leistungen'
-import { Route as KontaktRouteImport } from './routes/kontakt'
-import { Route as KalenderRouteImport } from './routes/kalender'
-import { Route as ImpressumRouteImport } from './routes/impressum'
-import { Route as FotoshootingRouteImport } from './routes/fotoshooting'
-import { Route as FaqRouteImport } from './routes/faq'
-import { Route as ErfahrungsberichteRouteImport } from './routes/erfahrungsberichte'
-import { Route as DuoSessionsRouteImport } from './routes/duo-sessions'
-import { Route as DatenschutzRouteImport } from './routes/datenschutz'
-import { Route as CustomRouteImport } from './routes/custom'
-import { Route as ContentDrehRouteImport } from './routes/content-dreh'
-import { Route as BuchungRouteImport } from './routes/buchung'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AgbRouteImport } from './routes/agb'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AgbRouteImport } from './routes/agb'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as BuchungRouteImport } from './routes/buchung'
+import { Route as CamRouteImport } from './routes/cam'
+import { Route as ContentDrehRouteImport } from './routes/content-dreh'
+import { Route as CustomRouteImport } from './routes/custom'
+import { Route as DatenschutzRouteImport } from './routes/datenschutz'
+import { Route as DuoSessionsRouteImport } from './routes/duo-sessions'
+import { Route as ErfahrungsberichteRouteImport } from './routes/erfahrungsberichte'
+import { Route as FaqRouteImport } from './routes/faq'
+import { Route as FotoshootingRouteImport } from './routes/fotoshooting'
+import { Route as GeschenkeWuenscheRouteImport } from './routes/geschenke-wuensche'
+import { Route as ImpressumRouteImport } from './routes/impressum'
+import { Route as KalenderRouteImport } from './routes/kalender'
+import { Route as KontaktRouteImport } from './routes/kontakt'
+import { Route as LangzeiterziehungRouteImport } from './routes/langzeiterziehung'
+import { Route as LeistungenRouteImport } from './routes/leistungen'
+import { Route as McpRouteImport } from './routes/mcp'
+import { Route as NewsletterBestaetigenRouteImport } from './routes/newsletter-bestaetigen'
+import { Route as OnlineRouteImport } from './routes/online'
+import { Route as PreiseRouteImport } from './routes/preise'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as TabusRouteImport } from './routes/tabus'
+import { Route as UeberMichRouteImport } from './routes/ueber-mich'
+import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
+import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as JournalIndexRouteImport } from './routes/journal.index'
 import { Route as JournalSlugRouteImport } from './routes/journal.$slug'
-import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
-import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
-import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
-import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
-import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
-import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
-import { Route as AuthenticatedAdminUmplanenRouteImport } from './routes/_authenticated/admin.umplanen'
-import { Route as AuthenticatedAdminTerminplanRouteImport } from './routes/_authenticated/admin.terminplan'
-import { Route as AuthenticatedAdminTermineRouteImport } from './routes/_authenticated/admin.termine'
-import { Route as AuthenticatedAdminNewsletterRouteImport } from './routes/_authenticated/admin.newsletter'
-import { Route as AuthenticatedAdminKundenRouteImport } from './routes/_authenticated/admin.kunden'
-import { Route as AuthenticatedAdminKassenbuchRouteImport } from './routes/_authenticated/admin.kassenbuch'
-import { Route as AuthenticatedAdminKalenderRouteImport } from './routes/_authenticated/admin.kalender'
-import { Route as AuthenticatedAdminFotoshootingRouteImport } from './routes/_authenticated/admin.fotoshooting'
-import { Route as AuthenticatedAdminErfahrungsberichteRouteImport } from './routes/_authenticated/admin.erfahrungsberichte'
-import { Route as AuthenticatedAdminDuoRouteImport } from './routes/_authenticated/admin.duo'
-import { Route as AuthenticatedAdminCustomRouteImport } from './routes/_authenticated/admin.custom'
-import { Route as AuthenticatedAdminContentdrehRouteImport } from './routes/_authenticated/admin.contentdreh'
-import { Route as AuthenticatedAdminAgbRouteImport } from './routes/_authenticated/admin.agb'
-import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
-import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
-import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
-import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
-import { Route as ApiPublicHooksPaymentRemindersRouteImport } from './routes/api/public/hooks/payment-reminders'
-import { Route as ApiPublicCalendarSplatRouteImport } from './routes/api/public/calendar.$'
-import { Route as AuthenticatedAdminEmailVorschauLogIdRouteImport } from './routes/_authenticated/admin.email-vorschau.$logId'
+import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as AuthenticatedAdminAgbRouteImport } from './routes/_authenticated/admin.agb'
+import { Route as AuthenticatedAdminContentdrehRouteImport } from './routes/_authenticated/admin.contentdreh'
+import { Route as AuthenticatedAdminCustomRouteImport } from './routes/_authenticated/admin.custom'
+import { Route as AuthenticatedAdminDuoRouteImport } from './routes/_authenticated/admin.duo'
+import { Route as AuthenticatedAdminErfahrungsberichteRouteImport } from './routes/_authenticated/admin.erfahrungsberichte'
+import { Route as AuthenticatedAdminFotoshootingRouteImport } from './routes/_authenticated/admin.fotoshooting'
+import { Route as AuthenticatedAdminJournalRouteImport } from './routes/_authenticated/admin.journal'
+import { Route as AuthenticatedAdminKalenderRouteImport } from './routes/_authenticated/admin.kalender'
+import { Route as AuthenticatedAdminKassenbuchRouteImport } from './routes/_authenticated/admin.kassenbuch'
+import { Route as AuthenticatedAdminKundenRouteImport } from './routes/_authenticated/admin.kunden'
+import { Route as AuthenticatedAdminNewsletterRouteImport } from './routes/_authenticated/admin.newsletter'
+import { Route as AuthenticatedAdminTermineRouteImport } from './routes/_authenticated/admin.termine'
+import { Route as AuthenticatedAdminTerminplanRouteImport } from './routes/_authenticated/admin.terminplan'
+import { Route as AuthenticatedAdminUmplanenRouteImport } from './routes/_authenticated/admin.umplanen'
+import { Route as AuthenticatedAdminWartelisteRouteImport } from './routes/_authenticated/admin.warteliste'
+import { Route as ApiCronBookingEmailsRouteImport } from './routes/api/cron/booking-emails'
+import { Route as ApiPublicDuoResponseRouteImport } from './routes/api/public/duo-response'
+import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as AuthenticatedAdminBuchungIdRouteImport } from './routes/_authenticated/admin.buchung.$id'
+import { Route as AuthenticatedAdminEmailVorschauLogIdRouteImport } from './routes/_authenticated/admin.email-vorschau.$logId'
+import { Route as ApiPublicCalendarSplatRouteImport } from './routes/api/public/calendar.$'
+import { Route as ApiPublicHooksPaymentRemindersRouteImport } from './routes/api/public/hooks/payment-reminders'
+import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
+import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
+import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 
-const UnsubscribeRoute = UnsubscribeRouteImport.update({
-  id: '/unsubscribe',
-  path: '/unsubscribe',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const UeberMichRoute = UeberMichRouteImport.update({
-  id: '/ueber-mich',
-  path: '/ueber-mich',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TabusRoute = TabusRouteImport.update({
-  id: '/tabus',
-  path: '/tabus',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
-  id: '/sitemap.xml',
-  path: '/sitemap.xml',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PreiseRoute = PreiseRouteImport.update({
-  id: '/preise',
-  path: '/preise',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OnlineRoute = OnlineRouteImport.update({
-  id: '/online',
-  path: '/online',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NewsletterBestaetigenRoute = NewsletterBestaetigenRouteImport.update({
-  id: '/newsletter-bestaetigen',
-  path: '/newsletter-bestaetigen',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const McpRoute = McpRouteImport.update({
-  id: '/mcp',
-  path: '/mcp',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LeistungenRoute = LeistungenRouteImport.update({
-  id: '/leistungen',
-  path: '/leistungen',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const KontaktRoute = KontaktRouteImport.update({
-  id: '/kontakt',
-  path: '/kontakt',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const KalenderRoute = KalenderRouteImport.update({
-  id: '/kalender',
-  path: '/kalender',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ImpressumRoute = ImpressumRouteImport.update({
-  id: '/impressum',
-  path: '/impressum',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FotoshootingRoute = FotoshootingRouteImport.update({
-  id: '/fotoshooting',
-  path: '/fotoshooting',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FaqRoute = FaqRouteImport.update({
-  id: '/faq',
-  path: '/faq',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ErfahrungsberichteRoute = ErfahrungsberichteRouteImport.update({
-  id: '/erfahrungsberichte',
-  path: '/erfahrungsberichte',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DuoSessionsRoute = DuoSessionsRouteImport.update({
-  id: '/duo-sessions',
-  path: '/duo-sessions',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DatenschutzRoute = DatenschutzRouteImport.update({
-  id: '/datenschutz',
-  path: '/datenschutz',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CustomRoute = CustomRouteImport.update({
-  id: '/custom',
-  path: '/custom',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ContentDrehRoute = ContentDrehRouteImport.update({
-  id: '/content-dreh',
-  path: '/content-dreh',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BuchungRoute = BuchungRouteImport.update({
-  id: '/buchung',
-  path: '/buchung',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AgbRoute = AgbRouteImport.update({
@@ -174,13 +85,146 @@ const AgbRoute = AgbRouteImport.update({
   path: '/agb',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const BuchungRoute = BuchungRouteImport.update({
+  id: '/buchung',
+  path: '/buchung',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CamRoute = CamRouteImport.update({
+  id: '/cam',
+  path: '/cam',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContentDrehRoute = ContentDrehRouteImport.update({
+  id: '/content-dreh',
+  path: '/content-dreh',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CustomRoute = CustomRouteImport.update({
+  id: '/custom',
+  path: '/custom',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DatenschutzRoute = DatenschutzRouteImport.update({
+  id: '/datenschutz',
+  path: '/datenschutz',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DuoSessionsRoute = DuoSessionsRouteImport.update({
+  id: '/duo-sessions',
+  path: '/duo-sessions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ErfahrungsberichteRoute = ErfahrungsberichteRouteImport.update({
+  id: '/erfahrungsberichte',
+  path: '/erfahrungsberichte',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FaqRoute = FaqRouteImport.update({
+  id: '/faq',
+  path: '/faq',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FotoshootingRoute = FotoshootingRouteImport.update({
+  id: '/fotoshooting',
+  path: '/fotoshooting',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GeschenkeWuenscheRoute = GeschenkeWuenscheRouteImport.update({
+  id: '/geschenke-wuensche',
+  path: '/geschenke-wuensche',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImpressumRoute = ImpressumRouteImport.update({
+  id: '/impressum',
+  path: '/impressum',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KalenderRoute = KalenderRouteImport.update({
+  id: '/kalender',
+  path: '/kalender',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KontaktRoute = KontaktRouteImport.update({
+  id: '/kontakt',
+  path: '/kontakt',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LangzeiterziehungRoute = LangzeiterziehungRouteImport.update({
+  id: '/langzeiterziehung',
+  path: '/langzeiterziehung',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeistungenRoute = LeistungenRouteImport.update({
+  id: '/leistungen',
+  path: '/leistungen',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewsletterBestaetigenRoute = NewsletterBestaetigenRouteImport.update({
+  id: '/newsletter-bestaetigen',
+  path: '/newsletter-bestaetigen',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnlineRoute = OnlineRouteImport.update({
+  id: '/online',
+  path: '/online',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PreiseRoute = PreiseRouteImport.update({
+  id: '/preise',
+  path: '/preise',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TabusRoute = TabusRouteImport.update({
+  id: '/tabus',
+  path: '/tabus',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UeberMichRoute = UeberMichRouteImport.update({
+  id: '/ueber-mich',
+  path: '/ueber-mich',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UnsubscribeRoute = UnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Char91DotmcpChar93ListToolsRoute =
+  Char91DotmcpChar93ListToolsRouteImport.update({
+    id: '/.mcp/list-tools',
+    path: '/.mcp/list-tools',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
+  id: '/email/unsubscribe',
+  path: '/email/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JournalIndexRoute = JournalIndexRouteImport.update({
@@ -193,26 +237,15 @@ const JournalSlugRoute = JournalSlugRouteImport.update({
   path: '/journal/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
-  id: '/email/unsubscribe',
-  path: '/email/unsubscribe',
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const Char91DotwellKnownChar93OauthProtectedResourceRoute =
-  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
-    id: '/.well-known/oauth-protected-resource',
-    path: '/.well-known/oauth-protected-resource',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const Char91DotmcpChar93ListToolsRoute =
-  Char91DotmcpChar93ListToolsRouteImport.update({
-    id: '/.mcp/list-tools',
-    path: '/.mcp/list-tools',
+const Char91DotmcpChar93InvokeToolToolRoute =
+  Char91DotmcpChar93InvokeToolToolRouteImport.update({
+    id: '/.mcp/invoke-tool/$tool',
+    path: '/.mcp/invoke-tool/$tool',
     getParentRoute: () => rootRouteImport,
   } as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
@@ -220,51 +253,32 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
-const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
-  id: '/lovable/email/suppression',
-  path: '/lovable/email/suppression',
-  getParentRoute: () => rootRouteImport,
+const AuthenticatedAdminAgbRoute = AuthenticatedAdminAgbRouteImport.update({
+  id: '/agb',
+  path: '/agb',
+  getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
-const AuthenticatedAdminUmplanenRoute =
-  AuthenticatedAdminUmplanenRouteImport.update({
-    id: '/umplanen',
-    path: '/umplanen',
+const AuthenticatedAdminContentdrehRoute =
+  AuthenticatedAdminContentdrehRouteImport.update({
+    id: '/contentdreh',
+    path: '/contentdreh',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
-const AuthenticatedAdminTerminplanRoute =
-  AuthenticatedAdminTerminplanRouteImport.update({
-    id: '/terminplan',
-    path: '/terminplan',
+const AuthenticatedAdminCustomRoute =
+  AuthenticatedAdminCustomRouteImport.update({
+    id: '/custom',
+    path: '/custom',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
-const AuthenticatedAdminTermineRoute =
-  AuthenticatedAdminTermineRouteImport.update({
-    id: '/termine',
-    path: '/termine',
-    getParentRoute: () => AuthenticatedAdminRoute,
-  } as any)
-const AuthenticatedAdminNewsletterRoute =
-  AuthenticatedAdminNewsletterRouteImport.update({
-    id: '/newsletter',
-    path: '/newsletter',
-    getParentRoute: () => AuthenticatedAdminRoute,
-  } as any)
-const AuthenticatedAdminKundenRoute =
-  AuthenticatedAdminKundenRouteImport.update({
-    id: '/kunden',
-    path: '/kunden',
-    getParentRoute: () => AuthenticatedAdminRoute,
-  } as any)
-const AuthenticatedAdminKassenbuchRoute =
-  AuthenticatedAdminKassenbuchRouteImport.update({
-    id: '/kassenbuch',
-    path: '/kassenbuch',
-    getParentRoute: () => AuthenticatedAdminRoute,
-  } as any)
-const AuthenticatedAdminKalenderRoute =
-  AuthenticatedAdminKalenderRouteImport.update({
-    id: '/kalender',
-    path: '/kalender',
+const AuthenticatedAdminDuoRoute = AuthenticatedAdminDuoRouteImport.update({
+  id: '/duo',
+  path: '/duo',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const AuthenticatedAdminErfahrungsberichteRoute =
+  AuthenticatedAdminErfahrungsberichteRouteImport.update({
+    id: '/erfahrungsberichte',
+    path: '/erfahrungsberichte',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminFotoshootingRoute =
@@ -273,55 +287,96 @@ const AuthenticatedAdminFotoshootingRoute =
     path: '/fotoshooting',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
-const AuthenticatedAdminErfahrungsberichteRoute =
-  AuthenticatedAdminErfahrungsberichteRouteImport.update({
-    id: '/erfahrungsberichte',
-    path: '/erfahrungsberichte',
+const AuthenticatedAdminJournalRoute =
+  AuthenticatedAdminJournalRouteImport.update({
+    id: '/journal',
+    path: '/journal',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
-const AuthenticatedAdminDuoRoute = AuthenticatedAdminDuoRouteImport.update({
-  id: '/duo',
-  path: '/duo',
-  getParentRoute: () => AuthenticatedAdminRoute,
-} as any)
-const AuthenticatedAdminCustomRoute =
-  AuthenticatedAdminCustomRouteImport.update({
-    id: '/custom',
-    path: '/custom',
+const AuthenticatedAdminKalenderRoute =
+  AuthenticatedAdminKalenderRouteImport.update({
+    id: '/kalender',
+    path: '/kalender',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
-const AuthenticatedAdminContentdrehRoute =
-  AuthenticatedAdminContentdrehRouteImport.update({
-    id: '/contentdreh',
-    path: '/contentdreh',
+const AuthenticatedAdminKassenbuchRoute =
+  AuthenticatedAdminKassenbuchRouteImport.update({
+    id: '/kassenbuch',
+    path: '/kassenbuch',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
-const AuthenticatedAdminAgbRoute = AuthenticatedAdminAgbRouteImport.update({
-  id: '/agb',
-  path: '/agb',
-  getParentRoute: () => AuthenticatedAdminRoute,
-} as any)
-const Char91DotmcpChar93InvokeToolToolRoute =
-  Char91DotmcpChar93InvokeToolToolRouteImport.update({
-    id: '/.mcp/invoke-tool/$tool',
-    path: '/.mcp/invoke-tool/$tool',
-    getParentRoute: () => rootRouteImport,
+const AuthenticatedAdminKundenRoute =
+  AuthenticatedAdminKundenRouteImport.update({
+    id: '/kunden',
+    path: '/kunden',
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
-const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
-  id: '/.lovable/oauth/consent',
-  path: '/.lovable/oauth/consent',
+const AuthenticatedAdminNewsletterRoute =
+  AuthenticatedAdminNewsletterRouteImport.update({
+    id: '/newsletter',
+    path: '/newsletter',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminTermineRoute =
+  AuthenticatedAdminTermineRouteImport.update({
+    id: '/termine',
+    path: '/termine',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminTerminplanRoute =
+  AuthenticatedAdminTerminplanRouteImport.update({
+    id: '/terminplan',
+    path: '/terminplan',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminUmplanenRoute =
+  AuthenticatedAdminUmplanenRouteImport.update({
+    id: '/umplanen',
+    path: '/umplanen',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminWartelisteRoute =
+  AuthenticatedAdminWartelisteRouteImport.update({
+    id: '/warteliste',
+    path: '/warteliste',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const ApiCronBookingEmailsRoute = ApiCronBookingEmailsRouteImport.update({
+  id: '/api/cron/booking-emails',
+  path: '/api/cron/booking-emails',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LovableEmailTransactionalSendRoute =
-  LovableEmailTransactionalSendRouteImport.update({
-    id: '/lovable/email/transactional/send',
-    path: '/lovable/email/transactional/send',
-    getParentRoute: () => rootRouteImport,
+const ApiPublicDuoResponseRoute = ApiPublicDuoResponseRouteImport.update({
+  id: '/api/public/duo-response',
+  path: '/api/public/duo-response',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
+  id: '/lovable/email/suppression',
+  path: '/lovable/email/suppression',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAdminBuchungIdRoute =
+  AuthenticatedAdminBuchungIdRouteImport.update({
+    id: '/buchung/$id',
+    path: '/buchung/$id',
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
-const LovableEmailTransactionalPreviewRoute =
-  LovableEmailTransactionalPreviewRouteImport.update({
-    id: '/lovable/email/transactional/preview',
-    path: '/lovable/email/transactional/preview',
+const AuthenticatedAdminEmailVorschauLogIdRoute =
+  AuthenticatedAdminEmailVorschauLogIdRouteImport.update({
+    id: '/email-vorschau/$logId',
+    path: '/email-vorschau/$logId',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const ApiPublicCalendarSplatRoute = ApiPublicCalendarSplatRouteImport.update({
+  id: '/api/public/calendar/$',
+  path: '/api/public/calendar/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicHooksPaymentRemindersRoute =
+  ApiPublicHooksPaymentRemindersRouteImport.update({
+    id: '/api/public/hooks/payment-reminders',
+    path: '/api/public/hooks/payment-reminders',
     getParentRoute: () => rootRouteImport,
   } as any)
 const LovableEmailQueueProcessRoute =
@@ -330,28 +385,17 @@ const LovableEmailQueueProcessRoute =
     path: '/lovable/email/queue/process',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicHooksPaymentRemindersRoute =
-  ApiPublicHooksPaymentRemindersRouteImport.update({
-    id: '/api/public/hooks/payment-reminders',
-    path: '/api/public/hooks/payment-reminders',
+const LovableEmailTransactionalPreviewRoute =
+  LovableEmailTransactionalPreviewRouteImport.update({
+    id: '/lovable/email/transactional/preview',
+    path: '/lovable/email/transactional/preview',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicCalendarSplatRoute = ApiPublicCalendarSplatRouteImport.update({
-  id: '/api/public/calendar/$',
-  path: '/api/public/calendar/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedAdminEmailVorschauLogIdRoute =
-  AuthenticatedAdminEmailVorschauLogIdRouteImport.update({
-    id: '/email-vorschau/$logId',
-    path: '/email-vorschau/$logId',
-    getParentRoute: () => AuthenticatedAdminRoute,
-  } as any)
-const AuthenticatedAdminBuchungIdRoute =
-  AuthenticatedAdminBuchungIdRouteImport.update({
-    id: '/buchung/$id',
-    path: '/buchung/$id',
-    getParentRoute: () => AuthenticatedAdminRoute,
+const LovableEmailTransactionalSendRoute =
+  LovableEmailTransactionalSendRouteImport.update({
+    id: '/lovable/email/transactional/send',
+    path: '/lovable/email/transactional/send',
+    getParentRoute: () => rootRouteImport,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -359,6 +403,7 @@ export interface FileRoutesByFullPath {
   '/agb': typeof AgbRoute
   '/auth': typeof AuthRoute
   '/buchung': typeof BuchungRoute
+  '/cam': typeof CamRoute
   '/content-dreh': typeof ContentDrehRoute
   '/custom': typeof CustomRoute
   '/datenschutz': typeof DatenschutzRoute
@@ -366,9 +411,11 @@ export interface FileRoutesByFullPath {
   '/erfahrungsberichte': typeof ErfahrungsberichteRoute
   '/faq': typeof FaqRoute
   '/fotoshooting': typeof FotoshootingRoute
+  '/geschenke-wuensche': typeof GeschenkeWuenscheRoute
   '/impressum': typeof ImpressumRoute
   '/kalender': typeof KalenderRoute
   '/kontakt': typeof KontaktRoute
+  '/langzeiterziehung': typeof LangzeiterziehungRoute
   '/leistungen': typeof LeistungenRoute
   '/mcp': typeof McpRoute
   '/newsletter-bestaetigen': typeof NewsletterBestaetigenRoute
@@ -392,6 +439,7 @@ export interface FileRoutesByFullPath {
   '/admin/duo': typeof AuthenticatedAdminDuoRoute
   '/admin/erfahrungsberichte': typeof AuthenticatedAdminErfahrungsberichteRoute
   '/admin/fotoshooting': typeof AuthenticatedAdminFotoshootingRoute
+  '/admin/journal': typeof AuthenticatedAdminJournalRoute
   '/admin/kalender': typeof AuthenticatedAdminKalenderRoute
   '/admin/kassenbuch': typeof AuthenticatedAdminKassenbuchRoute
   '/admin/kunden': typeof AuthenticatedAdminKundenRoute
@@ -399,6 +447,9 @@ export interface FileRoutesByFullPath {
   '/admin/termine': typeof AuthenticatedAdminTermineRoute
   '/admin/terminplan': typeof AuthenticatedAdminTerminplanRoute
   '/admin/umplanen': typeof AuthenticatedAdminUmplanenRoute
+  '/admin/warteliste': typeof AuthenticatedAdminWartelisteRoute
+  '/api/cron/booking-emails': typeof ApiCronBookingEmailsRoute
+  '/api/public/duo-response': typeof ApiPublicDuoResponseRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/buchung/$id': typeof AuthenticatedAdminBuchungIdRoute
@@ -414,6 +465,7 @@ export interface FileRoutesByTo {
   '/agb': typeof AgbRoute
   '/auth': typeof AuthRoute
   '/buchung': typeof BuchungRoute
+  '/cam': typeof CamRoute
   '/content-dreh': typeof ContentDrehRoute
   '/custom': typeof CustomRoute
   '/datenschutz': typeof DatenschutzRoute
@@ -421,9 +473,11 @@ export interface FileRoutesByTo {
   '/erfahrungsberichte': typeof ErfahrungsberichteRoute
   '/faq': typeof FaqRoute
   '/fotoshooting': typeof FotoshootingRoute
+  '/geschenke-wuensche': typeof GeschenkeWuenscheRoute
   '/impressum': typeof ImpressumRoute
   '/kalender': typeof KalenderRoute
   '/kontakt': typeof KontaktRoute
+  '/langzeiterziehung': typeof LangzeiterziehungRoute
   '/leistungen': typeof LeistungenRoute
   '/mcp': typeof McpRoute
   '/newsletter-bestaetigen': typeof NewsletterBestaetigenRoute
@@ -446,6 +500,7 @@ export interface FileRoutesByTo {
   '/admin/duo': typeof AuthenticatedAdminDuoRoute
   '/admin/erfahrungsberichte': typeof AuthenticatedAdminErfahrungsberichteRoute
   '/admin/fotoshooting': typeof AuthenticatedAdminFotoshootingRoute
+  '/admin/journal': typeof AuthenticatedAdminJournalRoute
   '/admin/kalender': typeof AuthenticatedAdminKalenderRoute
   '/admin/kassenbuch': typeof AuthenticatedAdminKassenbuchRoute
   '/admin/kunden': typeof AuthenticatedAdminKundenRoute
@@ -453,6 +508,9 @@ export interface FileRoutesByTo {
   '/admin/termine': typeof AuthenticatedAdminTermineRoute
   '/admin/terminplan': typeof AuthenticatedAdminTerminplanRoute
   '/admin/umplanen': typeof AuthenticatedAdminUmplanenRoute
+  '/admin/warteliste': typeof AuthenticatedAdminWartelisteRoute
+  '/api/cron/booking-emails': typeof ApiCronBookingEmailsRoute
+  '/api/public/duo-response': typeof ApiPublicDuoResponseRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/buchung/$id': typeof AuthenticatedAdminBuchungIdRoute
@@ -470,6 +528,7 @@ export interface FileRoutesById {
   '/agb': typeof AgbRoute
   '/auth': typeof AuthRoute
   '/buchung': typeof BuchungRoute
+  '/cam': typeof CamRoute
   '/content-dreh': typeof ContentDrehRoute
   '/custom': typeof CustomRoute
   '/datenschutz': typeof DatenschutzRoute
@@ -477,9 +536,11 @@ export interface FileRoutesById {
   '/erfahrungsberichte': typeof ErfahrungsberichteRoute
   '/faq': typeof FaqRoute
   '/fotoshooting': typeof FotoshootingRoute
+  '/geschenke-wuensche': typeof GeschenkeWuenscheRoute
   '/impressum': typeof ImpressumRoute
   '/kalender': typeof KalenderRoute
   '/kontakt': typeof KontaktRoute
+  '/langzeiterziehung': typeof LangzeiterziehungRoute
   '/leistungen': typeof LeistungenRoute
   '/mcp': typeof McpRoute
   '/newsletter-bestaetigen': typeof NewsletterBestaetigenRoute
@@ -503,6 +564,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/duo': typeof AuthenticatedAdminDuoRoute
   '/_authenticated/admin/erfahrungsberichte': typeof AuthenticatedAdminErfahrungsberichteRoute
   '/_authenticated/admin/fotoshooting': typeof AuthenticatedAdminFotoshootingRoute
+  '/_authenticated/admin/journal': typeof AuthenticatedAdminJournalRoute
   '/_authenticated/admin/kalender': typeof AuthenticatedAdminKalenderRoute
   '/_authenticated/admin/kassenbuch': typeof AuthenticatedAdminKassenbuchRoute
   '/_authenticated/admin/kunden': typeof AuthenticatedAdminKundenRoute
@@ -510,6 +572,9 @@ export interface FileRoutesById {
   '/_authenticated/admin/termine': typeof AuthenticatedAdminTermineRoute
   '/_authenticated/admin/terminplan': typeof AuthenticatedAdminTerminplanRoute
   '/_authenticated/admin/umplanen': typeof AuthenticatedAdminUmplanenRoute
+  '/_authenticated/admin/warteliste': typeof AuthenticatedAdminWartelisteRoute
+  '/api/cron/booking-emails': typeof ApiCronBookingEmailsRoute
+  '/api/public/duo-response': typeof ApiPublicDuoResponseRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/buchung/$id': typeof AuthenticatedAdminBuchungIdRoute
@@ -527,6 +592,7 @@ export interface FileRouteTypes {
     | '/agb'
     | '/auth'
     | '/buchung'
+    | '/cam'
     | '/content-dreh'
     | '/custom'
     | '/datenschutz'
@@ -534,9 +600,11 @@ export interface FileRouteTypes {
     | '/erfahrungsberichte'
     | '/faq'
     | '/fotoshooting'
+    | '/geschenke-wuensche'
     | '/impressum'
     | '/kalender'
     | '/kontakt'
+    | '/langzeiterziehung'
     | '/leistungen'
     | '/mcp'
     | '/newsletter-bestaetigen'
@@ -560,6 +628,7 @@ export interface FileRouteTypes {
     | '/admin/duo'
     | '/admin/erfahrungsberichte'
     | '/admin/fotoshooting'
+    | '/admin/journal'
     | '/admin/kalender'
     | '/admin/kassenbuch'
     | '/admin/kunden'
@@ -567,6 +636,9 @@ export interface FileRouteTypes {
     | '/admin/termine'
     | '/admin/terminplan'
     | '/admin/umplanen'
+    | '/admin/warteliste'
+    | '/api/cron/booking-emails'
+    | '/api/public/duo-response'
     | '/lovable/email/suppression'
     | '/admin/'
     | '/admin/buchung/$id'
@@ -582,6 +654,7 @@ export interface FileRouteTypes {
     | '/agb'
     | '/auth'
     | '/buchung'
+    | '/cam'
     | '/content-dreh'
     | '/custom'
     | '/datenschutz'
@@ -589,9 +662,11 @@ export interface FileRouteTypes {
     | '/erfahrungsberichte'
     | '/faq'
     | '/fotoshooting'
+    | '/geschenke-wuensche'
     | '/impressum'
     | '/kalender'
     | '/kontakt'
+    | '/langzeiterziehung'
     | '/leistungen'
     | '/mcp'
     | '/newsletter-bestaetigen'
@@ -614,6 +689,7 @@ export interface FileRouteTypes {
     | '/admin/duo'
     | '/admin/erfahrungsberichte'
     | '/admin/fotoshooting'
+    | '/admin/journal'
     | '/admin/kalender'
     | '/admin/kassenbuch'
     | '/admin/kunden'
@@ -621,6 +697,9 @@ export interface FileRouteTypes {
     | '/admin/termine'
     | '/admin/terminplan'
     | '/admin/umplanen'
+    | '/admin/warteliste'
+    | '/api/cron/booking-emails'
+    | '/api/public/duo-response'
     | '/lovable/email/suppression'
     | '/admin'
     | '/admin/buchung/$id'
@@ -637,6 +716,7 @@ export interface FileRouteTypes {
     | '/agb'
     | '/auth'
     | '/buchung'
+    | '/cam'
     | '/content-dreh'
     | '/custom'
     | '/datenschutz'
@@ -644,9 +724,11 @@ export interface FileRouteTypes {
     | '/erfahrungsberichte'
     | '/faq'
     | '/fotoshooting'
+    | '/geschenke-wuensche'
     | '/impressum'
     | '/kalender'
     | '/kontakt'
+    | '/langzeiterziehung'
     | '/leistungen'
     | '/mcp'
     | '/newsletter-bestaetigen'
@@ -670,6 +752,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/duo'
     | '/_authenticated/admin/erfahrungsberichte'
     | '/_authenticated/admin/fotoshooting'
+    | '/_authenticated/admin/journal'
     | '/_authenticated/admin/kalender'
     | '/_authenticated/admin/kassenbuch'
     | '/_authenticated/admin/kunden'
@@ -677,6 +760,9 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/termine'
     | '/_authenticated/admin/terminplan'
     | '/_authenticated/admin/umplanen'
+    | '/_authenticated/admin/warteliste'
+    | '/api/cron/booking-emails'
+    | '/api/public/duo-response'
     | '/lovable/email/suppression'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/buchung/$id'
@@ -694,6 +780,7 @@ export interface RootRouteChildren {
   AgbRoute: typeof AgbRoute
   AuthRoute: typeof AuthRoute
   BuchungRoute: typeof BuchungRoute
+  CamRoute: typeof CamRoute
   ContentDrehRoute: typeof ContentDrehRoute
   CustomRoute: typeof CustomRoute
   DatenschutzRoute: typeof DatenschutzRoute
@@ -701,9 +788,11 @@ export interface RootRouteChildren {
   ErfahrungsberichteRoute: typeof ErfahrungsberichteRoute
   FaqRoute: typeof FaqRoute
   FotoshootingRoute: typeof FotoshootingRoute
+  GeschenkeWuenscheRoute: typeof GeschenkeWuenscheRoute
   ImpressumRoute: typeof ImpressumRoute
   KalenderRoute: typeof KalenderRoute
   KontaktRoute: typeof KontaktRoute
+  LangzeiterziehungRoute: typeof LangzeiterziehungRoute
   LeistungenRoute: typeof LeistungenRoute
   McpRoute: typeof McpRoute
   NewsletterBestaetigenRoute: typeof NewsletterBestaetigenRoute
@@ -720,6 +809,8 @@ export interface RootRouteChildren {
   JournalIndexRoute: typeof JournalIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiCronBookingEmailsRoute: typeof ApiCronBookingEmailsRoute
+  ApiPublicDuoResponseRoute: typeof ApiPublicDuoResponseRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicCalendarSplatRoute: typeof ApiPublicCalendarSplatRoute
   ApiPublicHooksPaymentRemindersRoute: typeof ApiPublicHooksPaymentRemindersRoute
@@ -730,158 +821,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/unsubscribe': {
-      id: '/unsubscribe'
-      path: '/unsubscribe'
-      fullPath: '/unsubscribe'
-      preLoaderRoute: typeof UnsubscribeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ueber-mich': {
-      id: '/ueber-mich'
-      path: '/ueber-mich'
-      fullPath: '/ueber-mich'
-      preLoaderRoute: typeof UeberMichRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/tabus': {
-      id: '/tabus'
-      path: '/tabus'
-      fullPath: '/tabus'
-      preLoaderRoute: typeof TabusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sitemap.xml': {
-      id: '/sitemap.xml'
-      path: '/sitemap.xml'
-      fullPath: '/sitemap.xml'
-      preLoaderRoute: typeof SitemapDotxmlRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/preise': {
-      id: '/preise'
-      path: '/preise'
-      fullPath: '/preise'
-      preLoaderRoute: typeof PreiseRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/online': {
-      id: '/online'
-      path: '/online'
-      fullPath: '/online'
-      preLoaderRoute: typeof OnlineRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/newsletter-bestaetigen': {
-      id: '/newsletter-bestaetigen'
-      path: '/newsletter-bestaetigen'
-      fullPath: '/newsletter-bestaetigen'
-      preLoaderRoute: typeof NewsletterBestaetigenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/mcp': {
-      id: '/mcp'
-      path: '/mcp'
-      fullPath: '/mcp'
-      preLoaderRoute: typeof McpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/leistungen': {
-      id: '/leistungen'
-      path: '/leistungen'
-      fullPath: '/leistungen'
-      preLoaderRoute: typeof LeistungenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/kontakt': {
-      id: '/kontakt'
-      path: '/kontakt'
-      fullPath: '/kontakt'
-      preLoaderRoute: typeof KontaktRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/kalender': {
-      id: '/kalender'
-      path: '/kalender'
-      fullPath: '/kalender'
-      preLoaderRoute: typeof KalenderRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/impressum': {
-      id: '/impressum'
-      path: '/impressum'
-      fullPath: '/impressum'
-      preLoaderRoute: typeof ImpressumRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/fotoshooting': {
-      id: '/fotoshooting'
-      path: '/fotoshooting'
-      fullPath: '/fotoshooting'
-      preLoaderRoute: typeof FotoshootingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/faq': {
-      id: '/faq'
-      path: '/faq'
-      fullPath: '/faq'
-      preLoaderRoute: typeof FaqRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/erfahrungsberichte': {
-      id: '/erfahrungsberichte'
-      path: '/erfahrungsberichte'
-      fullPath: '/erfahrungsberichte'
-      preLoaderRoute: typeof ErfahrungsberichteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/duo-sessions': {
-      id: '/duo-sessions'
-      path: '/duo-sessions'
-      fullPath: '/duo-sessions'
-      preLoaderRoute: typeof DuoSessionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/datenschutz': {
-      id: '/datenschutz'
-      path: '/datenschutz'
-      fullPath: '/datenschutz'
-      preLoaderRoute: typeof DatenschutzRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/custom': {
-      id: '/custom'
-      path: '/custom'
-      fullPath: '/custom'
-      preLoaderRoute: typeof CustomRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/content-dreh': {
-      id: '/content-dreh'
-      path: '/content-dreh'
-      fullPath: '/content-dreh'
-      preLoaderRoute: typeof ContentDrehRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/buchung': {
-      id: '/buchung'
-      path: '/buchung'
-      fullPath: '/buchung'
-      preLoaderRoute: typeof BuchungRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/agb': {
-      id: '/agb'
-      path: '/agb'
-      fullPath: '/agb'
-      preLoaderRoute: typeof AgbRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -891,11 +835,207 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/agb': {
+      id: '/agb'
+      path: '/agb'
+      fullPath: '/agb'
+      preLoaderRoute: typeof AgbRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/buchung': {
+      id: '/buchung'
+      path: '/buchung'
+      fullPath: '/buchung'
+      preLoaderRoute: typeof BuchungRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cam': {
+      id: '/cam'
+      path: '/cam'
+      fullPath: '/cam'
+      preLoaderRoute: typeof CamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/content-dreh': {
+      id: '/content-dreh'
+      path: '/content-dreh'
+      fullPath: '/content-dreh'
+      preLoaderRoute: typeof ContentDrehRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/custom': {
+      id: '/custom'
+      path: '/custom'
+      fullPath: '/custom'
+      preLoaderRoute: typeof CustomRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/datenschutz': {
+      id: '/datenschutz'
+      path: '/datenschutz'
+      fullPath: '/datenschutz'
+      preLoaderRoute: typeof DatenschutzRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/duo-sessions': {
+      id: '/duo-sessions'
+      path: '/duo-sessions'
+      fullPath: '/duo-sessions'
+      preLoaderRoute: typeof DuoSessionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/erfahrungsberichte': {
+      id: '/erfahrungsberichte'
+      path: '/erfahrungsberichte'
+      fullPath: '/erfahrungsberichte'
+      preLoaderRoute: typeof ErfahrungsberichteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/faq': {
+      id: '/faq'
+      path: '/faq'
+      fullPath: '/faq'
+      preLoaderRoute: typeof FaqRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fotoshooting': {
+      id: '/fotoshooting'
+      path: '/fotoshooting'
+      fullPath: '/fotoshooting'
+      preLoaderRoute: typeof FotoshootingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/geschenke-wuensche': {
+      id: '/geschenke-wuensche'
+      path: '/geschenke-wuensche'
+      fullPath: '/geschenke-wuensche'
+      preLoaderRoute: typeof GeschenkeWuenscheRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/impressum': {
+      id: '/impressum'
+      path: '/impressum'
+      fullPath: '/impressum'
+      preLoaderRoute: typeof ImpressumRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kalender': {
+      id: '/kalender'
+      path: '/kalender'
+      fullPath: '/kalender'
+      preLoaderRoute: typeof KalenderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kontakt': {
+      id: '/kontakt'
+      path: '/kontakt'
+      fullPath: '/kontakt'
+      preLoaderRoute: typeof KontaktRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/langzeiterziehung': {
+      id: '/langzeiterziehung'
+      path: '/langzeiterziehung'
+      fullPath: '/langzeiterziehung'
+      preLoaderRoute: typeof LangzeiterziehungRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leistungen': {
+      id: '/leistungen'
+      path: '/leistungen'
+      fullPath: '/leistungen'
+      preLoaderRoute: typeof LeistungenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/newsletter-bestaetigen': {
+      id: '/newsletter-bestaetigen'
+      path: '/newsletter-bestaetigen'
+      fullPath: '/newsletter-bestaetigen'
+      preLoaderRoute: typeof NewsletterBestaetigenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/online': {
+      id: '/online'
+      path: '/online'
+      fullPath: '/online'
+      preLoaderRoute: typeof OnlineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/preise': {
+      id: '/preise'
+      path: '/preise'
+      fullPath: '/preise'
+      preLoaderRoute: typeof PreiseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tabus': {
+      id: '/tabus'
+      path: '/tabus'
+      fullPath: '/tabus'
+      preLoaderRoute: typeof TabusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ueber-mich': {
+      id: '/ueber-mich'
+      path: '/ueber-mich'
+      fullPath: '/ueber-mich'
+      preLoaderRoute: typeof UeberMichRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/unsubscribe': {
+      id: '/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/unsubscribe'
+      preLoaderRoute: typeof UnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/list-tools': {
+      id: '/.mcp/list-tools'
+      path: '/.mcp/list-tools'
+      fullPath: '/.mcp/list-tools'
+      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/email/unsubscribe': {
+      id: '/email/unsubscribe'
+      path: '/email/unsubscribe'
+      fullPath: '/email/unsubscribe'
+      preLoaderRoute: typeof EmailUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/journal/': {
@@ -912,32 +1052,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof JournalSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/email/unsubscribe': {
-      id: '/email/unsubscribe'
-      path: '/email/unsubscribe'
-      fullPath: '/email/unsubscribe'
-      preLoaderRoute: typeof EmailUnsubscribeRouteImport
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/admin': {
-      id: '/_authenticated/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AuthenticatedAdminRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/.well-known/oauth-protected-resource': {
-      id: '/.well-known/oauth-protected-resource'
-      path: '/.well-known/oauth-protected-resource'
-      fullPath: '/.well-known/oauth-protected-resource'
-      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/.mcp/list-tools': {
-      id: '/.mcp/list-tools'
-      path: '/.mcp/list-tools'
-      fullPath: '/.mcp/list-tools'
-      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+    '/.mcp/invoke-tool/$tool': {
+      id: '/.mcp/invoke-tool/$tool'
+      path: '/.mcp/invoke-tool/$tool'
+      fullPath: '/.mcp/invoke-tool/$tool'
+      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin/': {
@@ -947,88 +1073,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
-    '/lovable/email/suppression': {
-      id: '/lovable/email/suppression'
-      path: '/lovable/email/suppression'
-      fullPath: '/lovable/email/suppression'
-      preLoaderRoute: typeof LovableEmailSuppressionRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/admin/umplanen': {
-      id: '/_authenticated/admin/umplanen'
-      path: '/umplanen'
-      fullPath: '/admin/umplanen'
-      preLoaderRoute: typeof AuthenticatedAdminUmplanenRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
-    '/_authenticated/admin/terminplan': {
-      id: '/_authenticated/admin/terminplan'
-      path: '/terminplan'
-      fullPath: '/admin/terminplan'
-      preLoaderRoute: typeof AuthenticatedAdminTerminplanRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
-    '/_authenticated/admin/termine': {
-      id: '/_authenticated/admin/termine'
-      path: '/termine'
-      fullPath: '/admin/termine'
-      preLoaderRoute: typeof AuthenticatedAdminTermineRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
-    '/_authenticated/admin/newsletter': {
-      id: '/_authenticated/admin/newsletter'
-      path: '/newsletter'
-      fullPath: '/admin/newsletter'
-      preLoaderRoute: typeof AuthenticatedAdminNewsletterRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
-    '/_authenticated/admin/kunden': {
-      id: '/_authenticated/admin/kunden'
-      path: '/kunden'
-      fullPath: '/admin/kunden'
-      preLoaderRoute: typeof AuthenticatedAdminKundenRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
-    '/_authenticated/admin/kassenbuch': {
-      id: '/_authenticated/admin/kassenbuch'
-      path: '/kassenbuch'
-      fullPath: '/admin/kassenbuch'
-      preLoaderRoute: typeof AuthenticatedAdminKassenbuchRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
-    '/_authenticated/admin/kalender': {
-      id: '/_authenticated/admin/kalender'
-      path: '/kalender'
-      fullPath: '/admin/kalender'
-      preLoaderRoute: typeof AuthenticatedAdminKalenderRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
-    '/_authenticated/admin/fotoshooting': {
-      id: '/_authenticated/admin/fotoshooting'
-      path: '/fotoshooting'
-      fullPath: '/admin/fotoshooting'
-      preLoaderRoute: typeof AuthenticatedAdminFotoshootingRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
-    '/_authenticated/admin/erfahrungsberichte': {
-      id: '/_authenticated/admin/erfahrungsberichte'
-      path: '/erfahrungsberichte'
-      fullPath: '/admin/erfahrungsberichte'
-      preLoaderRoute: typeof AuthenticatedAdminErfahrungsberichteRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
-    '/_authenticated/admin/duo': {
-      id: '/_authenticated/admin/duo'
-      path: '/duo'
-      fullPath: '/admin/duo'
-      preLoaderRoute: typeof AuthenticatedAdminDuoRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
-    '/_authenticated/admin/custom': {
-      id: '/_authenticated/admin/custom'
-      path: '/custom'
-      fullPath: '/admin/custom'
-      preLoaderRoute: typeof AuthenticatedAdminCustomRouteImport
+    '/_authenticated/admin/agb': {
+      id: '/_authenticated/admin/agb'
+      path: '/agb'
+      fullPath: '/admin/agb'
+      preLoaderRoute: typeof AuthenticatedAdminAgbRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/contentdreh': {
@@ -1038,46 +1087,137 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminContentdrehRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
-    '/_authenticated/admin/agb': {
-      id: '/_authenticated/admin/agb'
-      path: '/agb'
-      fullPath: '/admin/agb'
-      preLoaderRoute: typeof AuthenticatedAdminAgbRouteImport
+    '/_authenticated/admin/custom': {
+      id: '/_authenticated/admin/custom'
+      path: '/custom'
+      fullPath: '/admin/custom'
+      preLoaderRoute: typeof AuthenticatedAdminCustomRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
-    '/.mcp/invoke-tool/$tool': {
-      id: '/.mcp/invoke-tool/$tool'
-      path: '/.mcp/invoke-tool/$tool'
-      fullPath: '/.mcp/invoke-tool/$tool'
-      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+    '/_authenticated/admin/duo': {
+      id: '/_authenticated/admin/duo'
+      path: '/duo'
+      fullPath: '/admin/duo'
+      preLoaderRoute: typeof AuthenticatedAdminDuoRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/erfahrungsberichte': {
+      id: '/_authenticated/admin/erfahrungsberichte'
+      path: '/erfahrungsberichte'
+      fullPath: '/admin/erfahrungsberichte'
+      preLoaderRoute: typeof AuthenticatedAdminErfahrungsberichteRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/fotoshooting': {
+      id: '/_authenticated/admin/fotoshooting'
+      path: '/fotoshooting'
+      fullPath: '/admin/fotoshooting'
+      preLoaderRoute: typeof AuthenticatedAdminFotoshootingRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/journal': {
+      id: '/_authenticated/admin/journal'
+      path: '/journal'
+      fullPath: '/admin/journal'
+      preLoaderRoute: typeof AuthenticatedAdminJournalRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/kalender': {
+      id: '/_authenticated/admin/kalender'
+      path: '/kalender'
+      fullPath: '/admin/kalender'
+      preLoaderRoute: typeof AuthenticatedAdminKalenderRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/kassenbuch': {
+      id: '/_authenticated/admin/kassenbuch'
+      path: '/kassenbuch'
+      fullPath: '/admin/kassenbuch'
+      preLoaderRoute: typeof AuthenticatedAdminKassenbuchRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/kunden': {
+      id: '/_authenticated/admin/kunden'
+      path: '/kunden'
+      fullPath: '/admin/kunden'
+      preLoaderRoute: typeof AuthenticatedAdminKundenRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/newsletter': {
+      id: '/_authenticated/admin/newsletter'
+      path: '/newsletter'
+      fullPath: '/admin/newsletter'
+      preLoaderRoute: typeof AuthenticatedAdminNewsletterRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/termine': {
+      id: '/_authenticated/admin/termine'
+      path: '/termine'
+      fullPath: '/admin/termine'
+      preLoaderRoute: typeof AuthenticatedAdminTermineRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/terminplan': {
+      id: '/_authenticated/admin/terminplan'
+      path: '/terminplan'
+      fullPath: '/admin/terminplan'
+      preLoaderRoute: typeof AuthenticatedAdminTerminplanRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/umplanen': {
+      id: '/_authenticated/admin/umplanen'
+      path: '/umplanen'
+      fullPath: '/admin/umplanen'
+      preLoaderRoute: typeof AuthenticatedAdminUmplanenRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/warteliste': {
+      id: '/_authenticated/admin/warteliste'
+      path: '/warteliste'
+      fullPath: '/admin/warteliste'
+      preLoaderRoute: typeof AuthenticatedAdminWartelisteRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/api/cron/booking-emails': {
+      id: '/api/cron/booking-emails'
+      path: '/api/cron/booking-emails'
+      fullPath: '/api/cron/booking-emails'
+      preLoaderRoute: typeof ApiCronBookingEmailsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.lovable/oauth/consent': {
-      id: '/.lovable/oauth/consent'
-      path: '/.lovable/oauth/consent'
-      fullPath: '/.lovable/oauth/consent'
-      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+    '/api/public/duo-response': {
+      id: '/api/public/duo-response'
+      path: '/api/public/duo-response'
+      fullPath: '/api/public/duo-response'
+      preLoaderRoute: typeof ApiPublicDuoResponseRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/transactional/send': {
-      id: '/lovable/email/transactional/send'
-      path: '/lovable/email/transactional/send'
-      fullPath: '/lovable/email/transactional/send'
-      preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
+    '/lovable/email/suppression': {
+      id: '/lovable/email/suppression'
+      path: '/lovable/email/suppression'
+      fullPath: '/lovable/email/suppression'
+      preLoaderRoute: typeof LovableEmailSuppressionRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/transactional/preview': {
-      id: '/lovable/email/transactional/preview'
-      path: '/lovable/email/transactional/preview'
-      fullPath: '/lovable/email/transactional/preview'
-      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_authenticated/admin/buchung/$id': {
+      id: '/_authenticated/admin/buchung/$id'
+      path: '/buchung/$id'
+      fullPath: '/admin/buchung/$id'
+      preLoaderRoute: typeof AuthenticatedAdminBuchungIdRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
     }
-    '/lovable/email/queue/process': {
-      id: '/lovable/email/queue/process'
-      path: '/lovable/email/queue/process'
-      fullPath: '/lovable/email/queue/process'
-      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+    '/_authenticated/admin/email-vorschau/$logId': {
+      id: '/_authenticated/admin/email-vorschau/$logId'
+      path: '/email-vorschau/$logId'
+      fullPath: '/admin/email-vorschau/$logId'
+      preLoaderRoute: typeof AuthenticatedAdminEmailVorschauLogIdRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/api/public/calendar/$': {
+      id: '/api/public/calendar/$'
+      path: '/api/public/calendar/$'
+      fullPath: '/api/public/calendar/$'
+      preLoaderRoute: typeof ApiPublicCalendarSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/payment-reminders': {
@@ -1087,26 +1227,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksPaymentRemindersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/calendar/$': {
-      id: '/api/public/calendar/$'
-      path: '/api/public/calendar/$'
-      fullPath: '/api/public/calendar/$'
-      preLoaderRoute: typeof ApiPublicCalendarSplatRouteImport
+    '/lovable/email/queue/process': {
+      id: '/lovable/email/queue/process'
+      path: '/lovable/email/queue/process'
+      fullPath: '/lovable/email/queue/process'
+      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/admin/email-vorschau/$logId': {
-      id: '/_authenticated/admin/email-vorschau/$logId'
-      path: '/email-vorschau/$logId'
-      fullPath: '/admin/email-vorschau/$logId'
-      preLoaderRoute: typeof AuthenticatedAdminEmailVorschauLogIdRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
+    '/lovable/email/transactional/preview': {
+      id: '/lovable/email/transactional/preview'
+      path: '/lovable/email/transactional/preview'
+      fullPath: '/lovable/email/transactional/preview'
+      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/admin/buchung/$id': {
-      id: '/_authenticated/admin/buchung/$id'
-      path: '/buchung/$id'
-      fullPath: '/admin/buchung/$id'
-      preLoaderRoute: typeof AuthenticatedAdminBuchungIdRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
+    '/lovable/email/transactional/send': {
+      id: '/lovable/email/transactional/send'
+      path: '/lovable/email/transactional/send'
+      fullPath: '/lovable/email/transactional/send'
+      preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -1118,6 +1258,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminDuoRoute: typeof AuthenticatedAdminDuoRoute
   AuthenticatedAdminErfahrungsberichteRoute: typeof AuthenticatedAdminErfahrungsberichteRoute
   AuthenticatedAdminFotoshootingRoute: typeof AuthenticatedAdminFotoshootingRoute
+  AuthenticatedAdminJournalRoute: typeof AuthenticatedAdminJournalRoute
   AuthenticatedAdminKalenderRoute: typeof AuthenticatedAdminKalenderRoute
   AuthenticatedAdminKassenbuchRoute: typeof AuthenticatedAdminKassenbuchRoute
   AuthenticatedAdminKundenRoute: typeof AuthenticatedAdminKundenRoute
@@ -1125,6 +1266,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminTermineRoute: typeof AuthenticatedAdminTermineRoute
   AuthenticatedAdminTerminplanRoute: typeof AuthenticatedAdminTerminplanRoute
   AuthenticatedAdminUmplanenRoute: typeof AuthenticatedAdminUmplanenRoute
+  AuthenticatedAdminWartelisteRoute: typeof AuthenticatedAdminWartelisteRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAdminBuchungIdRoute: typeof AuthenticatedAdminBuchungIdRoute
   AuthenticatedAdminEmailVorschauLogIdRoute: typeof AuthenticatedAdminEmailVorschauLogIdRoute
@@ -1138,6 +1280,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminErfahrungsberichteRoute:
     AuthenticatedAdminErfahrungsberichteRoute,
   AuthenticatedAdminFotoshootingRoute: AuthenticatedAdminFotoshootingRoute,
+  AuthenticatedAdminJournalRoute: AuthenticatedAdminJournalRoute,
   AuthenticatedAdminKalenderRoute: AuthenticatedAdminKalenderRoute,
   AuthenticatedAdminKassenbuchRoute: AuthenticatedAdminKassenbuchRoute,
   AuthenticatedAdminKundenRoute: AuthenticatedAdminKundenRoute,
@@ -1145,6 +1288,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminTermineRoute: AuthenticatedAdminTermineRoute,
   AuthenticatedAdminTerminplanRoute: AuthenticatedAdminTerminplanRoute,
   AuthenticatedAdminUmplanenRoute: AuthenticatedAdminUmplanenRoute,
+  AuthenticatedAdminWartelisteRoute: AuthenticatedAdminWartelisteRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedAdminBuchungIdRoute: AuthenticatedAdminBuchungIdRoute,
   AuthenticatedAdminEmailVorschauLogIdRoute:
@@ -1171,6 +1315,7 @@ const rootRouteChildren: RootRouteChildren = {
   AgbRoute: AgbRoute,
   AuthRoute: AuthRoute,
   BuchungRoute: BuchungRoute,
+  CamRoute: CamRoute,
   ContentDrehRoute: ContentDrehRoute,
   CustomRoute: CustomRoute,
   DatenschutzRoute: DatenschutzRoute,
@@ -1178,9 +1323,11 @@ const rootRouteChildren: RootRouteChildren = {
   ErfahrungsberichteRoute: ErfahrungsberichteRoute,
   FaqRoute: FaqRoute,
   FotoshootingRoute: FotoshootingRoute,
+  GeschenkeWuenscheRoute: GeschenkeWuenscheRoute,
   ImpressumRoute: ImpressumRoute,
   KalenderRoute: KalenderRoute,
   KontaktRoute: KontaktRoute,
+  LangzeiterziehungRoute: LangzeiterziehungRoute,
   LeistungenRoute: LeistungenRoute,
   McpRoute: McpRoute,
   NewsletterBestaetigenRoute: NewsletterBestaetigenRoute,
@@ -1198,6 +1345,8 @@ const rootRouteChildren: RootRouteChildren = {
   JournalIndexRoute: JournalIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiCronBookingEmailsRoute: ApiCronBookingEmailsRoute,
+  ApiPublicDuoResponseRoute: ApiPublicDuoResponseRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicCalendarSplatRoute: ApiPublicCalendarSplatRoute,
   ApiPublicHooksPaymentRemindersRoute: ApiPublicHooksPaymentRemindersRoute,

@@ -38,6 +38,7 @@ export function Header() {
     { to: "/kalender", label: t<string>("nav.calendar") },
     { to: "/online", label: t<string>("nav.online") },
     { to: "/cam", label: tr("Cam-Sessions", "Cam sessions") },
+    { to: "/langzeiterziehung", label: tr("Langzeiterziehung", "Long-term training") },
     { to: "/duo-sessions", label: t<string>("nav.duo") },
     { to: "/content-dreh", label: t<string>("nav.contentDreh") },
     { to: "/custom", label: t<string>("nav.custom") },
