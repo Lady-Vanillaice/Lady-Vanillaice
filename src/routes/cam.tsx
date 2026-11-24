@@ -36,7 +36,8 @@ function CamPage() {
       const result = await join({
         data: {
           name: String(form.get("name") ?? ""),
-          email: String(form.get("email") ?? ""),
+          phone: String(form.get("phone") ?? ""),
+          email: String(form.get("email") ?? "") || null,
           telegram: String(form.get("telegram") ?? "") || null,
           message: String(form.get("message") ?? "") || null,
           consent: form.get("consent") === "on",
@@ -49,8 +50,8 @@ function CamPage() {
       setStatus("error");
       setErrorMsg(
         tr(
-          "Das hat leider nicht geklappt. Bitte prüfe deine Angaben (Name, gültige E-Mail, Häkchen) und versuche es erneut.",
-          "That didn't work. Please check your details (name, valid email, checkbox) and try again.",
+          "Das hat leider nicht geklappt. Bitte prüfe deine Angaben (Name, Telefonnummer, Häkchen) und versuche es erneut.",
+          "That didn't work. Please check your details (name, phone number, checkbox) and try again.",
         ),
       );
       console.error(err);
@@ -123,8 +124,8 @@ function CamPage() {
             </h2>
             <p className="text-sm leading-relaxed text-vanilla/65 mb-8">
               {tr(
-                "Füll das Formular aus. Du gehst damit keine Verpflichtung ein – ich melde mich bei dir, sobald ich wieder Cam-Sessions anbiete.",
-                "Fill in the form. There's no obligation – I'll get in touch as soon as I offer cam sessions again.",
+                "Füll das Formular aus. Du gehst damit keine Verpflichtung ein – ich rufe dich an, sobald ich wieder Cam-Sessions anbiete.",
+                "Fill in the form. There's no obligation – I'll call you as soon as I offer cam sessions again.",
               )}
             </p>
 
@@ -148,13 +149,19 @@ function CamPage() {
                     <input name="name" required minLength={2} maxLength={100} className="input-luxe" placeholder={tr("Wie darf ich dich nennen?", "What should I call you?")} />
                   </div>
                   <div>
-                    <label className="eyebrow block mb-2">{tr("E-Mail-Adresse", "Email address")}</label>
-                    <input name="email" type="email" required maxLength={200} className="input-luxe" placeholder={tr("deine@email.de", "you@email.com")} />
+                    <label className="eyebrow block mb-2">{tr("Telefonnummer", "Phone number")}</label>
+                    <input name="phone" type="tel" required minLength={6} maxLength={40} autoComplete="tel" className="input-luxe" placeholder="+49 …" />
                   </div>
                 </div>
-                <div>
-                  <label className="eyebrow block mb-2">{tr("Telegram (optional)", "Telegram (optional)")}</label>
-                  <input name="telegram" maxLength={100} className="input-luxe" placeholder="@dein_name" />
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="eyebrow block mb-2">{tr("E-Mail-Adresse (optional)", "Email address (optional)")}</label>
+                    <input name="email" type="email" maxLength={200} className="input-luxe" placeholder={tr("deine@email.de", "you@email.com")} />
+                  </div>
+                  <div>
+                    <label className="eyebrow block mb-2">{tr("Telegram (optional)", "Telegram (optional)")}</label>
+                    <input name="telegram" maxLength={100} className="input-luxe" placeholder="@dein_name" />
+                  </div>
                 </div>
                 <div>
                   <label className="eyebrow block mb-2">{tr("Was wünschst du dir? (optional)", "What are you looking for? (optional)")}</label>

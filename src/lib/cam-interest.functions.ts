@@ -10,7 +10,8 @@ const MAX_ENTRIES = 1000;
 export type CamInterestEntry = {
   id: string;
   name: string;
-  email: string;
+  phone: string;
+  email: string | null;
   telegram: string | null;
   message: string | null;
   status: "waiting" | "contacted";
@@ -19,7 +20,8 @@ export type CamInterestEntry = {
 
 const joinSchema = z.object({
   name: z.string().trim().min(2).max(100),
-  email: z.string().trim().email().max(200),
+  phone: z.string().trim().min(6).max(40).regex(/^[+0-9][0-9 ()/.-]{5,}$/, "Telefonnummer ungültig"),
+  email: z.union([z.string().trim().email().max(200), z.literal("")]).optional().nullable(),
   telegram: z.string().trim().max(100).optional().nullable(),
   message: z.string().trim().max(1000).optional().nullable(),
   consent: z.literal(true),
@@ -71,11 +73,14 @@ export const joinCamInterest = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (data.website) return { ok: true, alreadyRegistered: false };
     const entries = await loadEntries();
-    const email = data.email.trim().toLowerCase();
-    const existing = entries.find((entry) => entry.email === email);
+    const email = data.email?.trim().toLowerCase() || null;
+    const phone = data.phone.trim();
+    const digits = (value: string | null | undefined) => (value ?? "").replace(/\D/g, "");
+    const existing = entries.find((entry) => digits(entry.phone) === digits(phone));
     if (existing) {
       // Erneute Anmeldung: wieder als „wartet“ markieren und Angaben aktualisieren.
       existing.name = data.name.trim();
+      existing.email = email || existing.email;
       existing.telegram = data.telegram?.trim() || existing.telegram;
       existing.message = data.message?.trim() || existing.message;
       existing.status = "waiting";
@@ -86,6 +91,7 @@ export const joinCamInterest = createServerFn({ method: "POST" })
     entries.push({
       id: crypto.randomUUID(),
       name: data.name.trim(),
+      phone,
       email,
       telegram: data.telegram?.trim() || null,
       message: data.message?.trim() || null,

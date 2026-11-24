@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, Copy, Mail, RotateCcw, Send, Trash2, Video } from "lucide-react";
+import { CheckCircle2, Copy, Mail, Phone, RotateCcw, Send, Trash2, Video } from "lucide-react";
 import { useState } from "react";
 import { deleteCamInterest, listCamInterest, setCamInterestStatus } from "@/lib/cam-interest.functions";
 
@@ -29,14 +29,14 @@ export function CamInterestAdmin() {
   const contacted = (q.data ?? []).filter((entry) => entry.status === "contacted");
 
   const copyEmails = async () => {
-    const emails = waiting.map((entry) => entry.email).join(", ");
-    if (!emails) return;
+    const numbers = waiting.map((entry) => `${entry.name}: ${entry.phone ?? "—"}`).join("\n");
+    if (!numbers) return;
     try {
-      await navigator.clipboard.writeText(emails);
+      await navigator.clipboard.writeText(numbers);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      window.prompt("E-Mail-Adressen kopieren:", emails);
+      window.prompt("Telefonnummern kopieren:", numbers);
     }
   };
 
@@ -45,11 +45,20 @@ export function CamInterestAdmin() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-sm text-vanilla">{entry.name}</div>
-          <a href={"mailto:" + entry.email} className="mt-1 inline-flex items-center gap-1 text-xs text-vanilla/60 hover:text-champagne">
-            <Mail size={12} /> {entry.email}
-          </a>
+          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+            {entry.phone && (
+              <a href={"tel:" + entry.phone.replace(/[^+0-9]/g, "")} className="inline-flex items-center gap-1 text-sm text-champagne hover:underline">
+                <Phone size={13} /> {entry.phone}
+              </a>
+            )}
+            {entry.email && (
+              <a href={"mailto:" + entry.email} className="inline-flex items-center gap-1 text-xs text-vanilla/60 hover:text-champagne">
+                <Mail size={12} /> {entry.email}
+              </a>
+            )}
+          </div>
           {entry.telegram && (
-            <div className="mt-1 inline-flex items-center gap-1 text-xs text-vanilla/60 ml-3">
+            <div className="mt-1 inline-flex items-center gap-1 text-xs text-vanilla/60">
               <Send size={12} /> {entry.telegram}
             </div>
           )}
@@ -90,7 +99,7 @@ export function CamInterestAdmin() {
           <div className="eyebrow text-champagne">Cam-Interessenten</div>
           <h2 className="font-display text-xl text-vanilla">Wollen benachrichtigt werden</h2>
           <p className="mt-1 text-xs leading-relaxed text-vanilla/55">
-            Anmeldungen über die Seite „Cam-Sessions“. Wenn du wieder Cam-Sessions anbietest, schreib diesen Personen und markiere sie dann als benachrichtigt.
+            Anmeldungen über die Seite „Cam-Sessions“. Wenn du wieder Cam-Sessions anbietest, ruf diese Personen an (Nummer antippen) und markiere sie dann als benachrichtigt.
           </p>
         </div>
       </div>
@@ -106,7 +115,7 @@ export function CamInterestAdmin() {
               <div className="eyebrow text-champagne/80">Wartend ({waiting.length})</div>
               {waiting.length > 0 && (
                 <button type="button" onClick={copyEmails} className="inline-flex items-center gap-1 text-xs text-vanilla/60 hover:text-champagne">
-                  <Copy size={12} /> {copied ? "Kopiert" : "Alle E-Mails kopieren"}
+                  <Copy size={12} /> {copied ? "Kopiert" : "Alle Nummern kopieren"}
                 </button>
               )}
             </div>
