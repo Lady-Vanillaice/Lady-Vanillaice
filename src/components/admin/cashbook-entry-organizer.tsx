@@ -164,6 +164,16 @@ export function CashbookEntryOrganizer() {
           font-size: 8px !important;
           letter-spacing: .15em !important;
         }
+        .cashbook-organizer input[type="date"] {
+          display: block;
+          width: 100%;
+          min-width: 0;
+          max-width: 100%;
+          -webkit-appearance: none;
+          appearance: none;
+          box-sizing: border-box;
+        }
+        .cashbook-organizer input[type="date"]::-webkit-date-and-time-value { text-align: left; }
         .cashbook-organizer .luxe-input {
           min-height: 42px;
           padding: .48rem .55rem !important;
@@ -196,4 +206,4 @@ function EntryForm(props: { showMinutes?: boolean; minutes?: string; setMinutes?
   </form>;
 }
 
-function Field({ label, children }: { label:string; children:ReactNode }) { return <label className="block space-y-1"><span className="block text-[9px] uppercase tracking-[.16em] text-vanilla/55">{label}</span>{children}</label>; }
+function Field({ label, children }: { label:string; children:ReactNode }) { return <label className="block min-w-0 space-y-1"><span className="block text-[9px] uppercase tracking-[.16em] text-vanilla/55">{label}</span>{children}</label>; }
