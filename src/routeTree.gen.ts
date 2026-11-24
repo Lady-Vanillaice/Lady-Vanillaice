@@ -56,6 +56,7 @@ import { Route as AuthenticatedAdminKalenderRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminKassenbuchRouteImport } from './routes/_authenticated/admin.kassenbuch'
 import { Route as AuthenticatedAdminKundenRouteImport } from './routes/_authenticated/admin.kunden'
 import { Route as AuthenticatedAdminNewsletterRouteImport } from './routes/_authenticated/admin.newsletter'
+import { Route as AuthenticatedAdminStatusbilderRouteImport } from './routes/_authenticated/admin.statusbilder'
 import { Route as AuthenticatedAdminTermineRouteImport } from './routes/_authenticated/admin.termine'
 import { Route as AuthenticatedAdminTerminplanRouteImport } from './routes/_authenticated/admin.terminplan'
 import { Route as AuthenticatedAdminUmplanenRouteImport } from './routes/_authenticated/admin.umplanen'
@@ -317,6 +318,12 @@ const AuthenticatedAdminNewsletterRoute =
     path: '/newsletter',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminStatusbilderRoute =
+  AuthenticatedAdminStatusbilderRouteImport.update({
+    id: '/statusbilder',
+    path: '/statusbilder',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminTermineRoute =
   AuthenticatedAdminTermineRouteImport.update({
     id: '/termine',
@@ -444,6 +451,7 @@ export interface FileRoutesByFullPath {
   '/admin/kassenbuch': typeof AuthenticatedAdminKassenbuchRoute
   '/admin/kunden': typeof AuthenticatedAdminKundenRoute
   '/admin/newsletter': typeof AuthenticatedAdminNewsletterRoute
+  '/admin/statusbilder': typeof AuthenticatedAdminStatusbilderRoute
   '/admin/termine': typeof AuthenticatedAdminTermineRoute
   '/admin/terminplan': typeof AuthenticatedAdminTerminplanRoute
   '/admin/umplanen': typeof AuthenticatedAdminUmplanenRoute
@@ -505,6 +513,7 @@ export interface FileRoutesByTo {
   '/admin/kassenbuch': typeof AuthenticatedAdminKassenbuchRoute
   '/admin/kunden': typeof AuthenticatedAdminKundenRoute
   '/admin/newsletter': typeof AuthenticatedAdminNewsletterRoute
+  '/admin/statusbilder': typeof AuthenticatedAdminStatusbilderRoute
   '/admin/termine': typeof AuthenticatedAdminTermineRoute
   '/admin/terminplan': typeof AuthenticatedAdminTerminplanRoute
   '/admin/umplanen': typeof AuthenticatedAdminUmplanenRoute
@@ -569,6 +578,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/kassenbuch': typeof AuthenticatedAdminKassenbuchRoute
   '/_authenticated/admin/kunden': typeof AuthenticatedAdminKundenRoute
   '/_authenticated/admin/newsletter': typeof AuthenticatedAdminNewsletterRoute
+  '/_authenticated/admin/statusbilder': typeof AuthenticatedAdminStatusbilderRoute
   '/_authenticated/admin/termine': typeof AuthenticatedAdminTermineRoute
   '/_authenticated/admin/terminplan': typeof AuthenticatedAdminTerminplanRoute
   '/_authenticated/admin/umplanen': typeof AuthenticatedAdminUmplanenRoute
@@ -633,6 +643,7 @@ export interface FileRouteTypes {
     | '/admin/kassenbuch'
     | '/admin/kunden'
     | '/admin/newsletter'
+    | '/admin/statusbilder'
     | '/admin/termine'
     | '/admin/terminplan'
     | '/admin/umplanen'
@@ -694,6 +705,7 @@ export interface FileRouteTypes {
     | '/admin/kassenbuch'
     | '/admin/kunden'
     | '/admin/newsletter'
+    | '/admin/statusbilder'
     | '/admin/termine'
     | '/admin/terminplan'
     | '/admin/umplanen'
@@ -757,6 +769,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/kassenbuch'
     | '/_authenticated/admin/kunden'
     | '/_authenticated/admin/newsletter'
+    | '/_authenticated/admin/statusbilder'
     | '/_authenticated/admin/termine'
     | '/_authenticated/admin/terminplan'
     | '/_authenticated/admin/umplanen'
@@ -1150,6 +1163,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminNewsletterRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/statusbilder': {
+      id: '/_authenticated/admin/statusbilder'
+      path: '/statusbilder'
+      fullPath: '/admin/statusbilder'
+      preLoaderRoute: typeof AuthenticatedAdminStatusbilderRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/termine': {
       id: '/_authenticated/admin/termine'
       path: '/termine'
@@ -1263,6 +1283,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminKassenbuchRoute: typeof AuthenticatedAdminKassenbuchRoute
   AuthenticatedAdminKundenRoute: typeof AuthenticatedAdminKundenRoute
   AuthenticatedAdminNewsletterRoute: typeof AuthenticatedAdminNewsletterRoute
+  AuthenticatedAdminStatusbilderRoute: typeof AuthenticatedAdminStatusbilderRoute
   AuthenticatedAdminTermineRoute: typeof AuthenticatedAdminTermineRoute
   AuthenticatedAdminTerminplanRoute: typeof AuthenticatedAdminTerminplanRoute
   AuthenticatedAdminUmplanenRoute: typeof AuthenticatedAdminUmplanenRoute
@@ -1285,6 +1306,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminKassenbuchRoute: AuthenticatedAdminKassenbuchRoute,
   AuthenticatedAdminKundenRoute: AuthenticatedAdminKundenRoute,
   AuthenticatedAdminNewsletterRoute: AuthenticatedAdminNewsletterRoute,
+  AuthenticatedAdminStatusbilderRoute: AuthenticatedAdminStatusbilderRoute,
   AuthenticatedAdminTermineRoute: AuthenticatedAdminTermineRoute,
   AuthenticatedAdminTerminplanRoute: AuthenticatedAdminTerminplanRoute,
   AuthenticatedAdminUmplanenRoute: AuthenticatedAdminUmplanenRoute,

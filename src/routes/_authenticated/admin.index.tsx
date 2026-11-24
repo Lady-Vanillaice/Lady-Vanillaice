@@ -28,7 +28,7 @@ export const Route = createFileRoute("/_authenticated/admin/")({
 });
 
 type HubCard = {
-  to: "/admin/kalender" | "/admin/warteliste" | "/admin/terminplan" | "/admin/termine" | "/admin/duo" | "/admin/contentdreh" | "/admin/custom" | "/admin/fotoshooting" | "/admin/journal" | "/admin/kassenbuch" | "/admin/erfahrungsberichte" | "/admin/umplanen" | "/admin/kunden" | "/admin/agb" | "/admin/newsletter";
+  to: "/admin/kalender" | "/admin/warteliste" | "/admin/terminplan" | "/admin/termine" | "/admin/duo" | "/admin/contentdreh" | "/admin/custom" | "/admin/fotoshooting" | "/admin/journal" | "/admin/kassenbuch" | "/admin/erfahrungsberichte" | "/admin/umplanen" | "/admin/kunden" | "/admin/agb" | "/admin/newsletter" | "/admin/statusbilder";
   title: string;
   description: string;
   Icon: typeof Calendar;
@@ -78,6 +78,7 @@ const HUB_GROUPS: HubGroup[] = [
     { to: "/admin/newsletter", title: "Neue Termine versenden", description: "Newsletter an bestätigte Empfänger senden.", Icon: Send },
     { to: "/admin/erfahrungsberichte", title: "Erfahrungsberichte", description: "Eingereichte Erfahrungsberichte freigeben.", Icon: Quote },
     { to: "/admin/journal", title: "Journal", description: "Journalbeiträge als WhatsApp-Statusbild herunterladen.", Icon: BookOpen },
+    { to: "/admin/statusbilder", title: "Statusbilder", description: "Preise, Langzeiterziehung, Cam & mehr als WhatsApp-Statusbild herunterladen.", Icon: Download },
     { to: "/admin/agb", title: "AGB", description: "AGB-Text bearbeiten und einfügen.", Icon: MessageSquare },
   ]},
 ];
