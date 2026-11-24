@@ -48,6 +48,7 @@ import { de } from "date-fns/locale";
 import { listStudios } from "@/lib/studio.functions";
 import { CalendarSpecialsAdmin } from "@/components/admin/calendar-specials-admin";
 import { CalendarWaitlistAdmin } from "@/components/admin/calendar-waitlist-admin";
+import { CamInterestAdmin } from "@/components/admin/cam-interest-admin";
 
 function berlinDayKey(value: string | Date) {
   return new Intl.DateTimeFormat("sv-SE", {
@@ -256,6 +257,7 @@ function AdminKalenderPage() {
           <CalendarSpecialsAdmin />
 
           <CalendarWaitlistAdmin />
+          <CamInterestAdmin />
 
           <div className="mt-8 space-y-6">
             {slotsQ.isLoading && (

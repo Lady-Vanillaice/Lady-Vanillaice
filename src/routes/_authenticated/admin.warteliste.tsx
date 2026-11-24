@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/site/PageHeader";
 import { CalendarWaitlistAdmin } from "@/components/admin/calendar-waitlist-admin";
+import { CamInterestAdmin } from "@/components/admin/cam-interest-admin";
 
 export const Route = createFileRoute("/_authenticated/admin/warteliste")({
   head: () => ({
@@ -30,6 +31,7 @@ function AdminWaitlistPage() {
             <ArrowLeft size={12} /> Zum Admin-Bereich
           </Link>
           <CalendarWaitlistAdmin />
+          <CamInterestAdmin />
         </div>
       </section>
     </>
