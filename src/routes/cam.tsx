@@ -115,6 +115,26 @@ function CamPage() {
         </div>
       </section>
 
+      <section className="pb-16">
+        <div className="container-luxe max-w-2xl">
+          <div className="border border-champagne/40 bg-card p-6 md:p-10 text-center">
+            <div className="eyebrow mb-2">{tr("Tribut", "Tribute")}</div>
+            <h2 className="font-display text-3xl text-vanilla mb-4">
+              {tr("5–10 Minuten", "5–10 minutes")} <span className="gold-text">50 €</span>
+            </h2>
+            <p className="text-sm leading-relaxed text-vanilla/75">
+              {tr(
+                "Für kurze Zeit gehörst du mir. Willst du länger vor mir knien? Jede weitere Minute kostet dich 5 €. Meine Zeit ist kostbar – und du zahlst für jede einzelne Minute.",
+                "For a short while you belong to me. Want to kneel before me longer? Every additional minute costs you €5. My time is precious – and you pay for every single minute.",
+              )}
+            </p>
+            <p className="mt-4 text-xs text-vanilla/55">
+              {tr("Bezahlt wird vor der Session.", "Payment is due before the session.")}
+            </p>
+          </div>
+        </div>
+      </section>
+
       <section className="pb-24">
         <div className="container-luxe max-w-2xl">
           <div className="border border-champagne/25 bg-card p-6 md:p-10">
