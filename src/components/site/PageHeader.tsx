@@ -60,7 +60,7 @@ export function PageHeader({
             <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-3">
               {([
                 { to: "/admin/terminplan" as const, title: "Mein Terminplan", text: "Bestätigte Termine nach Datum und Uhrzeit.", Icon: CalendarClock },
-                { to: "/admin/kalender" as const, title: "Kalender & Verfügbarkeiten", text: "Zeitfenster, Urlaub, Specials und Warteliste.", Icon: CalendarDays },
+                { to: "/admin/kalender" as const, title: "Kalender", text: "Zeitfenster, Urlaub, Specials und Warteliste.", Icon: CalendarDays },
               ]).map(({ to, title, text, Icon }) => (
                 <Link
                   key={title}
