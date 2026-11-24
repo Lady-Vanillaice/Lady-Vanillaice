@@ -206,6 +206,11 @@ function AdminHubPage() {
             <div className="font-display text-lg text-vanilla group-hover:text-champagne transition">Journal</div>
             <div className="text-xs text-vanilla/45 mt-1">Beiträge als Statusbild herunterladen</div>
           </Link>
+          <Link to="/admin/statusbilder" className="group bg-card border border-champagne/25 p-4 hover:border-champagne/60 transition">
+            <Download size={19} className="text-champagne mb-2" />
+            <div className="font-display text-lg text-vanilla group-hover:text-champagne transition">Statusbilder</div>
+            <div className="text-xs text-vanilla/45 mt-1">Alle Kategorien für WhatsApp</div>
+          </Link>
         </div>
       </section>
 
