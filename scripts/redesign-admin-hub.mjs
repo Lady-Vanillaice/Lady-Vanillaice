@@ -36,6 +36,7 @@ const groups = `const HUB_GROUPS: HubGroup[] = [
   { label: "5 · Kommunikation & Website", hint: "Nachrichten und Inhalte", cards: [
     { to: "/admin/newsletter", title: "Neue Termine versenden", description: "Neue verfügbare Termine per Newsletter verschicken.", Icon: Send },
     { to: "/admin/erfahrungsberichte", title: "Erfahrungsberichte", description: "Eingegangene Erfahrungsberichte prüfen und freigeben.", Icon: Quote },
+    { to: "/admin/statusbilder", title: "Statusbilder", description: "Alle Kategorien als WhatsApp-Statusbild herunterladen.", Icon: Download },
     { to: "/admin/agb", title: "AGB bearbeiten", description: "AGB-Text der Website verwalten.", Icon: MessageSquare },
   ]},
 ];`;
