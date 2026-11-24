@@ -37,11 +37,11 @@ export function PageHeader({
             </div>
             <div className="grid grid-cols-5 gap-1 sm:gap-3">
               {([
-                { to: "/admin/terminplan" as const, title: "Externer Termin", text: "Termin von Telegram, E-Mail oder Telefon eintragen.", Icon: CalendarPlus, search: undefined },
+                { to: "/admin/terminplan" as const, title: "Extern", text: "Termin von Telegram, E-Mail oder Telefon eintragen.", Icon: CalendarPlus, search: undefined },
                 { to: "/admin/kassenbuch" as const, title: "Zahlsklave", text: "Zahlung direkt ins Kassenbuch eintragen.", Icon: Wallet, search: { neu: "zahlsklave" } },
                 { to: "/admin/custom" as const, title: "Custom", text: "Custom-Auftrag und Zahlung erfassen.", Icon: Sparkles, search: undefined },
-                { to: "/admin/kassenbuch" as const, title: "Camsession", text: "Name, Betrag, Zahlungsart und Dauer ins Kassenbuch eintragen.", Icon: Video, search: { neu: "camsession" } },
-                { to: "/admin/kassenbuch" as const, title: "Langzeit\u00ADerziehung", text: "Name, Paket, Betrag und Zahlungsart ins Kassenbuch eintragen.", Icon: Crown, search: { neu: "langzeiterziehung" } },
+                { to: "/admin/kassenbuch" as const, title: "Cam", text: "Name, Betrag, Zahlungsart und Dauer ins Kassenbuch eintragen.", Icon: Video, search: { neu: "camsession" } },
+                { to: "/admin/kassenbuch" as const, title: "Langzeit", text: "Name, Paket, Betrag und Zahlungsart ins Kassenbuch eintragen.", Icon: Crown, search: { neu: "langzeiterziehung" } },
               ]).map(({ to, title, text, Icon, search }) => (
                 <Link
                   key={title}
