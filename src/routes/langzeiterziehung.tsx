@@ -39,7 +39,7 @@ function LangzeiterziehungPage() {
     },
     {
       name: "Intensiv",
-      price: "450 €",
+      price: "500 €",
       highlight: false,
       items: [
         twiceDaily,
@@ -50,7 +50,7 @@ function LangzeiterziehungPage() {
     },
     {
       name: "Premium",
-      price: "700 €",
+      price: "750 €",
       highlight: true,
       items: [
         twiceDaily,
