@@ -187,6 +187,7 @@ export const STATUS_CARDS: StatusCard[] = [
       "Getränke|Etwas Feines zum Anstoßen.",
       "Kleidung & Schuhe|Für meinen Auftritt.",
       "Parfüm & Schmuck|Damit du an mich denkst.",
+      "Spielzeuge für Sessions|Von Peitschen bis ausgefallen – für noch mehr Kreativität.",
     ],
     note: "Die ganze Liste auf meiner Homepage",
     path: "geschenke-wuensche",
