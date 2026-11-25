@@ -1,4 +1,6 @@
 import { createFileRoute, Link, useRouter, useNavigate } from "@tanstack/react-router";
+import { SessionPlanEditor } from "@/components/admin/SessionPlanEditor";
+import { berlinMinutesToMs, planToOffsets, planTotalMinutes, setPlanInNote, type PlanPhase } from "@/lib/session-plan";
 import { formatEuro, parseEuroInput, parseLatexSurcharge, setLatexSurchargeInNote } from "@/lib/latex-surcharge";
 import { realLocation } from "@/lib/slot-location";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -282,6 +284,33 @@ setDuoPartner(b.availability_slots?.duo_partner ?? "");
       router.invalidate();
     },
   });
+  const [planSaved, setPlanSaved] = useState(false);
+  const planMut = useMutation({
+    mutationFn: async (phases: PlanPhase[] | null) => {
+      const savedNote = (detailQ.data?.booking as { admin_note?: string | null } | undefined)?.admin_note ?? "";
+      const nextNote = setPlanInNote(savedNote, phases);
+      if (nextNote.length > 2000) throw new Error("Die Notiz ist zu lang. Bitte kürze die Notiz etwas.");
+      if (phases?.length) {
+        const dateKey = overrideDate || null;
+        if (!dateKey) throw new Error("Bitte zuerst oben das Datum des Termins eintragen.");
+        const offsets = planToOffsets(phases);
+        const startIso = new Date(berlinMinutesToMs(dateKey, offsets[0].start)).toISOString();
+        const total = planTotalMinutes(phases);
+        if (total < 15 || total > 1440) throw new Error("Der gesamte Ablauf muss zwischen 15 Minuten und 24 Stunden lang sein.");
+        await saveSchedule({ data: { id, requested_start: startIso, duration_minutes: total } });
+      }
+      await saveNote({ data: { id, admin_note: nextNote } });
+      setNote(nextNote);
+    },
+    onSuccess: () => {
+      setPlanSaved(true);
+      setTimeout(() => setPlanSaved(false), 2500);
+      qc.invalidateQueries({ queryKey: ["admin-booking-detail", id] });
+      qc.invalidateQueries({ queryKey: ["admin-bookings"] });
+      router.invalidate();
+    },
+  });
+
   const studioMut = useMutation({
     mutationFn: () => saveStudio({ data: { id, studio: studioName, studio_address: studioAddress.trim() || null } }),
     onSuccess: () => {
@@ -1574,6 +1603,14 @@ const depositDateMut = useMutation({
                 {scheduleMut.isPending ? "Speichere…" : "Termin speichern"}
               </button>
             </div>
+            <SessionPlanEditor
+              adminNote={booking.admin_note ?? null}
+              defaultStart={overrideTime}
+              saving={planMut.isPending}
+              saved={planSaved}
+              error={planMut.error ? (planMut.error as Error).message : null}
+              onSave={(phases) => planMut.mutate(phases)}
+            />
             <BookingRestTime key={id} bookingId={id} startsAt={booking.requested_start || slot?.starts_at || null} durationMinutes={Number(booking.duration_minutes || 0)} />
             {scheduleMut.error && (
               <p className="mt-3 text-xs text-bordeaux">

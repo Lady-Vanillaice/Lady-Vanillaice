@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { parsePlan, phaseLabel } from "@/lib/session-plan";
 import { realLocation } from "@/lib/slot-location";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -513,6 +514,22 @@ function EntryCard({ e, closure }: { e: Entry; closure?: { report_decision: stri
         <div className="text-sm text-vanilla/75">
           <span className="text-vanilla/50">Zeit:</span> {timeRange}
         </div>
+        {(() => {
+          const plan = parsePlan(e.admin_note);
+          if (!plan) return null;
+          return (
+            <div className="border-l-2 border-champagne/50 pl-3 space-y-1 text-sm">
+              {plan.map((p, i) => (
+                <div
+                  key={i}
+                  className={p.kind === "liegezeit" ? (p.supervised ? "text-champagne" : "text-purple-200") : "text-vanilla/85"}
+                >
+                  {p.from}–{p.to} Uhr · {phaseLabel(p)}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
         <div className="text-sm text-vanilla/75">
           <span className="text-vanilla/50">Dauer:</span> {duration}
         </div>

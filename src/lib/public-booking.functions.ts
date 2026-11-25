@@ -525,6 +525,12 @@ export const proposeBookingTime = createServerFn({ method: "POST" })
       busyRanges.push(...(bookedRanges.get(closed.id) ?? []));
     }
     busyRanges.sort((a, b) => a.s - b.s);
+    if (busyRanges.length) {
+      const { loadFreeLiegezeitHoles } = await import("./session-plan.server");
+      const { subtractHoles } = await import("./session-plan");
+      const holes = await loadFreeLiegezeitHoles(busyRanges[0].s, busyRanges[busyRanges.length - 1].e);
+      if (holes.length) busyRanges.splice(0, busyRanges.length, ...subtractHoles(busyRanges, holes, 0).sort((a, b) => a.s - b.s));
+    }
 
     const fits = (t: number, searchStart: number, searchEnd: number) => {
       if (t < searchStart) return false;
@@ -672,7 +678,15 @@ export const submitBooking = createServerFn({ method: "POST" })
       }
 
       const buffer = (targetSlot.buffer_minutes ?? 30) * 60_000;
-      const busy = await listBusyRanges(targetSlot.id);
+      const busyRaw = await listBusyRanges(targetSlot.id);
+      const { loadFreeLiegezeitHoles } = await import("./session-plan.server");
+      const { subtractHoles } = await import("./session-plan");
+      const submitHoles = await loadFreeLiegezeitHoles(reqStart, reqEnd);
+      const busyMs = busyRaw.map((b) => ({ s: new Date(b.starts_at).getTime(), e: new Date(b.ends_at).getTime() }));
+      const busy = (submitHoles.length ? subtractHoles(busyMs, submitHoles, 0) : busyMs).map((r) => ({
+        starts_at: new Date(r.s).toISOString(),
+        ends_at: new Date(r.e).toISOString(),
+      }));
       const conflict = busy.some((b) => {
         const bs = new Date(b.starts_at).getTime() - buffer;
         const be = new Date(b.ends_at).getTime() + buffer;
@@ -867,6 +881,9 @@ export const listUpcomingSlots = createServerFn({ method: "GET" }).handler(async
   const slotIds = openSlots.map((s) => s.id);
   const { loadManualBookedSlotIds } = await import("./slot-manual-booked.functions");
   const manualBookedIds = await loadManualBookedSlotIds();
+  const { loadFreeLiegezeitHoles } = await import("./session-plan.server");
+  const { subtractHoles } = await import("./session-plan");
+  const liegezeitHoles = await loadFreeLiegezeitHoles(rangeStart.getTime(), rangeEnd.getTime());
 
   const { data: closedSlots } = await supabaseAdmin
     .from("availability_slots")
@@ -929,6 +946,8 @@ export const listUpcomingSlots = createServerFn({ method: "GET" }).handler(async
         }
       }
 
+    // Unbeaufsichtigte Liegezeit eines Gastes bleibt für andere Sessions frei.
+    if (liegezeitHoles.length) busyRanges.splice(0, busyRanges.length, ...subtractHoles(busyRanges, liegezeitHoles, buffer));
     // Im Admin per „Belegt“-Knopf markierte Zeitfenster gelten öffentlich als komplett belegt.
     if (manualBookedIds.has(slot.id)) busyRanges.push({ s: winStart, e: winEnd });
 
