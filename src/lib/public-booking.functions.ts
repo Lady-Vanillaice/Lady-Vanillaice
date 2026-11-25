@@ -590,6 +590,20 @@ export const submitBooking = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    if (data.slot_id) {
+      // Im Admin als „Belegt“ markiert → nicht buchbar.
+      const { loadManualBookedSlotIds } = await import("./slot-manual-booked.functions");
+      if ((await loadManualBookedSlotIds()).has(data.slot_id.split("-free-")[0])) {
+        throw new Error("Dieser Termin ist nicht mehr verfügbar. Bitte wähle einen anderen Tag.");
+      }
+      // Mindestbuchung des Zeitfensters einhalten.
+      const { loadSlotMinDurations, minMinutesForSlotId, formatMinHours } = await import("./slot-min-duration.functions");
+      const minMinutes = minMinutesForSlotId(await loadSlotMinDurations(), data.slot_id);
+      if (minMinutes != null && data.duration_minutes != null && data.duration_minutes < minMinutes) {
+        throw new Error(`An diesem Tag gibt es eine Mindestbuchung von ${formatMinHours(minMinutes)}. Bitte wähle eine längere Dauer.`);
+      }
+    }
+
     let insertData: {
       slot_id?: string | null;
       guest_name: string;

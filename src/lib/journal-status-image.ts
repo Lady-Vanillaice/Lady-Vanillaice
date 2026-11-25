@@ -182,7 +182,7 @@ export const createJournalStatusImage = createClientOnlyFn(async (post: JournalP
 
   if (!options?.downloadOnly && shareNavigator.share && (!shareNavigator.canShare || shareNavigator.canShare({ files: [file] }))) {
     try {
-      await shareNavigator.share({ files: [file], title: post.title });
+      await shareNavigator.share({ files: [file] });
       return;
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;

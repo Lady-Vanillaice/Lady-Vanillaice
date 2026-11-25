@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { formatMinHours, listSlotMinDurations, setSlotMinDuration } from "@/lib/slot-min-duration.functions";
 import { listManualBookedSlotIds, setSlotManualBooked } from "@/lib/slot-manual-booked.functions";
 import { isPrivateLocation, realLocation } from "@/lib/slot-location";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -201,6 +202,17 @@ function AdminKalenderPage() {
     },
   });
 
+  const listMinDurationsFn = useServerFn(listSlotMinDurations);
+  const minDurationsQ = useQuery({
+    queryKey: ["slot-min-durations"],
+    queryFn: () => listMinDurationsFn(),
+  });
+  const setMinDurationFn = useServerFn(setSlotMinDuration);
+  const minDurationMut = useMutation({
+    mutationFn: (v: { id: string; minutes: number | null }) => setMinDurationFn({ data: v }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["slot-min-durations"] }),
+  });
+
   const setHiddenFn = useServerFn(setSlotHidden);
   const hiddenMut = useMutation({
     mutationFn: (v: { id: string; is_hidden: boolean }) =>
@@ -373,6 +385,11 @@ function AdminKalenderPage() {
                                 · mit {s.duo_partner}
                               </span>
                             )}
+                            {minDurationsQ.data?.[s.id] && (
+                              <span className="inline-flex items-center gap-1 text-[0.6rem] uppercase tracking-[0.2em] px-2 py-0.5 bg-champagne text-background">
+                                Mind. {formatMinHours(minDurationsQ.data[s.id])}
+                              </span>
+                            )}
                             {manualBookedIds.has(s.id) && (
                               <span className="inline-flex items-center gap-1 text-[0.6rem] uppercase tracking-[0.2em] px-2 py-0.5 bg-bordeaux/60 text-vanilla">
                                 Öffentlich belegt
@@ -388,6 +405,27 @@ function AdminKalenderPage() {
                             Kein einzelner Buchungsslot — Kunden wählen darin
                             Startzeit und Dauer frei ab 30 Min.
                           </div>
+                          <label className="mt-2 flex flex-wrap items-center gap-2 text-xs text-vanilla/65">
+                            <span className="text-[0.6rem] uppercase tracking-[0.2em] text-champagne/80">Mindestbuchung</span>
+                            <select
+                              value={String(minDurationsQ.data?.[s.id] ?? "")}
+                              disabled={minDurationMut.isPending || minDurationsQ.isLoading}
+                              onChange={(e) =>
+                                minDurationMut.mutate({
+                                  id: s.id,
+                                  minutes: e.target.value ? Number(e.target.value) : null,
+                                })
+                              }
+                              className="input-luxe !w-auto !py-1 !px-2 text-xs"
+                            >
+                              <option value="">Keine</option>
+                              {[60, 90, 120, 150, 180, 240, 300, 360].map((m) => (
+                                <option key={m} value={m}>
+                                  mind. {formatMinHours(m)}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
                           <div className="text-xs text-vanilla/55 mt-1 flex flex-wrap items-center gap-3">
                             <span className="inline-flex items-center gap-1 min-w-0">
                               <MapPin size={11} />{" "}

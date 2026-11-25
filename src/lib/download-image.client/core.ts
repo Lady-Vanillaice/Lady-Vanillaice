@@ -339,10 +339,8 @@ export async function saveCanvasAsPng(canvas: HTMLCanvasElement, filename: strin
     && (!sharingNavigator.canShare || sharingNavigator.canShare({ files: [file] }))
   ) {
     try {
-      await sharingNavigator.share({
-        files: [file],
-        title: "Lady Vanilla Ice",
-      });
+      // Kein Titel/Text mitgeben: sonst füllt WhatsApp das Beschriftungsfeld vor.
+      await sharingNavigator.share({ files: [file] });
       return;
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;

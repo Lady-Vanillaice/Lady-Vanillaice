@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { formatMinHours, listSlotMinDurations, minMinutesForDay } from "@/lib/slot-min-duration.functions";
 import { isPrivateLocation, PRIVATE_LOCATION_PUBLIC_TEXT } from "@/lib/slot-location";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -153,6 +154,12 @@ function KalenderPage() {
     queryFn: () => list(),
     staleTime: 30_000,
   });
+  const listMinDurations = useServerFn(listSlotMinDurations);
+  const minDurationsQ = useQuery({
+    queryKey: ["public-slot-min-durations"],
+    queryFn: () => listMinDurations(),
+    staleTime: 30_000,
+  });
   const listSpecials = useServerFn(listCalendarSpecials);
   const specialsQ = useQuery({
     queryKey: ["calendar-specials"],
@@ -227,6 +234,7 @@ function KalenderPage() {
       ? selectedDaySlot
       : null;
   const selectedSpecial = selectedKey ? specialByDay.get(selectedKey) ?? null : null;
+  const selectedMinMinutes = minMinutesForDay(minDurationsQ.data, selectedDaySlot);
   const selectedCams = selectedKey ? camByDay.get(selectedKey) ?? [] : [];
   const selectedIsFullyBooked = Boolean(
     selectedDaySlot?.is_fully_booked && !selectedDaySlot?.is_vacation,
@@ -278,6 +286,7 @@ function KalenderPage() {
                   const cams = camByDay.get(key);
                   const isFullyBooked = slot?.is_fully_booked ?? false;
                   const isVacation = slot?.is_vacation ?? false;
+                  const dayMinMinutes = minMinutesForDay(minDurationsQ.data, slot);
                   const hasBooking = slot?.has_booking ?? false;
                   const partiallyBooked = hasBooking && !isFullyBooked;
                   const isOther = !isSameMonth(day, cursor);
@@ -342,6 +351,11 @@ function KalenderPage() {
                           )}
                         </span>
                       )}
+                      {!isPast && !isVacation && !isFullyBooked && dayMinMinutes != null && (
+                        <span className="absolute -top-1.5 -right-1 z-10 rounded-sm bg-champagne px-1 py-[1px] text-[0.5rem] font-semibold leading-none text-background shadow-[0_0_8px_rgba(216,182,118,0.6)] pointer-events-none">
+                          {tr(`ab ${(dayMinMinutes / 60).toLocaleString("de-DE", { maximumFractionDigits: 1 })}h`, `${(dayMinMinutes / 60).toLocaleString("en-US", { maximumFractionDigits: 1 })}h+`)}
+                        </span>
+                      )}
                       {!isPast && !isVacation && ((has && !isFullyBooked) || cams) && (
                         <span className="absolute bottom-1 flex items-center gap-1 pointer-events-none">
                           {has && !isFullyBooked && <span className="w-1 h-1 rounded-full bg-champagne" />}
@@ -392,6 +406,17 @@ function KalenderPage() {
                 </div>
               )}
 
+              {selectedDay && selectedMinMinutes != null && !selectedIsFullyBooked && (
+                <div className="mb-5 border-2 border-champagne bg-champagne/15 p-4">
+                  <div className="eyebrow mb-1 text-champagne">{tr("Mindestbuchung", "Minimum booking")}</div>
+                  <p className="font-display text-xl text-vanilla">
+                    {tr(`Mindestens ${formatMinHours(selectedMinMinutes, "de")} Session`, `Minimum ${formatMinHours(selectedMinMinutes, "en")} session`)}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-vanilla/70">
+                    {tr("An diesem Tag können nur Sessions ab dieser Dauer gebucht werden.", "On this day, only sessions of at least this length can be booked.")}
+                  </p>
+                </div>
+              )}
               {selectedSpecial && (
                 <div className="mb-5 border border-champagne/50 bg-champagne/10 p-4">
                   <div className="mb-1 flex items-center gap-2 text-champagne">
@@ -436,6 +461,7 @@ function KalenderPage() {
                   initialStartTime={linkedStartTime}
                   onBooked={() => slotsQ.refetch()}
                   specialMinHours={selectedSpecial?.minHours ?? null}
+                  minMinutes={selectedMinMinutes}
                 />
               )}
 
@@ -652,20 +678,31 @@ function BookingPanel({
   initialStartTime,
   onBooked,
   specialMinHours = null,
+  minMinutes = null,
 }: {
   slot: Slot;
   initialStartTime?: string | null;
   onBooked: () => void;
   specialMinHours?: number | null;
+  minMinutes?: number | null;
 }) {
   const tr = useTr();
   const { lang } = useLang();
-  const DURATIONS = getDurations(lang);
+  const DURATIONS = getDurations(lang).filter(
+    (d) => minMinutes == null || typeof d.value !== "number" || d.value >= minMinutes,
+  );
   const propose = useServerFn(proposeBookingTime);
   const submit = useServerFn(submitBooking);
   const qc = useQueryClient();
 
   const [durationChoice, setDurationChoice] = useState<number | "custom" | "ganztags">(60);
+  useEffect(() => {
+    if (minMinutes != null && typeof durationChoice === "number" && durationChoice < minMinutes) {
+      const first = DURATIONS.find((d) => typeof d.value === "number");
+      setDurationChoice(first ? first.value : "custom");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [minMinutes, slot.id]);
   const [earliest, setEarliest] = useState(initialStartTime || "10:00");
   const [latest, setLatest] = useState("20:00");
   const [proposed, setProposed] = useState<{ start: string; end: string } | null>(null);
@@ -732,7 +769,7 @@ function BookingPanel({
   const effectiveDuration = durationChoice === "ganztags"
     ? slotDurationMinutes
     : durationChoice === "custom"
-    ? 60
+    ? Math.max(60, minMinutes ?? 0)
     : durationChoice;
 
   const proposeMut = useMutation({
