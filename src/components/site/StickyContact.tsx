@@ -1,3 +1,4 @@
+import { useRouterState } from "@tanstack/react-router";
 import { useT } from "@/i18n";
 
 const WHATSAPP_LINK = "https://wa.me/4915170568230";
@@ -17,6 +18,9 @@ function WhatsAppIcon({ className }: { className?: string }) {
 
 export function StickyContact() {
   const t = useT();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  // Im Admin-Bereich verdeckt der Knopf sonst wichtige Schaltflächen.
+  if (pathname.startsWith("/admin")) return null;
   return (
     <div className="lg:hidden fixed bottom-5 right-5 z-40">
       <a

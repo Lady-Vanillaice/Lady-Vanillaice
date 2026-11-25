@@ -615,8 +615,8 @@ const depositDateMut = useMutation({
 
   const TABS = [
     { id: "overview" as const, label: "Übersicht" },
-    { id: "communication" as const, label: "Kommunikation" },
-    { id: "schedule" as const, label: "Termin & Zahlung" },
+    { id: "schedule" as const, label: "Termin & Geld" },
+    { id: "communication" as const, label: "Nachricht" },
     { id: "history" as const, label: "Verlauf" },
   ];
 
@@ -678,53 +678,84 @@ const depositDateMut = useMutation({
   return (
 
     <>
-      <PageHeader
-        eyebrow="Buchungsdetails"
-        title={
-          <>
-            <em className="font-script gold-text not-italic">
-              {booking.guest_name}
-            </em>
-          </>
-        }
-      />
-
-      <section className="py-16">
+      <section className="pt-6 pb-16 md:pt-10">
         <div className="container-luxe max-w-3xl">
           <Link
-            to="/admin"
-            className="inline-flex items-center gap-2 text-xs text-vanilla/55 hover:text-champagne uppercase tracking-[0.2em] mb-8"
+            to="/admin/terminplan"
+            className="inline-flex items-center gap-2 text-[0.65rem] text-vanilla/55 hover:text-champagne uppercase tracking-[0.2em] mb-4"
           >
-            <ArrowLeft size={12} /> Zurück zur Übersicht
+            <ArrowLeft size={12} /> Terminplan
           </Link>
 
-          {/* QUICK SUMMARY */}
-          <div className="bg-card border border-champagne/15 p-5 mb-6 flex flex-wrap items-center gap-x-6 gap-y-3">
-            <div className="flex flex-col">
-              <span className="text-[0.55rem] uppercase tracking-[0.25em] text-vanilla/40 mb-1">Gast</span>
-              <span className="font-display text-lg text-vanilla leading-none">{booking.guest_name}</span>
-            </div>
-            {slot && (
-              <div className="flex flex-col">
-                <span className="text-[0.55rem] uppercase tracking-[0.25em] text-vanilla/40 mb-1">Termin</span>
-                <span className="text-sm text-vanilla/80 leading-none">
-                  {format(new Date(booking.requested_start ?? slot.starts_at), "dd.MM.yyyy · HH:mm", { locale: de })} Uhr
-                </span>
+          {/* KOPF – alles Wichtige auf einen Blick */}
+          {(() => {
+            const startIso = booking.requested_start ?? slot?.starts_at ?? null;
+            const endIso = startIso && booking.duration_minutes
+              ? new Date(new Date(startIso).getTime() + booking.duration_minutes * 60_000).toISOString()
+              : slot?.ends_at ?? null;
+            const place = studioName.trim() || realLocation(slot?.location) || null;
+            const depositAmount = Number(booking.anzahlung ?? 0);
+            const restAmount = Number(booking.bar ?? 0);
+            const phoneDigits = (booking.guest_phone ?? "").replace(/\D/g, "");
+            const hasEmail = booking.guest_email && !String(booking.guest_email).endsWith("@intern.local");
+            return (
+              <div className="bg-card border border-champagne/25 p-4 sm:p-5 mb-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <h1 className="font-display text-2xl sm:text-3xl text-vanilla leading-tight">{booking.guest_name}</h1>
+                  <StatusBadge status={booking.status} />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-sm text-vanilla/80">
+                  {startIso ? (
+                    <div className="flex items-center gap-2">
+                      <Calendar size={13} className="text-champagne shrink-0" />
+                      {format(new Date(startIso), "EEE dd.MM.yyyy", { locale: de })} · {format(new Date(startIso), "HH:mm")}
+                      {endIso ? `–${format(new Date(endIso), "HH:mm")}` : ""} Uhr
+                    </div>
+                  ) : (
+                    <div className="text-vanilla/50">Noch kein Termin festgelegt</div>
+                  )}
+                  {place && (
+                    <div className="flex items-center gap-2"><MapPin size={13} className="text-champagne shrink-0" /> {place}</div>
+                  )}
+                  <div className="flex items-center gap-2 text-champagne/90 text-xs uppercase tracking-[0.14em]">
+                    {isDuoBooking ? `Duo${duoPartner.trim() ? ` mit ${duoPartner.trim()}` : ""}` : "Single"}
+                    {booking.duration_minutes ? ` · ${booking.duration_minutes >= 60 && booking.duration_minutes % 30 === 0 ? `${(booking.duration_minutes / 60).toLocaleString("de-DE")} Std.` : `${booking.duration_minutes} Min.`}` : ""}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 text-[0.65rem] uppercase tracking-[0.14em]">
+                  {depositExemptionReason ? (
+                    <span className="px-2 py-1 bg-vanilla/10 text-vanilla/70">Keine Anzahlung</span>
+                  ) : depositAmount > 0 ? (
+                    <span className={`px-2 py-1 ${booking.anzahlung_paid ? "bg-green-700/30 text-green-200" : "bg-amber-700/30 text-amber-200"}`}>
+                      Anzahlung {depositAmount.toLocaleString("de-DE")} € {booking.anzahlung_paid ? "✓" : "offen"}
+                    </span>
+                  ) : null}
+                  {restAmount > 0 && (
+                    <span className="px-2 py-1 bg-champagne/10 text-champagne">Rest {restAmount.toLocaleString("de-DE")} €</span>
+                  )}
+                </div>
+                {(phoneDigits || hasEmail) && (
+                  <div className="grid grid-cols-3 gap-2 pt-1">
+                    {phoneDigits ? (
+                      <a href={`https://wa.me/${phoneDigits}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 border border-green-500/50 py-2 text-[0.62rem] uppercase tracking-[0.14em] text-green-300 hover:bg-green-500/10">
+                        <MessageSquare size={13} /> WhatsApp
+                      </a>
+                    ) : <span />}
+                    {phoneDigits ? (
+                      <a href={`tel:${booking.guest_phone}`} className="inline-flex items-center justify-center gap-1.5 border border-champagne/40 py-2 text-[0.62rem] uppercase tracking-[0.14em] text-champagne hover:bg-champagne/10">
+                        <Phone size={13} /> Anrufen
+                      </a>
+                    ) : <span />}
+                    {hasEmail ? (
+                      <button type="button" onClick={() => setActiveTab("communication")} className="inline-flex items-center justify-center gap-1.5 border border-champagne/40 py-2 text-[0.62rem] uppercase tracking-[0.14em] text-champagne hover:bg-champagne/10">
+                        <Mail size={13} /> E-Mail
+                      </button>
+                    ) : <span />}
+                  </div>
+                )}
               </div>
-            )}
-            <div className="flex flex-col">
-              <span className="text-[0.55rem] uppercase tracking-[0.25em] text-vanilla/40 mb-1">Status</span>
-              <StatusBadge status={booking.status} />
-            </div>
-            {(booking.anzahlung || 0) > 0 && (
-              <div className="flex flex-col ml-auto">
-                <span className="text-[0.55rem] uppercase tracking-[0.25em] text-vanilla/40 mb-1">Anzahlung</span>
-                <span className={`text-sm leading-none ${booking.anzahlung_paid ? "text-green-300" : "text-champagne"}`}>
-                  {booking.anzahlung_paid ? "✓ eingegangen" : `${Number(booking.anzahlung).toLocaleString("de-DE")} € offen`}
-                </span>
-              </div>
-            )}
-          </div>
+            );
+          })()}
 
           {customerSpecialRules?.trim() && (
             <aside className="mb-6 border border-champagne/40 bg-champagne/10 p-4 sm:p-5" role="note">
@@ -734,13 +765,13 @@ const depositDateMut = useMutation({
           )}
 
           {/* TABS NAV */}
-          <div className="flex flex-wrap gap-1 border-b border-champagne/15 mb-6">
+          <div className="sticky top-0 z-30 -mx-4 px-4 bg-background/95 backdrop-blur grid grid-cols-4 border-b border-champagne/15 mb-5">
             {TABS.map((t) => (
               <button
                 key={t.id}
                 type="button"
-                onClick={() => setActiveTab(t.id)}
-                className={`px-4 py-3 text-[0.65rem] uppercase tracking-[0.2em] transition border-b-2 -mb-px ${
+                onClick={() => { setActiveTab(t.id); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                className={`px-1 py-3 text-[0.58rem] sm:text-[0.65rem] uppercase tracking-[0.12em] sm:tracking-[0.2em] text-center whitespace-nowrap transition border-b-2 -mb-px ${
                   activeTab === t.id
                     ? "border-champagne text-champagne"
                     : "border-transparent text-vanilla/50 hover:text-vanilla"
@@ -755,12 +786,9 @@ const depositDateMut = useMutation({
           {/* STATUS + ACTIONS */}
 
           <div className="bg-card border border-champagne/15 p-6 mb-6">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-              <div>
-                <div className="eyebrow mb-1">Status</div>
-                <StatusBadge status={booking.status} />
-              </div>
-              <div className="text-[0.65rem] text-vanilla/45 text-right">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div className="eyebrow">Status ändern</div>
+              <div className="text-[0.6rem] text-vanilla/45 text-right">
                 <div>
                   Anfrage:{" "}
                   {format(new Date(booking.created_at), "dd.MM.yyyy HH:mm", {
@@ -808,10 +836,10 @@ const depositDateMut = useMutation({
                 <button
                   disabled={booking.status === "waiting_deposit" || statusMut.isPending}
                   onClick={() => reserveBookingWithAmounts()}
-                  className="text-[0.65rem] uppercase tracking-[0.2em] px-3 py-2 border border-vanilla/40 text-vanilla/85 hover:bg-vanilla/10 disabled:opacity-30 inline-flex items-center justify-center gap-1"
+                  className="text-[0.6rem] uppercase tracking-[0.14em] whitespace-nowrap px-2 py-2.5 border border-vanilla/40 text-vanilla/85 hover:bg-vanilla/10 disabled:opacity-30 inline-flex items-center justify-center gap-1"
                   title="Termin für 24 h reservieren — Gast bekommt Reservierungsmail mit 24-h-Hinweis."
                 >
-                  <Hourglass size={12} /> Reservieren (24 h)
+                  <Hourglass size={12} /> Reservieren 24 h
                 </button>
                 <button
                   disabled={booking.status === "confirmed" || statusMut.isPending}
@@ -823,6 +851,11 @@ const depositDateMut = useMutation({
               </div>
             </div>
 
+            <details className="group border-t border-champagne/10 pt-3">
+              <summary className="cursor-pointer list-none text-[0.62rem] uppercase tracking-[0.18em] text-vanilla/55 hover:text-champagne flex items-center justify-between">
+                Weitere Aktionen: Absagen, Umplanen, Löschen <span className="group-open:rotate-180 transition">▾</span>
+              </summary>
+              <div className="pt-3">
             {/* Negative — Ablehnen / Stornieren */}
             <div className="mb-3">
               <div className="text-[0.55rem] uppercase tracking-[0.25em] text-vanilla/35 mb-2">
@@ -893,6 +926,8 @@ const depositDateMut = useMutation({
                 onConfirm={() => deleteMut.mutate()}
               />
             </div>
+              </div>
+            </details>
 
           </div>
 
