@@ -87,6 +87,29 @@ export function GiftGuideContent() {
           </p>
         </GiftCard>
 
+        <GiftCard title={tr("Spielzeuge für unsere Sessions", "Toys for our sessions")}>
+          <p className="mb-3">
+            {tr(
+              "Je mehr ich in meinem Spielzimmer habe, desto kreativer kann ich mit dir werden. Ich freue mich über alles, was eine Session bereichert — vom Klassiker bis zum richtig Ausgefallenen:",
+              "The more I have in my playroom, the more creative I can get with you. I'm happy about anything that enriches a session — from the classics to the truly unusual:"
+            )}
+          </p>
+          <ul className="mb-3 list-disc space-y-1 pl-5 marker:text-champagne">
+            <li>{tr("Peitschen, Flogger, Gerten & Paddel", "Whips, floggers, crops & paddles")}</li>
+            <li>{tr("Fesseln, Manschetten, Seile & Ketten", "Restraints, cuffs, ropes & chains")}</li>
+            <li>{tr("Augenbinden, Masken & Knebel", "Blindfolds, masks & gags")}</li>
+            <li>{tr("Halsbänder & Leinen", "Collars & leashes")}</li>
+            <li>{tr("Spielzeug für Sinne & Reize — von zart bis gemein", "Toys for the senses — from gentle to wicked")}</li>
+            <li>{tr("Ausgefallenes & Besonderes, das ich noch nicht kenne", "Unusual and special things I don't know yet")}</li>
+          </ul>
+          <p>
+            {tr(
+              "Überrasch mich gern — oder sprich mich vorher an, dann sage ich dir, was mir noch fehlt. Und vielleicht kommt dein Geschenk ja direkt bei deiner nächsten Session zum Einsatz.",
+              "Feel free to surprise me — or ask me first and I'll tell you what I'm still missing. And maybe your gift will be put to use at your very next session."
+            )}
+          </p>
+        </GiftCard>
+
         <GiftCard title={tr("Schmuck", "Jewelry")}>
           <p>
             {tr(
