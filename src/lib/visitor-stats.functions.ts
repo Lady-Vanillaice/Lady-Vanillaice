@@ -73,14 +73,24 @@ export const getHomepageVisitStats = createServerFn({ method: "GET" })
     const firstDate = `${firstMonth}-01`;
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin
-      .from("site_content")
-      .select("slug")
-      .like("slug", "hv-%");
+    // Supabase liefert pro Abfrage höchstens 1000 Zeilen. Deshalb seitenweise
+    // laden und nur den benötigten Zeitraum abfragen – sonst fehlen neue Besuche.
+    const data: { slug: string }[] = [];
+    const PAGE_SIZE = 1000;
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const { data: page, error } = await supabaseAdmin
+        .from("site_content")
+        .select("slug")
+        .gte("slug", `hv-${firstDate}`)
+        .lte("slug", `hv-${today}-zzzz`)
+        .order("slug", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) throw new Error(error.message);
+      data.push(...(page ?? []));
+      if (!page || page.length < PAGE_SIZE) break;
+    }
 
-    if (error) throw new Error(error.message);
-
-    const rows = (data ?? [])
+    const rows = data
       .map((row) => {
         const match = row.slug.match(/^hv-(\d{4}-\d{2}-\d{2})-([0-9a-f-]{36})$/i);
         return match ? { date: match[1], visitorId: match[2] } : null;
