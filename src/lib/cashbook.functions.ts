@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { formatEuro, parseLatexSurcharge } from "@/lib/latex-surcharge";
 import { realLocation } from "./slot-location";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
@@ -163,6 +164,8 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
         bar_datum: cashDate, durchgefuehrt_datum: dateOnly(b.completed_at),
         status, notiz: b.admin_note ?? null, created_at: b.created_at,
       };
+      const latexSurcharge = parseLatexSurcharge(b.admin_note);
+      if (latexSurcharge) common.art = `${common.art} + Latex ${formatEuro(latexSurcharge)}`;
       // For the cash book, the dated payment is the source of truth.
       // A rescheduling workflow may leave/reset the legacy boolean flag even
       // though the deposit was actually received. If a payment date exists,

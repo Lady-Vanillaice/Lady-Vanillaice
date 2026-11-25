@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { formatEuro, latexSurchargeLine, parseEuroInput } from "@/lib/latex-surcharge";
 import { Link } from "@tanstack/react-router";
 import {
   Plus,
@@ -634,6 +635,7 @@ const [liegezeitDuration, setLiegezeitDuration] = useState("60");
   const liegezeitRangeMinutes = liegezeitOnly ? minutesBetween(start, liegezeitTo) : minutesBetween(liegezeitFrom, liegezeitTo);
   const [liegezeitType, setLiegezeitType] = useState<"beaufsichtigt" | "unbeaufsichtigt">("unbeaufsichtigt");
   const [liegezeitSurcharge, setLiegezeitSurcharge] = useState("");
+  const [latexSurcharge, setLatexSurcharge] = useState("");
   const [depositExemptionReason, setDepositExemptionReason] = useState<ManualBookingValues["deposit_exemption_reason"]>(null);
   const [depositMethod, setDepositMethod] = useState("Überweisung");
   const [depositPaidAt, setDepositPaidAt] = useState(() => new Date().toISOString().slice(0, 10));
@@ -700,7 +702,12 @@ const [liegezeitDuration, setLiegezeitDuration] = useState("60");
 
     const sessionPrice = liegezeitOnly ? 0 : Number(totalAmount.replace(",", "."));
     const surcharge = hasLiegezeit || liegezeitOnly ? Number(liegezeitSurcharge.replace(",", ".")) : 0;
-    const total = liegezeitOnly ? surcharge : sessionPrice + surcharge;
+    const latexAmount = liegezeitOnly ? 0 : parseEuroInput(latexSurcharge);
+    if (latexSurcharge.trim() && !liegezeitOnly && latexAmount <= 0) {
+      setErr("Bitte beim Latex-Aufpreis einen gültigen Betrag eintragen oder das Feld leer lassen.");
+      return;
+    }
+    const total = liegezeitOnly ? surcharge : sessionPrice + surcharge + latexAmount;
     const deposit = Number(depositAmount.replace(",", "."));
     const liegezeitMinutes = liegezeitOnly || hasLiegezeit ? liegezeitRangeMinutes ?? NaN : Number(liegezeitDuration);
     if (hasLiegezeit && (!Number.isInteger(liegezeitMinutes) || liegezeitMinutes < 15)) {
@@ -757,6 +764,7 @@ const [liegezeitDuration, setLiegezeitDuration] = useState("60");
         internal_note: [
           note.trim() || null,
           liegezeitOnly ? `Liegezeit: ${start}–${liegezeitTo} Uhr` : null,
+          latexAmount > 0 ? latexSurchargeLine(latexAmount) : null,
           hasLiegezeit ? `Liegezeit: ${liegezeitFrom}–${liegezeitTo} Uhr (${liegezeitMinutes} Minuten) · ${liegezeitType} · Aufschlag ${surcharge.toLocaleString("de-DE", { style: "currency", currency: "EUR" })} · Sessionpreis ${sessionPrice.toLocaleString("de-DE", { style: "currency", currency: "EUR" })} · Gesamt ${total.toLocaleString("de-DE", { style: "currency", currency: "EUR" })}` : null,
         ].filter(Boolean).join("\n\n") || null,
         preferences: preferences.trim() || null,
@@ -807,6 +815,7 @@ const [liegezeitDuration, setLiegezeitDuration] = useState("60");
       setLiegezeitTo("");
       setLiegezeitType("unbeaufsichtigt");
       setLiegezeitSurcharge("");
+      setLatexSurcharge("");
       setDepositExemptionReason(null);
       setDepositMethod("Überweisung");
       setOnsiteMethod("Bar");
@@ -1165,6 +1174,17 @@ const [liegezeitDuration, setLiegezeitDuration] = useState("60");
           <div><label className="eyebrow block mb-1">Kurzsession</label><select value={shortSessionPrice} onChange={(e) => { const value = e.target.value; setShortSessionPrice(value); if (value) setTotalAmount(value); }} className="input-luxe !py-2"><option value="">Preis auswählen</option><option value="60">60 €</option><option value="75">75 €</option><option value="100">100 €</option></select></div>
           <div><label className="eyebrow block mb-1">Anzahlungsregel</label><select disabled={depositPending} value={depositExemptionReason ?? ""} onChange={(e) => { const value = e.target.value as ManualBookingValues["deposit_exemption_reason"] | ""; setDepositExemptionReason(value || null); if (value) setDepositAmount("0"); }} className="input-luxe !py-2"><option value="">Normale Anzahlung</option><option value="regular_customer">Keine Anzahlung – Stammkunde</option><option value="trust">Keine Anzahlung – Vertrauensbasis</option><option value="exception">Keine Anzahlung – Ausnahme</option><option value="colleague_guarantees">Keine Anzahlung – Kollegin bürgt</option><option value="spontaneous">Keine Anzahlung – Spontaner Termin</option></select></div>
           <div className={shortSessionPrice ? "hidden" : ""}><label className="eyebrow block mb-1">Sessionpreis (€)</label><input required={!shortSessionPrice} inputMode="decimal" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} placeholder="z. B. 500" className="input-luxe !py-2" /></div>
+          {!liegezeitOnly && (
+            <div>
+              <label className="eyebrow block mb-1">Latex-Aufpreis (€, optional)</label>
+              <input inputMode="decimal" value={latexSurcharge} onChange={(e) => setLatexSurcharge(e.target.value)} placeholder="z. B. 50" className="input-luxe !py-2" />
+              <p className="mt-1 text-[0.65rem] text-vanilla/50">
+                {parseEuroInput(latexSurcharge) > 0
+                  ? `Zählt zur Einnahme (im Vor-Ort-Betrag) · im Kassenbuch: „+ Latex ${formatEuro(parseEuroInput(latexSurcharge))}“`
+                  : "Wenn der Gast Latex dazubucht. Wird zum Vor-Ort-Betrag addiert."}
+              </p>
+            </div>
+          )}
           {/* LIEGEZEIT_BOOKING_FEATURE */}
       <div className="border border-champagne/25 bg-champagne/[0.03] p-4 space-y-3">
         <label className="flex items-start gap-3 text-xs text-vanilla/75 cursor-pointer">
@@ -1208,7 +1228,7 @@ const [liegezeitDuration, setLiegezeitDuration] = useState("60");
 
       <div className={depositExemptionReason === "spontaneous" ? "hidden" : ""}><label className="eyebrow block mb-1">Anzahlung Betrag (€)</label><input required={!depositExemptionReason} disabled={Boolean(depositExemptionReason)} inputMode="decimal" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} placeholder="z. B. 150" className="input-luxe !py-2 disabled:opacity-40" /></div><div className={depositExemptionReason === "spontaneous" || depositPending ? "hidden" : ""}><label className="eyebrow block mb-1">Anzahlungsmethode</label><select disabled={Boolean(depositExemptionReason)} value={depositMethod} onChange={(e) => setDepositMethod(e.target.value)} className="input-luxe !py-2 disabled:opacity-40"><option>Überweisung</option><option>PayPal</option><option>Bar</option><option>Karte</option><option>Sonstige</option></select></div>
           
-          <div className={depositExemptionReason === "spontaneous" || depositPending ? "hidden" : ""}><label className="eyebrow block mb-1">Anzahlung erhalten am</label><input required={!depositExemptionReason && !depositPending} disabled={Boolean(depositExemptionReason)} type="date" value={depositPaidAt} onChange={(e) => setDepositPaidAt(e.target.value)} className="input-luxe !py-2 disabled:opacity-40" /></div><div><label className="eyebrow block mb-1">Vor Ort Betrag (€)</label><div className="input-luxe !py-2 opacity-80">{Math.max(0, (Number(totalAmount.replace(",", ".")) || 0) + (hasLiegezeit ? (Number(liegezeitSurcharge.replace(",", ".")) || 0) : 0) - (depositExemptionReason ? 0 : (Number(depositAmount.replace(",", ".")) || 0))).toLocaleString("de-DE")} €</div></div><div><label className="eyebrow block mb-1">Vor Ort erhalten am</label><input type="date" value={onsitePaidAt} onChange={(e) => setOnsitePaidAt(e.target.value)} className="input-luxe !py-2" /></div><div><label className="eyebrow block mb-1">Vor Ort Zahlungsmethode</label><select value={onsiteMethod} onChange={(e) => setOnsiteMethod(e.target.value)} className="input-luxe !py-2"><option>Bar</option><option>PayPal</option><option>Überweisung</option><option>Karte</option><option>Sonstige</option></select></div>
+          <div className={depositExemptionReason === "spontaneous" || depositPending ? "hidden" : ""}><label className="eyebrow block mb-1">Anzahlung erhalten am</label><input required={!depositExemptionReason && !depositPending} disabled={Boolean(depositExemptionReason)} type="date" value={depositPaidAt} onChange={(e) => setDepositPaidAt(e.target.value)} className="input-luxe !py-2 disabled:opacity-40" /></div><div><label className="eyebrow block mb-1">Vor Ort Betrag (€)</label><div className="input-luxe !py-2 opacity-80">{Math.max(0, (Number(totalAmount.replace(",", ".")) || 0) + (hasLiegezeit ? (Number(liegezeitSurcharge.replace(",", ".")) || 0) : 0) + (liegezeitOnly ? 0 : parseEuroInput(latexSurcharge)) - (depositExemptionReason ? 0 : (Number(depositAmount.replace(",", ".")) || 0))).toLocaleString("de-DE")} €</div></div><div><label className="eyebrow block mb-1">Vor Ort erhalten am</label><input type="date" value={onsitePaidAt} onChange={(e) => setOnsitePaidAt(e.target.value)} className="input-luxe !py-2" /></div><div><label className="eyebrow block mb-1">Vor Ort Zahlungsmethode</label><select value={onsiteMethod} onChange={(e) => setOnsiteMethod(e.target.value)} className="input-luxe !py-2"><option>Bar</option><option>PayPal</option><option>Überweisung</option><option>Karte</option><option>Sonstige</option></select></div>
         </div>
       </div>
 

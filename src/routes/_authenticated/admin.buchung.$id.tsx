@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useRouter, useNavigate } from "@tanstack/react-router";
+import { formatEuro, parseEuroInput, parseLatexSurcharge, setLatexSurchargeInNote } from "@/lib/latex-surcharge";
 import { realLocation } from "@/lib/slot-location";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -148,6 +149,7 @@ const [overrideDate, setOverrideDate] = useState("");
   const [anzahlungInput, setAnzahlungInput] = useState<string>("");
   const [anzahlungMethod, setAnzahlungMethod] = useState<string>("");
   const [barInput, setBarInput] = useState<string>("");
+  const [latexInput, setLatexInput] = useState<string>("");
   const [restPaymentMethod, setRestPaymentMethod] = useState<string>("Bar");
   const [barPaidDate, setBarPaidDate] = useState<string>("");
   const [shortSessionPrice, setShortSessionPrice] = useState<string>("");
@@ -210,6 +212,7 @@ const [overrideDate, setOverrideDate] = useState("");
   studio_address_override?: string | null;
 };
       setNote(b.admin_note ?? "");
+      { const latex = parseLatexSurcharge(b.admin_note); setLatexInput(latex ? String(latex).replace(".", ",") : ""); }
       setConfirmationNote(b.confirmation_note ?? "");
 setBookingType(
   b.availability_slots?.is_duo ? "duo" : "single"
@@ -317,6 +320,13 @@ setDuoPartner(b.availability_slots?.duo_partner ?? "");
       const b = Number((barInput || "0").replace(",", ".")) || 0;
       await savePayment({ data: { id, anzahlung: depositExemptionReason ? 0 : a, bar: b, anzahlung_method: depositExemptionReason ? null : anzahlungMethod.trim() || null, deposit_exemption_reason: depositExemptionReason || null } });
       await updateOnsitePaymentFn({ data: { id, amount: b, method: b > 0 ? restPaymentMethod.trim() || null : null, paid_at: b > 0 ? barPaidDate || null : null } });
+      const latexAmount = parseEuroInput(latexInput);
+      const savedNote = (detailQ.data?.booking as { admin_note?: string | null } | undefined)?.admin_note ?? "";
+      if ((parseLatexSurcharge(savedNote) ?? 0) !== latexAmount) {
+        const nextNote = setLatexSurchargeInNote(savedNote, latexAmount);
+        await saveNote({ data: { id, admin_note: nextNote } });
+        setNote(nextNote);
+      }
     },
     onSuccess: () => {
       setPaymentSaved(true);
@@ -1688,6 +1698,35 @@ const depositDateMut = useMutation({
                   placeholder="0"
                   className="input-luxe w-full"
                 />
+              </div><div className="col-span-2 border border-champagne/25 bg-champagne/[0.04] p-3">
+                <label className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 block mb-1">
+                  Latex-Aufpreis (€, optional)
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={latexInput}
+                  onChange={(e) => {
+                    const before = parseEuroInput(latexInput);
+                    const after = parseEuroInput(e.target.value);
+                    const delta = after - before;
+                    setLatexInput(e.target.value);
+                    if (delta !== 0) {
+                      const bar = Number((barInput || "0").replace(",", ".")) || 0;
+                      const nextBar = Math.max(0, Math.round((bar + delta) * 100) / 100);
+                      setBarInput(String(nextBar));
+                      setPaymentTotalInput(String((Number(anzahlungInput.replace(",", ".")) || 0) + nextBar));
+                      setShortSessionPrice("");
+                    }
+                  }}
+                  placeholder="z. B. 50"
+                  className="input-luxe w-full"
+                />
+                <p className="mt-1 text-[0.65rem] text-vanilla/50">
+                  {parseEuroInput(latexInput) > 0
+                    ? `Ist im Vor-Ort-Betrag enthalten und zählt zur Einnahme · im Kassenbuch: „+ Latex ${formatEuro(parseEuroInput(latexInput))}“`
+                    : "Wenn der Gast Latex dazubucht: Betrag eintragen – er wird automatisch zum Vor-Ort-Betrag addiert."}
+                </p>
               </div><div><label className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 block mb-1">Vor Ort Zahlungsmethode</label><select value={restPaymentMethod} onChange={(e) => setRestPaymentMethod(e.target.value)} className="input-luxe w-full"><option>Bar</option><option>PayPal</option><option>Überweisung</option><option>Karte</option><option>Sonstige</option></select></div><div><label className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 block mb-1">Vor Ort erhalten am</label><input type="date" value={barPaidDate} onChange={(e) => setBarPaidDate(e.target.value)} className="input-luxe w-full" /></div>
             </div>
             <div className="mt-3">
