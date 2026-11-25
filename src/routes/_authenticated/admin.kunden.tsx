@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { AdminTabBar } from "@/components/admin/AdminTabs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
@@ -345,10 +346,20 @@ function CustomerEditor({
   const [safeword, setSafeword] = useState(customer.note?.safeword ?? customer.booking_profile.safeword ?? "");
   const [adminNote, setAdminNote] = useState(customer.note?.admin_note ?? "");
   const [specialRules, setSpecialRules] = useState(customer.note?.special_rules ?? "");
+  const [customerTab, setCustomerTab] = useState("profil");
+  const customerTabs = [
+    { id: "profil", label: "Profil" },
+    { id: "vorlieben", label: "Vorlieben & Tabus" },
+    { id: "termine", label: "Termine", badge: customer.bookings_count || null },
+  ];
 
   return (
     <div className="border-t border-champagne/10 p-5 space-y-4">
+      <AdminTabBar tabs={customerTabs} active={customerTab} onChange={setCustomerTab} sticky={false} />
+      {customerTab === "termine" && (
       <CustomerSessionHistory key={customer.email.toLowerCase()} email={customer.email} />
+      )}
+      {customerTab === "profil" && <>
       <h2 className="font-display text-2xl text-champagne">Kundenprofil</h2>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <div className="border border-champagne/20 bg-anthracite/20 p-3">
@@ -396,6 +407,8 @@ function CustomerEditor({
           />
         </div>
       </div>
+      </>}
+      {customerTab === "vorlieben" && <>
       <div>
         <label className="eyebrow flex items-center gap-2 mb-1.5 text-champagne"><Star size={12} /> Vorlieben</label>
         <textarea
@@ -435,6 +448,8 @@ function CustomerEditor({
           placeholder="z. B. Rot"
         />
       </div>
+      </>}
+      {customerTab === "profil" && <>
       <div className="border border-champagne/30 bg-champagne/5 p-4">
         <label className="eyebrow block mb-1.5 text-champagne">Dauerhafte Sonderregelungen</label>
         <p className="text-xs text-vanilla/55 mb-2">Diese Hinweise bleiben beim Kunden gespeichert und erscheinen automatisch in jedem Termin-Detail.</p>
@@ -457,6 +472,7 @@ function CustomerEditor({
           placeholder="Nur für dich."
         />
       </div>
+      </>}
       <div className="flex flex-wrap gap-2 pt-1">
         <button
           disabled={pending}

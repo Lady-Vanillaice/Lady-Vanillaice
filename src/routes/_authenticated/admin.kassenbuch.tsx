@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { AdminTabBar, useAdminTab } from "@/components/admin/AdminTabs";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -105,7 +106,20 @@ function KassenbuchPage() {
   const [expenseAmount, setExpenseAmount] = useState(""); const [expenseMethod, setExpenseMethod] = useState(""); const [expenseNote, setExpenseNote] = useState("");
   const [giftName, setGiftName] = useState(""); const [giftDate, setGiftDate] = useState(today()); const [giftMethod, setGiftMethod] = useState("Überweisung"); const [giftAmount, setGiftAmount] = useState("");
   const [giftPurchaseDate, setGiftPurchaseDate] = useState(""); const [giftPurchaseItem, setGiftPurchaseItem] = useState(""); const [giftPurchaseAmount, setGiftPurchaseAmount] = useState(""); const [giftNote, setGiftNote] = useState(""); const [giftPhoto, setGiftPhoto] = useState<string | null>(null); const [giftPhotoInputKey, setGiftPhotoInputKey] = useState(0);
-  const [cashbookView, setCashbookView] = useState<"ledger" | "gifts">("ledger");
+  const cashbookTabs = [
+    { id: "uebersicht", label: "Übersicht" },
+    { id: "eintragen", label: "Eintragen" },
+    { id: "einnahmen", label: "Einnahmen" },
+    { id: "ausgaben", label: "Ausgaben" },
+    { id: "fahrten", label: "Fahrtenbuch" },
+    { id: "gifts", label: "Geschenke" },
+  ];
+  const [cashbookView, setCashbookView] = useAdminTab("kassenbuch", cashbookTabs, "uebersicht");
+  useEffect(() => {
+    // Schnell-Eintrag aus dem Admin-Bereich (…/kassenbuch?neu=…) öffnet direkt „Eintragen“.
+    try { if (new URLSearchParams(window.location.search).get("neu")) setCashbookView("eintragen"); } catch { /* ignorieren */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const loadPrivateDestinations = useServerFn(listPrivateBookingDestinations);
   const [travelLogPending, setTravelLogPending] = useState(false);
   const [travelLegs, setTravelLegs] = useState<TravelLeg[]>([]);
@@ -450,19 +464,20 @@ function KassenbuchPage() {
 
   return <>
     <PageHeader eyebrow="Admin" title={<em className="font-script gold-text not-italic">Kassenbuch</em>} />
-    <section className="py-8 md:py-12"><div className="container-luxe max-w-[1500px] space-y-6">
+    <section className="py-8 md:py-12"><div data-cashbook-tab={cashbookView} className="container-luxe max-w-[1500px] space-y-6">
       <Link to="/admin" className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-vanilla/60 hover:text-champagne"><ArrowLeft size={14} /> Zurück zum Admin</Link>
-      <nav aria-label="Kassenbuch Bereiche" className="flex gap-2 border-b border-champagne/20 pb-3">
-        <button type="button" onClick={() => setCashbookView("ledger")} aria-current={cashbookView === "ledger" ? "page" : undefined} className={cashbookView === "ledger" ? "btn-gold" : "export-btn"}>Kassenbuch</button>
-        <button type="button" onClick={() => setCashbookView("gifts")} aria-current={cashbookView === "gifts" ? "page" : undefined} className={cashbookView === "gifts" ? "btn-gold" : "export-btn"}>Geschenke</button>
-      </nav>
-      {cashbookView === "ledger" ? <>
+      <AdminTabBar tabs={cashbookTabs} active={cashbookView} onChange={setCashbookView} />
+      <style>{`[data-cashbook-tab]:not([data-cashbook-tab="eintragen"]) .cashbook-organizer{display:none}[data-cashbook-tab]:not([data-cashbook-tab="ausgaben"]) > .border-bordeaux\\/40{display:none}`}</style>
+      {cashbookView !== "gifts" ? <>
       {error && <div className="border border-bordeaux bg-bordeaux/10 p-4 text-bordeaux">Kassenbuchdaten konnten nicht geladen werden: {(error as Error).message}</div>}
+      {cashbookView === "uebersicht" && <>
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3"><Stat label="Anzahlungen" value={eur(totals.anzahlung)} /><Stat label="Restzahlung" value={eur(totals.bar)} /><Stat label="Geschenke" value={eur(giftIncomeForMonth)} /><Stat label="Ausgaben inkl. Geschenkkäufe" value={eur(totalExpenses)} /><Stat label="Saldo" value={eur(balance)} gold /><Stat label="Erledigte Termine" value={String(completedAppointments)} /></div>
       <div className="bg-card border border-champagne/30 p-4 flex flex-col sm:flex-row sm:items-end gap-4">
         <div className="sm:w-64"><Field label="Tag für Bareinzahlung"><input type="date" value={cashDay} onChange={e => setCashDay(e.target.value)} className="luxe-input" /></Field></div>
         <div className="flex-1 border border-champagne/20 px-4 py-3 min-h-[54px] flex items-center justify-between gap-4"><span className="eyebrow">Bar erhalten an diesem Tag</span><strong className="text-xl text-champagne whitespace-nowrap">{eur(dailyCash)}</strong></div>
       </div>
+      </>}
+      {cashbookView !== "eintragen" && (
       <div className="bg-card border border-champagne/20 p-4 space-y-4">
         <div className="grid sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 items-end">
           <Field label="Monat"><input type="month" value={month} onChange={e => setMonth(e.target.value)} className="luxe-input" /></Field>
@@ -480,6 +495,8 @@ function KassenbuchPage() {
           <button onClick={exportExcel} className="export-btn"><FileSpreadsheet size={14} /> Excel</button>
         </div>
       </div>
+      )}
+      {cashbookView === "fahrten" && (
       <div className="bg-card border border-champagne/20 p-4 space-y-4">
         <h2 className="eyebrow">Fahrtenbuch – Fahrt hinzufügen</h2>
         <p className="text-xs text-vanilla/60">Start und Ziel frei wählen. Nach dem Speichern wird die Zieladresse als Start der nächsten Fahrt vorgeschlagen. Unterkünfte für jede Reise neu eingeben. Die Kilometer werden anhand der Straßenroute berechnet.</p>
@@ -506,10 +523,12 @@ function KassenbuchPage() {
         {travelLegs.filter(leg => leg.date.startsWith(month)).map(leg => <div key={leg.id} className="flex flex-wrap items-center justify-between gap-3 border-t border-champagne/15 py-2 text-sm"><span>{dateLabel(leg.date)} · {leg.startTime && leg.endTime ? `${leg.startTime}–${leg.endTime} Uhr · ` : ""}{leg.from} → {leg.to} · {leg.category} · <strong>{leg.kilometres} km</strong></span><button type="button" aria-label="Fahrt löschen" onClick={() => setTravelLegs(previous => previous.filter(item => item.id !== leg.id))}><Trash2 size={15} /></button></div>)}
         <p className="text-xs text-vanilla/50">Manuelle Fahrten werden in diesem Browser gespeichert und im Fahrtenbuch-PDF berücksichtigt. Auf anderen Geräten sind sie nicht automatisch verfügbar. Bitte tatsächliche Fahrten vor dem Speichern prüfen.</p>
       </div>
+      )}
       <FinancialSlaveEntryForm />
       <form onSubmit={e => { e.preventDefault(); createMut.mutate(); }} className="bg-card border border-champagne/20 p-4 space-y-4"><h2 className="eyebrow">Manueller Eintrag</h2><div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3"><Field label="Datum"><input required type="date" value={datum} onChange={e => setDatum(e.target.value)} className="luxe-input" /></Field><Field label="Kunde"><input required value={kunde} onChange={e => setKunde(e.target.value)} className="luxe-input" /></Field><Field label="Studio"><input required value={studio} onChange={e => setStudio(e.target.value)} className="luxe-input" /></Field><Field label="Anzahlungsregel"><select value={manualDepositReason} onChange={e => { const v = e.target.value as DepositExemptionReason | ""; setManualDepositReason(v); if (v) { setAnzahlung("0"); setAnzahlungDatum(""); } }} className="luxe-input"><option value="">Normale Anzahlung</option><option value="regular_customer">Keine Anzahlung – Stammkunde</option><option value="trust">Keine Anzahlung – Vertrauensbasis</option><option value="exception">Keine Anzahlung – Ausnahme</option><option value="colleague_guarantees">Keine Anzahlung – Kollegin bürgt</option><option value="spontaneous">Keine Anzahlung – Spontaner Termin</option></select></Field><Field label="Anzahlung Betrag (€)"><input disabled={Boolean(manualDepositReason)} value={anzahlung} onChange={e => setAnzahlung(e.target.value)} className="luxe-input disabled:opacity-40" /></Field><Field label="Anzahlung erhalten am"><input disabled={Boolean(manualDepositReason)} type="date" value={anzahlungDatum} onChange={e => setAnzahlungDatum(e.target.value)} className="luxe-input disabled:opacity-40" /></Field><Field label="Anzahlungsmethode"><select disabled={Boolean(manualDepositReason)} value={anzahlungMethod} onChange={e => setAnzahlungMethod(e.target.value)} className="luxe-input disabled:opacity-40">{PAYMENT_METHODS.map(v => <option key={v}>{v}</option>)}</select></Field><Field label="Restzahlung Betrag (€)"><input value={bar} onChange={e => setBar(e.target.value)} className="luxe-input" /></Field><Field label="Restzahlung erhalten am"><input type="date" value={manualRestDate} onChange={e => setManualRestDate(e.target.value)} className="luxe-input" /></Field><Field label="Restzahlung Zahlungsart"><select value={manualRestMethod} onChange={e => setManualRestMethod(e.target.value)} className="luxe-input">{PAYMENT_METHODS.map(v => <option key={v}>{v}</option>)}</select></Field><div className="md:col-span-2"><Field label="Notiz"><input value={notiz} onChange={e => setNotiz(e.target.value)} className="luxe-input" /></Field></div></div><button className="btn-gold inline-flex gap-2"><Plus size={15} /> Eintrag speichern</button></form>
       <form onSubmit={e => { e.preventDefault(); expenseMut.mutate(); }} className="bg-card border border-bordeaux/50 p-4 space-y-4"><h2 className="eyebrow text-champagne">Ausgabe – Studiomiete</h2><div className="grid sm:grid-cols-2 md:grid-cols-4 gap-3"><Field label="Datum"><input required type="date" value={expenseDate} onChange={e => setExpenseDate(e.target.value)} className="luxe-input" /></Field><Field label="Studio"><input required value={expenseStudio} onChange={e => setExpenseStudio(e.target.value)} placeholder="z. B. Studio60" className="luxe-input" /></Field><Field label="Betrag (€)"><input required inputMode="decimal" value={expenseAmount} onChange={e => setExpenseAmount(e.target.value)} className="luxe-input" /></Field><Field label="Bezahlt mit"><input required value={expenseMethod} onChange={e => setExpenseMethod(e.target.value)} placeholder="Bar, Karte, Überweisung …" className="luxe-input" /></Field><div className="md:col-span-4"><Field label="Notiz (optional)"><input value={expenseNote} onChange={e => setExpenseNote(e.target.value)} className="luxe-input" /></Field></div></div><button disabled={expenseMut.isPending} className="btn-gold inline-flex gap-2"><Plus size={15} />{expenseMut.isPending ? "Speichere…" : "Studiomiete speichern"}</button>{expenseMut.error && <p className="text-sm text-bordeaux">{(expenseMut.error as Error).message}</p>}</form>
       {expenseEntries.length > 0 && <div className="bg-card border border-bordeaux/40 overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-[10px] uppercase text-vanilla/50">{["Datum", "Ausgabe", "Studio", "Zahlungsart", "Notiz", "Betrag", ""].map(h => <th key={h} className="p-3 text-left">{h}</th>)}</tr></thead><tbody>{expenseEntries.map(e => <tr key={e.id} className="border-t border-champagne/10"><td className="p-3">{dateLabel(e.termin_datum)}</td><td className="p-3">Studiomiete</td><td className="p-3">{e.studio}</td><td className="p-3">{e.payment_method}</td><td className="p-3 whitespace-pre-wrap max-w-xs break-words">{e.notiz?.trim() || "—"}</td><td className="p-3 text-bordeaux">− {eur(e.expense_amount)}</td><td className="p-3"><button onClick={() => confirm("Ausgabe löschen?") && deleteMut.mutate(e.id)}><Trash2 size={15} /></button></td></tr>)}</tbody></table></div>}
+      {cashbookView === "einnahmen" && <>
       <div className="md:hidden space-y-3">{isLoading ? <div>Lade…</div> : error ? <div className="text-bordeaux">Fehler beim Laden</div> : activeIncomeEntries.map(e => <article key={e.id} className="bg-card border border-champagne/20 p-4 space-y-2"><div className="flex justify-between gap-3"><div><strong>{e.kunde}</strong><div className="text-xs text-champagne">{paymentDateText(e)}</div></div><span className="text-champagne text-right">{bookingAmountText(e)}</span></div><div className="text-xs text-vanilla/55">Session: <span className={(e.status === "rescheduling" || e.status === "cancelled") ? "line-through opacity-60" : undefined}>{dateLabel(e.termin_datum)} · {appointmentTime(e)}</span> · {e.art}</div><div className="text-sm">{studioParts(e).studio}</div>{studioParts(e).address && <div className="text-xs text-vanilla/55">{studioParts(e).address}</div>}<div className="text-xs">Zahlungsart: {paymentMethodText(e)}</div><div className="flex justify-between"><span className={`status-${e.status}`}>{statusLabel[e.status]}</span>{incomeActions(e)}</div></article>)}</div>
       <div className="hidden md:block bg-card border border-champagne/20 overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-sm min-w-[1250px]"><thead><tr className="text-[10px] uppercase text-vanilla/50">{["Zahlungseingang", "Vorgang", "Anzahlung / Restbetrag", "Zahlungsart", "Kunde", "Session am", "Uhrzeit", "Art", "Studio / Adresse", "Dauer", "Status", ""].map(h => <th key={h} className="p-3 text-left">{h}</th>)}</tr></thead><tbody>{activeIncomeEntries.map(e => <tr key={e.id} className="border-t border-champagne/10"><td className="p-3">{paymentDateText(e)}</td><td className="p-3">{paymentLabel(e)}</td><td className="p-3 text-champagne">{bookingAmountText(e)}</td><td className="p-3">{paymentMethodText(e)}</td><td className="p-3 font-medium">{e.kunde}</td><td className={(e.status === "rescheduling" || e.status === "cancelled") ? "p-3 line-through opacity-60" : "p-3"}>{dateLabel(e.termin_datum)}</td><td className={(e.status === "rescheduling" || e.status === "cancelled") ? "p-3 line-through opacity-60" : "p-3"}>{appointmentTime(e)}</td><td className="p-3">{e.art}</td><td className="p-3"><div>{studioParts(e).studio}</div>{studioParts(e).address && <div className="text-xs text-vanilla/50 mt-1">{studioParts(e).address}</div>}</td><td className="p-3">{e.dauer ?? "—"}</td><td className="p-3"><span className={`status-${e.status}`}>{statusLabel[e.status]}</span></td><td className="p-3">{incomeActions(e)}</td></tr>)}</tbody></table></div></div>
       {completedIncomeEntries.length > 0 && (
@@ -527,7 +546,8 @@ function KassenbuchPage() {
           </div>
         </details>
       )}
-      <div className="border border-champagne/30 bg-card p-4"><div className="eyebrow text-champagne mb-3">Gesamtsumme</div><div className="grid sm:grid-cols-3 gap-3"><Stat label="Einnahmen inkl. Geschenke" value={eur(totalIncomeWithGifts)} gold /><Stat label="Ausgaben inkl. Geschenkkäufe" value={eur(totalExpenses)} /><Stat label="Saldo nach Ausgaben" value={eur(balance)} gold /></div></div>
+      </>}
+      {cashbookView === "uebersicht" && <div className="border border-champagne/30 bg-card p-4"><div className="eyebrow text-champagne mb-3">Gesamtsumme</div><div className="grid sm:grid-cols-3 gap-3"><Stat label="Einnahmen inkl. Geschenke" value={eur(totalIncomeWithGifts)} gold /><Stat label="Ausgaben inkl. Geschenkkäufe" value={eur(totalExpenses)} /><Stat label="Saldo nach Ausgaben" value={eur(balance)} gold /></div></div>}
       </> : (      <section className="bg-card border border-champagne/30 p-4 md:p-6 space-y-5">
         <div><h2 className="eyebrow text-champagne">Geschenke</h2><p className="text-sm text-vanilla/60 mt-2">Geldgeschenke und daraus gekaufte Dinge mit Datum, Betrag, Zahlungsweg, Notiz und optionalem Foto dokumentieren. Der Kaufbetrag wird als Ausgabe vom Saldo abgezogen.</p></div>
         <form onSubmit={e => { e.preventDefault(); giftMut.mutate(); }} className="space-y-4">

@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { AdminTabBar, AdminTabPanel, useAdminTab } from "@/components/admin/AdminTabs";
 import { setSlotDayType } from "@/lib/slot-day-type.functions";
 import { formatMinHours, listSlotMinDurations, setSlotMinDuration } from "@/lib/slot-min-duration.functions";
 import { listManualBookedSlotIds, setSlotManualBooked } from "@/lib/slot-manual-booked.functions";
@@ -238,6 +239,16 @@ function AdminKalenderPage() {
     slots,
   }));
 
+  const calendarTabs = [
+    { id: "termine", label: "Zeitfenster", badge: regularSlots.length || null },
+    { id: "neu", label: "Neu anlegen" },
+    { id: "urlaub", label: "Urlaub", badge: vacationSlots.length || null },
+    { id: "specials", label: "Specials & Cam" },
+    { id: "warteliste", label: "Warteliste" },
+    { id: "bild", label: "Als Bild" },
+  ];
+  const [calendarTab, setCalendarTab] = useAdminTab("kalender", calendarTabs, "termine");
+
   return (
     <>
       <PageHeader
@@ -262,35 +273,55 @@ function AdminKalenderPage() {
             <CalendarSubscribeButton />
           </div>
 
-          <div className="mb-8">
+          <AdminTabBar tabs={calendarTabs} active={calendarTab} onChange={setCalendarTab} />
+
+          <AdminTabPanel when="bild" active={calendarTab}>
             <FreeSlotImageExport
               slots={regularSlots}
               loading={slotsQ.isLoading}
             />
-          </div>
+          </AdminTabPanel>
 
-          <div className="mb-8">
+          <AdminTabPanel when="neu" active={calendarTab}>
             <NewSlotForm
-              onCreate={(v) => createMut.mutateAsync(v)}
+              onCreate={async (v) => {
+                const result = await createMut.mutateAsync(v);
+                setCalendarTab("termine");
+                return result;
+              }}
               pending={createMut.isPending}
               studios={studiosQ.data}
             />
-          </div>
+          </AdminTabPanel>
 
-          <VacationForm
-            vacations={vacationSlots}
-            pending={vacationMut.isPending || deleteMut.isPending}
-            onCreate={(v) => vacationMut.mutateAsync(v)}
-            onDelete={(id) => deleteMut.mutateAsync(id)}
-          />
+          <AdminTabPanel when="urlaub" active={calendarTab}>
+            <VacationForm
+              vacations={vacationSlots}
+              pending={vacationMut.isPending || deleteMut.isPending}
+              onCreate={(v) => vacationMut.mutateAsync(v)}
+              onDelete={(id) => deleteMut.mutateAsync(id)}
+            />
+          </AdminTabPanel>
 
-          <CalendarSpecialsAdmin />
-          <CalendarCamAdmin />
+          <AdminTabPanel when="specials" active={calendarTab}>
+            <CalendarSpecialsAdmin />
+            <CalendarCamAdmin />
+          </AdminTabPanel>
 
-          <CalendarWaitlistAdmin />
-          <CamInterestAdmin />
+          <AdminTabPanel when="warteliste" active={calendarTab}>
+            <CalendarWaitlistAdmin />
+            <CamInterestAdmin />
+          </AdminTabPanel>
 
-          <div className="mt-8 space-y-6">
+          <AdminTabPanel when="termine" active={calendarTab}>
+          <div className="space-y-6">
+            <button
+              type="button"
+              onClick={() => setCalendarTab("neu")}
+              className="btn-outline-gold w-full justify-center"
+            >
+              + Neues Zeitfenster anlegen
+            </button>
             {slotsQ.isLoading && (
               <p className="text-vanilla/50 text-sm">Lade…</p>
             )}
@@ -606,6 +637,7 @@ function AdminKalenderPage() {
               </section>
             ))}
           </div>
+          </AdminTabPanel>
         </div>
       </section>
     </>
