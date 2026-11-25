@@ -851,6 +851,8 @@ export const listUpcomingSlots = createServerFn({ method: "GET" }).handler(async
   const { dayEnd: rangeEnd } = getBerlinCalendarDayBounds(lastDaySlot.starts_at);
 
   const slotIds = openSlots.map((s) => s.id);
+  const { loadManualBookedSlotIds } = await import("./slot-manual-booked.functions");
+  const manualBookedIds = await loadManualBookedSlotIds();
 
   const { data: closedSlots } = await supabaseAdmin
     .from("availability_slots")
@@ -912,6 +914,9 @@ export const listUpcomingSlots = createServerFn({ method: "GET" }).handler(async
           busyRanges.push({ s: range.s - buffer, e: range.e + buffer });
         }
       }
+
+    // Im Admin per „Belegt“-Knopf markierte Zeitfenster gelten öffentlich als komplett belegt.
+    if (manualBookedIds.has(slot.id)) busyRanges.push({ s: winStart, e: winEnd });
 
     let hasFree = false;
     for (let t = winStart; t + MIN_DURATION_MS <= winEnd; t += STEP_MS) {

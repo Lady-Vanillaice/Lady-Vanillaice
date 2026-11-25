@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { listManualBookedSlotIds, setSlotManualBooked } from "@/lib/slot-manual-booked.functions";
 import { isPrivateLocation, realLocation } from "@/lib/slot-location";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -185,6 +186,21 @@ function AdminKalenderPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-slots"] }),
   });
 
+  const listManualBookedFn = useServerFn(listManualBookedSlotIds);
+  const manualBookedQ = useQuery({
+    queryKey: ["admin-manual-booked-slots"],
+    queryFn: () => listManualBookedFn(),
+  });
+  const manualBookedIds = new Set(manualBookedQ.data ?? []);
+  const setManualBookedFn = useServerFn(setSlotManualBooked);
+  const manualBookedMut = useMutation({
+    mutationFn: (v: { id: string; booked: boolean }) => setManualBookedFn({ data: v }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-manual-booked-slots"] });
+      qc.invalidateQueries({ queryKey: ["admin-slots"] });
+    },
+  });
+
   const setHiddenFn = useServerFn(setSlotHidden);
   const hiddenMut = useMutation({
     mutationFn: (v: { id: string; is_hidden: boolean }) =>
@@ -357,6 +373,11 @@ function AdminKalenderPage() {
                                 · mit {s.duo_partner}
                               </span>
                             )}
+                            {manualBookedIds.has(s.id) && (
+                              <span className="inline-flex items-center gap-1 text-[0.6rem] uppercase tracking-[0.2em] px-2 py-0.5 bg-bordeaux/60 text-vanilla">
+                                Öffentlich belegt
+                              </span>
+                            )}
                             {s.is_hidden && (
                               <span className="inline-flex items-center gap-1 text-[0.6rem] uppercase tracking-[0.2em] px-2 py-0.5 bg-bordeaux/40 text-vanilla">
                                 <EyeOff size={11} /> Unsichtbar
@@ -439,6 +460,29 @@ function AdminKalenderPage() {
                         </div>
 
                         <div className="flex items-center gap-1 sm:shrink-0">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              manualBookedMut.mutate({
+                                id: s.id,
+                                booked: !manualBookedIds.has(s.id),
+                              })
+                            }
+                            disabled={manualBookedMut.isPending || manualBookedQ.isLoading}
+                            className={`mr-1 border px-2.5 py-1.5 text-[0.6rem] uppercase tracking-[0.18em] transition disabled:opacity-40 ${
+                              manualBookedIds.has(s.id)
+                                ? "border-bordeaux bg-bordeaux/50 text-vanilla"
+                                : "border-champagne/40 text-champagne hover:bg-champagne/10"
+                            }`}
+                            aria-pressed={manualBookedIds.has(s.id)}
+                            title={
+                              manualBookedIds.has(s.id)
+                                ? "Wieder frei: öffentlich wieder buchbar"
+                                : "Öffentlich als belegt anzeigen"
+                            }
+                          >
+                            {manualBookedIds.has(s.id) ? "Belegt ✓" : "Belegt"}
+                          </button>
                           <button
                             type="button"
                             onClick={() => {
