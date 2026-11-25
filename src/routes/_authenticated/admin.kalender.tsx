@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { setSlotDayType } from "@/lib/slot-day-type.functions";
 import { formatMinHours, listSlotMinDurations, setSlotMinDuration } from "@/lib/slot-min-duration.functions";
 import { listManualBookedSlotIds, setSlotManualBooked } from "@/lib/slot-manual-booked.functions";
 import { isPrivateLocation, realLocation } from "@/lib/slot-location";
@@ -426,6 +427,16 @@ function AdminKalenderPage() {
                               ))}
                             </select>
                           </label>
+                          <DayTypeEditor
+                            key={`${s.id}-${s.is_duo}-${s.duo_partner ?? ""}`}
+                            slotId={s.id}
+                            isDuo={Boolean(s.is_duo)}
+                            duoPartner={s.duo_partner ?? null}
+                            onSaved={() => {
+                              qc.invalidateQueries({ queryKey: ["admin-slots"] });
+                              qc.invalidateQueries({ queryKey: ["public-slots"] });
+                            }}
+                          />
                           <div className="text-xs text-vanilla/55 mt-1 flex flex-wrap items-center gap-3">
                             <span className="inline-flex items-center gap-1 min-w-0">
                               <MapPin size={11} />{" "}
@@ -433,7 +444,8 @@ function AdminKalenderPage() {
                             </span>
                             {s.is_duo && (
                               <span className="text-champagne uppercase tracking-[0.2em]">
-                                Duo{s.duo_partner ? ` · ${s.duo_partner}` : ""}
+                                {s.duo_partner?.startsWith("OPTIONAL_DUO::") ? "Single oder Duo" : "Nur Duo"}
+                                {s.duo_partner?.replace("OPTIONAL_DUO::", "") ? ` · ${s.duo_partner.replace("OPTIONAL_DUO::", "")}` : ""}
                               </span>
                             )}
                             {s.is_content_shoot && (
@@ -1276,6 +1288,71 @@ function CalendarSubscribeButton() {
         manuellen Einfügen muss die URL mit https://lady-vanillaice.com
         beginnen.
       </div>
+    </div>
+  );
+}
+
+
+/** Tagesart nachträglich ändern: gilt für alle Zeitfenster des Tages. */
+function DayTypeEditor({
+  slotId,
+  isDuo,
+  duoPartner,
+  onSaved,
+}: {
+  slotId: string;
+  isDuo: boolean;
+  duoPartner: string | null;
+  onSaved: () => void;
+}) {
+  const initialMode = !isDuo ? "single" : duoPartner?.startsWith("OPTIONAL_DUO::") ? "single_or_duo" : "duo";
+  const initialPartner = duoPartner?.replace("OPTIONAL_DUO::", "") ?? "";
+  const [mode, setMode] = useState<"single" | "single_or_duo" | "duo">(initialMode);
+  const [partner, setPartner] = useState(initialPartner);
+  const [saved, setSaved] = useState(false);
+  const setDayTypeFn = useServerFn(setSlotDayType);
+  const mut = useMutation({
+    mutationFn: () => setDayTypeFn({ data: { id: slotId, mode, partner: mode === "single" ? null : partner.trim() || null } }),
+    onSuccess: () => {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+      onSaved();
+    },
+  });
+  const dirty = mode !== initialMode || (mode !== "single" && partner.trim() !== initialPartner);
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-vanilla/65">
+      <span className="text-[0.6rem] uppercase tracking-[0.2em] text-champagne/80">Tagesart</span>
+      <select
+        value={mode}
+        onChange={(e) => setMode(e.target.value as typeof mode)}
+        className="input-luxe !w-auto !py-1 !px-2 text-xs"
+      >
+        <option value="single">Single</option>
+        <option value="single_or_duo">Single oder Duo</option>
+        <option value="duo">Nur Duo</option>
+      </select>
+      {mode !== "single" && (
+        <input
+          value={partner}
+          onChange={(e) => setPartner(e.target.value)}
+          placeholder="Name der Kollegin"
+          maxLength={80}
+          className="input-luxe !w-40 !py-1 !px-2 text-xs"
+        />
+      )}
+      {dirty && (
+        <button
+          type="button"
+          disabled={mut.isPending || (mode !== "single" && !partner.trim())}
+          onClick={() => mut.mutate()}
+          className="border border-champagne/40 px-2.5 py-1 text-[0.6rem] uppercase tracking-[0.18em] text-champagne hover:bg-champagne/10 disabled:opacity-40"
+        >
+          {mut.isPending ? "Speichere…" : "Für ganzen Tag speichern"}
+        </button>
+      )}
+      {saved && <span className="text-green-300">✓ für den ganzen Tag gespeichert</span>}
+      {mut.error && <span className="text-bordeaux">{(mut.error as Error).message}</span>}
     </div>
   );
 }
