@@ -435,6 +435,7 @@ function KalenderPage() {
                   slot={selectedSlot}
                   initialStartTime={linkedStartTime}
                   onBooked={() => slotsQ.refetch()}
+                  specialMinHours={selectedSpecial?.minHours ?? null}
                 />
               )}
 
@@ -650,10 +651,12 @@ function BookingPanel({
   slot,
   initialStartTime,
   onBooked,
+  specialMinHours = null,
 }: {
   slot: Slot;
   initialStartTime?: string | null;
   onBooked: () => void;
+  specialMinHours?: number | null;
 }) {
   const tr = useTr();
   const { lang } = useLang();
@@ -951,6 +954,27 @@ function BookingPanel({
               <option key={String(d.value)} value={String(d.value)}>{d.label}</option>
             ))}
           </select>
+          {specialMinHours != null && (() => {
+            const conditionDe = formatSpecialCondition(specialMinHours, "de");
+            const conditionEn = formatSpecialCondition(specialMinHours, "en");
+            if (durationChoice === "custom") {
+              return (
+                <p className="mt-2 text-[0.75rem] leading-relaxed text-champagne/85">
+                  {tr(`Zur Erinnerung: Das SPECIAL gilt nur bei einer Buchung ab ${conditionDe.replace("Mindestens ", "")}. Gib deine gewünschte Dauer bitte in der Nachricht an.`, `Reminder: The special only applies to bookings of at least ${conditionEn.replace("Minimum ", "")}. Please state your desired duration in the message.`)}
+                </p>
+              );
+            }
+            const qualifies = effectiveDuration >= specialMinHours * 60;
+            return qualifies ? (
+              <p className="mt-2 text-[0.75rem] leading-relaxed text-champagne/85">
+                {tr("Mit dieser Dauer ist das SPECIAL inbegriffen.", "The special is included with this duration.")}
+              </p>
+            ) : (
+              <p className="mt-2 border border-champagne/30 bg-champagne/5 p-2.5 text-[0.75rem] leading-relaxed text-vanilla/80">
+                {tr(`Hinweis: Bei dieser Dauer ist das SPECIAL nicht inbegriffen. Das SPECIAL gibt es erst bei einer Buchung ab ${conditionDe.replace("Mindestens ", "")}.`, `Note: The special is not included with this duration. It only applies to bookings of at least ${conditionEn.replace("Minimum ", "")}.`)}
+              </p>
+            );
+          })()}
         </div>
 
         <div className={durationChoice === "ganztags" ? "opacity-60" : ""}>
