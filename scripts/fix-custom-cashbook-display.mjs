@@ -35,14 +35,14 @@ patch(
 );
 patch(
   cashbookUi,
-  `  const paymentMethodText = (e: CashBookEntry) => [e.anzahlung > 0 || e.anzahlung_vorgemerkt > 0 ? \`Anz. \${depositText(e)}\` : e.deposit_exemption_reason ? depositText(e) : null, e.bar > 0 || e.restbetrag_vorgemerkt > 0 ? \`Vor Ort \${restMethodFor(e) ?? "—"}\` : null].filter(Boolean).join(" · ") || "—";`,
-  `  const paymentMethodText = (e: CashBookEntry) => isCustom(e)\n    ? (e.anzahlung > 0 || e.anzahlung_vorgemerkt > 0 ? \`Vorauszahlung \${e.anzahlung_method ?? "—"}\` : "Vorauszahlung offen")\n    : [e.anzahlung > 0 || e.anzahlung_vorgemerkt > 0 ? \`Anz. \${depositText(e)}\` : e.deposit_exemption_reason ? depositText(e) : null, e.bar > 0 || e.restbetrag_vorgemerkt > 0 ? \`Vor Ort \${restMethodFor(e) ?? "—"}\` : null].filter(Boolean).join(" · ") || "—";`,
+  `  const paymentMethodText = (e: CashBookEntry) => [e.anzahlung > 0 || e.anzahlung_vorgemerkt > 0 ? \`Anz. \${depositText(e)}\` : e.deposit_exemption_reason ? depositText(e) : null, e.bar > 0 || e.restbetrag_vorgemerkt > 0 ? \`Rest \${restMethodFor(e) ?? "—"}\` : null].filter(Boolean).join(" · ") || "—";`,
+  `  const paymentMethodText = (e: CashBookEntry) => isCustom(e)\n    ? (e.anzahlung > 0 || e.anzahlung_vorgemerkt > 0 ? \`Vorauszahlung \${e.anzahlung_method ?? "—"}\` : "Vorauszahlung offen")\n    : [e.anzahlung > 0 || e.anzahlung_vorgemerkt > 0 ? \`Anz. \${depositText(e)}\` : e.deposit_exemption_reason ? depositText(e) : null, e.bar > 0 || e.restbetrag_vorgemerkt > 0 ? \`Rest \${restMethodFor(e) ?? "—"}\` : null].filter(Boolean).join(" · ") || "—";`,
   "custom payment method wording",
 );
 patch(
   cashbookUi,
-  `  const paymentDateText = (e: CashBookEntry) => [e.anzahlung_datum ? \`Anz. \${dateLabel(e.anzahlung_datum)}\` : null, e.bar_datum ? \`Vor Ort \${dateLabel(e.bar_datum)}\` : null].filter(Boolean).join(" · ") || "—";`,
-  `  const paymentDateText = (e: CashBookEntry) => isCustom(e)\n    ? (e.anzahlung_datum ? \`Vorauszahlung \${dateLabel(e.anzahlung_datum)}\` : "Vorauszahlung offen")\n    : [e.anzahlung_datum ? \`Anz. \${dateLabel(e.anzahlung_datum)}\` : null, e.bar_datum ? \`Vor Ort \${dateLabel(e.bar_datum)}\` : null].filter(Boolean).join(" · ") || "—";`,
+  `  const paymentDateText = (e: CashBookEntry) => [e.anzahlung_datum ? \`Anz. \${dateLabel(e.anzahlung_datum)}\` : null, e.bar_datum ? \`Rest \${dateLabel(e.bar_datum)}\` : null].filter(Boolean).join(" · ") || "—";`,
+  `  const paymentDateText = (e: CashBookEntry) => isCustom(e)\n    ? (e.anzahlung_datum ? \`Vorauszahlung \${dateLabel(e.anzahlung_datum)}\` : "Vorauszahlung offen")\n    : [e.anzahlung_datum ? \`Anz. \${dateLabel(e.anzahlung_datum)}\` : null, e.bar_datum ? \`Rest \${dateLabel(e.bar_datum)}\` : null].filter(Boolean).join(" · ") || "—";`,
   "custom payment date wording",
 );
 patch(

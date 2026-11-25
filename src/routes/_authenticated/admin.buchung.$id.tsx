@@ -1727,7 +1727,7 @@ const depositDateMut = useMutation({
               </div>
               <div>
                 <label className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 block mb-1">
-                  Vor Ort Betrag (€)
+                  Restzahlung Betrag (€)
                 </label>
                 <input
                   type="text"
@@ -1763,10 +1763,10 @@ const depositDateMut = useMutation({
                 />
                 <p className="mt-1 text-[0.65rem] text-vanilla/50">
                   {parseEuroInput(latexInput) > 0
-                    ? `Ist im Vor-Ort-Betrag enthalten und zählt zur Einnahme · im Kassenbuch: „+ Latex ${formatEuro(parseEuroInput(latexInput))}“`
-                    : "Wenn der Gast Latex dazubucht: Betrag eintragen – er wird automatisch zum Vor-Ort-Betrag addiert."}
+                    ? `Ist in der Restzahlung enthalten und zählt zur Einnahme · im Kassenbuch: „+ Latex ${formatEuro(parseEuroInput(latexInput))}“`
+                    : "Wenn der Gast Latex dazubucht: Betrag eintragen – er wird automatisch zur Restzahlung addiert."}
                 </p>
-              </div><div><label className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 block mb-1">Vor Ort Zahlungsmethode</label><select value={restPaymentMethod} onChange={(e) => setRestPaymentMethod(e.target.value)} className="input-luxe w-full"><option>Bar</option><option>PayPal</option><option>Überweisung</option><option>Karte</option><option>Sonstige</option></select></div><div><label className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 block mb-1">Vor Ort erhalten am</label><input type="date" value={barPaidDate} onChange={(e) => setBarPaidDate(e.target.value)} className="input-luxe w-full" /></div>
+              </div><div><label className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 block mb-1">Restzahlung Zahlungsart</label><select value={restPaymentMethod} onChange={(e) => setRestPaymentMethod(e.target.value)} className="input-luxe w-full"><option>Bar</option><option>PayPal</option><option>Überweisung</option><option>Karte</option><option>Sonstige</option></select></div><div><label className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 block mb-1">Restzahlung erhalten am</label><input type="date" value={barPaidDate} onChange={(e) => setBarPaidDate(e.target.value)} className="input-luxe w-full" /></div>
             </div>
             <div className="mt-3">
               <label className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45 block mb-1">
@@ -1808,7 +1808,7 @@ const depositDateMut = useMutation({
   <p className="mt-4 text-[0.65rem] text-vanilla/40 leading-relaxed">
     Standard-Rechnung: {total.toLocaleString("de-DE")} € gesamt
     ({deposit!.toLocaleString("de-DE")} € Anzahlung +{" "}
-    {rest!.toLocaleString("de-DE")} € Vor Ort) —
+    {rest!.toLocaleString("de-DE")} € Restzahlung) —
     überschreibe die Felder oben bei Sondervereinbarungen.
   </p>
 ) : (
