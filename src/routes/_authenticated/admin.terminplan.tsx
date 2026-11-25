@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { parsePlan, phaseLabel } from "@/lib/session-plan";
+import { currentPartStart, isFreePhase, parsePlan, phaseLabel, planPhaseTimes } from "@/lib/session-plan";
 import { realLocation } from "@/lib/slot-location";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -154,8 +154,15 @@ function TerminplanPage() {
       });
       return rows
         .filter((r): r is Entry => r !== null)
-        .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+        .sort((a, b) => {
+          // Ist ein Teil eines Ablaufs vorbei, rutscht der Gast zur Uhrzeit seines nächsten Teils.
+          const now = Date.now();
+          const ta = currentPartStart(a.start, a.admin_note, now)?.s ?? new Date(a.start).getTime();
+          const tb = currentPartStart(b.start, b.admin_note, now)?.s ?? new Date(b.start).getTime();
+          return ta - tb;
+        });
     },
+    refetchInterval: 60_000,
   });
 
   const todayKey = berlinDayKey(new Date());
@@ -517,12 +524,20 @@ function EntryCard({ e, closure }: { e: Entry; closure?: { report_decision: stri
         {(() => {
           const plan = parsePlan(e.admin_note);
           if (!plan) return null;
+          const now = Date.now();
+          const times = planPhaseTimes(e.start, plan);
+          const next = currentPartStart(e.start, e.admin_note, now);
           return (
             <div className="border-l-2 border-champagne/50 pl-3 space-y-1 text-sm">
-              {plan.map((p, i) => (
+              {next && (
+                <div className="mb-1 inline-block bg-champagne px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-background">
+                  {next.s <= now ? "Jetzt" : "Weiter um"} {next.from} Uhr · {phaseLabel(next)}
+                </div>
+              )}
+              {times.map((p, i) => (
                 <div
                   key={i}
-                  className={p.kind === "liegezeit" ? (p.supervised ? "text-champagne" : "text-purple-200") : "text-vanilla/85"}
+                  className={`${p.e <= now ? "line-through opacity-45 " : ""}${isFreePhase(p) ? "text-purple-200" : p.kind === "session" ? "text-vanilla/85" : "text-champagne"}`}
                 >
                   {p.from}–{p.to} Uhr · {phaseLabel(p)}
                 </div>

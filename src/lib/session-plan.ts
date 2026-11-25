@@ -5,8 +5,10 @@
  * Unbeaufsichtigte Liegezeit bleibt im öffentlichen Kalender frei buchbar,
  * beaufsichtigte Liegezeit blockiert wie eine normale Session.
  */
+export type PlanKind = "session" | "liegezeit" | "kollegin" | "duo";
+
 export type PlanPhase = {
-  kind: "session" | "liegezeit";
+  kind: PlanKind;
   from: string; // HH:MM
   to: string; // HH:MM
   supervised?: boolean; // nur bei Liegezeit
@@ -14,7 +16,7 @@ export type PlanPhase = {
 
 const PLAN_LINE_RE = /(?:^|\n)Ablauf:[^\n]*/g;
 const PLAN_CAPTURE_RE = /(?:^|\n)Ablauf:\s*([^\n]+)/;
-const PHASE_RE = /^(\d{1,2}:\d{2})\s*[–-]\s*(\d{1,2}:\d{2})\s+(Session|Liegezeit)(?:\s+(beaufsichtigt|unbeaufsichtigt))?$/i;
+const PHASE_RE = /^(\d{1,2}:\d{2})\s*[–-]\s*(\d{1,2}:\d{2})\s+(Session|Liegezeit|Kollegin übernimmt|Duo-Session)(?:\s+(beaufsichtigt|unbeaufsichtigt))?$/i;
 
 const pad = (hm: string) => {
   const [h, m] = hm.split(":");
@@ -27,6 +29,8 @@ export function isValidTime(hm: string) {
 
 export function phaseLabel(p: PlanPhase) {
   if (p.kind === "session") return "Session";
+  if (p.kind === "kollegin") return "Kollegin übernimmt";
+  if (p.kind === "duo") return "Duo-Session";
   return p.supervised ? "Liegezeit beaufsichtigt" : "Liegezeit unbeaufsichtigt";
 }
 
@@ -41,7 +45,8 @@ export function parsePlan(note: string | null | undefined): PlanPhase[] | null {
   for (const part of match[1].split("|")) {
     const m = part.trim().match(PHASE_RE);
     if (!m) continue;
-    const kind = m[3].toLowerCase() === "session" ? "session" : "liegezeit";
+    const word = m[3].toLowerCase();
+    const kind: PlanKind = word === "session" ? "session" : word.startsWith("kollegin") ? "kollegin" : word.startsWith("duo") ? "duo" : "liegezeit";
     phases.push({
       kind,
       from: pad(m[1]),
@@ -120,6 +125,29 @@ export function berlinDateKey(value: string | Date) {
   }).format(new Date(value));
 }
 
+/** Abschnitte, in denen meine Zeit frei buchbar bleibt. */
+export function isFreePhase(p: PlanPhase) {
+  return (p.kind === "liegezeit" && !p.supervised) || p.kind === "kollegin";
+}
+
+/** Absolute Zeiten (ms) aller Abschnitte, ausgehend vom Starttag des Termins. */
+export function planPhaseTimes(startIso: string, phases: PlanPhase[]) {
+  const dateKey = berlinDateKey(startIso);
+  return planToOffsets(phases).map((p) => ({ ...p, s: berlinMinutesToMs(dateKey, p.start), e: berlinMinutesToMs(dateKey, p.end) }));
+}
+
+/**
+ * Für den Terminplan: Beginn des aktuell laufenden bzw. nächsten Teils.
+ * Ist ein Teil vorbei, rutscht der Gast zur Uhrzeit seines nächsten Teils.
+ */
+export function currentPartStart(startIso: string, note: string | null | undefined, now = Date.now()) {
+  const plan = parsePlan(note);
+  if (!plan) return null;
+  const times = planPhaseTimes(startIso, plan);
+  const next = times.find((p) => p.e > now);
+  return next && next.s > times[0].s ? next : null;
+}
+
 export type PlanHole = { s: number; e: number; ownerS: number; ownerE: number };
 
 /**
@@ -131,9 +159,23 @@ export function freeHolesForPlan(dateKey: string, phases: PlanPhase[]): PlanHole
   if (!offsets.length) return [];
   const ownerS = berlinMinutesToMs(dateKey, offsets[0].start);
   const ownerE = berlinMinutesToMs(dateKey, offsets[offsets.length - 1].end);
-  return offsets
-    .filter((p) => p.kind === "liegezeit" && !p.supervised)
-    .map((p) => ({ s: berlinMinutesToMs(dateKey, p.start), e: berlinMinutesToMs(dateKey, p.end), ownerS, ownerE }));
+  const holes: PlanHole[] = [];
+  offsets.forEach((p, i) => {
+    // Lücken zwischen zwei Abschnitten (z. B. „später noch eine Session“) bleiben ebenfalls frei.
+    const prevEnd = i > 0 ? offsets[i - 1].end : null;
+    if (prevEnd != null && p.start > prevEnd) {
+      holes.push({ s: berlinMinutesToMs(dateKey, prevEnd), e: berlinMinutesToMs(dateKey, p.start), ownerS, ownerE });
+    }
+    if (isFreePhase(p)) holes.push({ s: berlinMinutesToMs(dateKey, p.start), e: berlinMinutesToMs(dateKey, p.end), ownerS, ownerE });
+  });
+  // Direkt aneinanderliegende freie Zeiten zusammenfassen.
+  const merged: PlanHole[] = [];
+  for (const h of holes.sort((a, b) => a.s - b.s)) {
+    const last = merged[merged.length - 1];
+    if (last && h.s <= last.e) last.e = Math.max(last.e, h.e);
+    else merged.push({ ...h });
+  }
+  return merged;
 }
 
 /**

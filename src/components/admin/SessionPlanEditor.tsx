@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import {
+  isFreePhase,
   isValidTime,
   parsePlan,
   phaseLabel,
@@ -55,8 +56,9 @@ export function SessionPlanEditor({
       <div>
         <div className="text-sm text-vanilla">Ablauf mit genauen Zeiten</div>
         <p className="text-xs text-vanilla/55 mt-1 leading-relaxed">
-          Z. B. Session → Liegezeit → Session. Unbeaufsichtigte Liegezeit bleibt im öffentlichen Kalender für andere
-          Gäste frei. Beaufsichtigte Liegezeit blockiert wie eine normale Session. Beim Speichern werden Beginn und
+          Z. B. Session → Liegezeit → Session. Unbeaufsichtigte Liegezeit und „Kollegin übernimmt“ bleiben im
+          öffentlichen Kalender für andere Gäste frei. Beaufsichtigte Liegezeit und Duo-Session blockieren wie eine
+          normale Session. Beim Speichern werden Beginn und
           Gesamtdauer des Termins automatisch angepasst.
         </p>
       </div>
@@ -65,28 +67,30 @@ export function SessionPlanEditor({
         <div
           key={index}
           className={`grid grid-cols-2 sm:grid-cols-[1fr_auto_auto_auto] gap-2 items-end border p-2 ${
-            p.kind === "liegezeit"
-              ? p.supervised
-                ? "border-champagne/40 bg-champagne/5"
-                : "border-purple-400/40 bg-purple-500/5"
-              : "border-champagne/20"
+            isFreePhase(p)
+              ? "border-purple-400/40 bg-purple-500/5"
+              : p.kind === "session"
+                ? "border-champagne/20"
+                : "border-champagne/40 bg-champagne/5"
           }`}
         >
           <label className="col-span-2 sm:col-span-1 text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45">
             Art
             <select
-              value={p.kind === "session" ? "session" : p.supervised ? "liegezeit-b" : "liegezeit-u"}
+              value={p.kind === "liegezeit" ? (p.supervised ? "liegezeit-b" : "liegezeit-u") : p.kind}
               onChange={(e) => {
                 const v = e.target.value;
-                update(index, v === "session"
-                  ? { kind: "session", supervised: undefined }
-                  : { kind: "liegezeit", supervised: v === "liegezeit-b" });
+                update(index, v.startsWith("liegezeit")
+                  ? { kind: "liegezeit", supervised: v === "liegezeit-b" }
+                  : { kind: v as PlanPhase["kind"], supervised: undefined });
               }}
               className="input-luxe w-full mt-1 normal-case tracking-normal"
             >
               <option value="session">Session</option>
               <option value="liegezeit-u">Liegezeit unbeaufsichtigt (Zeit bleibt frei)</option>
               <option value="liegezeit-b">Liegezeit beaufsichtigt (blockiert)</option>
+              <option value="kollegin">Kollegin übernimmt (Zeit bleibt frei)</option>
+              <option value="duo">Duo-Session mit Kollegin (blockiert)</option>
             </select>
           </label>
           <label className="text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45">
@@ -115,19 +119,25 @@ export function SessionPlanEditor({
         <button type="button" onClick={() => add("liegezeit")} className="btn-outline-gold !py-2 !px-3 !text-[0.65rem] inline-flex items-center gap-1">
           <Plus size={13} /> Liegezeit
         </button>
+        <button type="button" onClick={() => add("kollegin")} className="btn-outline-gold !py-2 !px-3 !text-[0.65rem] inline-flex items-center gap-1">
+          <Plus size={13} /> Kollegin übernimmt
+        </button>
+        <button type="button" onClick={() => add("duo")} className="btn-outline-gold !py-2 !px-3 !text-[0.65rem] inline-flex items-center gap-1">
+          <Plus size={13} /> Duo-Session
+        </button>
       </div>
 
       {phases.length > 0 && allValid && (
         <div className="border border-champagne/20 bg-anthracite/30 p-3 text-sm space-y-1">
           {phases.map((p, i) => (
-            <div key={i} className={p.kind === "liegezeit" && !p.supervised ? "text-purple-200" : "text-vanilla/85"}>
+            <div key={i} className={isFreePhase(p) ? "text-purple-200" : "text-vanilla/85"}>
               {p.from}–{p.to} Uhr · {phaseLabel(p)}
             </div>
           ))}
           <div className="pt-1 text-xs text-champagne">
             Gesamt: {Math.floor(total / 60)} Std.{total % 60 ? ` ${total % 60} Min.` : ""} ({phases[0].from}–{phases[phases.length - 1].to} Uhr)
           </div>
-          {gaps && <div className="text-xs text-amber-200">Hinweis: Zwischen den Abschnitten gibt es Lücken oder Überschneidungen.</div>}
+          {gaps && <div className="text-xs text-amber-200">Zwischen den Abschnitten gibt es Pausen – diese Zeit bleibt im Kalender frei buchbar.</div>}
         </div>
       )}
 
