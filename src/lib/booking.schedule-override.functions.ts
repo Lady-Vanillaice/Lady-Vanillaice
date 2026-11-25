@@ -54,7 +54,7 @@ export const updateBookingSchedule = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: booking, error: bookingErr } = await context.supabase
       .from("bookings")
-      .select("id, slot_id, status")
+      .select("id, slot_id, status, admin_note")
       .eq("id", data.id)
       .maybeSingle();
     if (bookingErr) throw new Error(bookingErr.message);
@@ -96,11 +96,15 @@ export const updateBookingSchedule = createServerFn({ method: "POST" })
 
     // Freie Teile anderer Abläufe (unbeaufsichtigte Liegezeit, Kollegin, Pausen) blockieren nicht.
     const { loadFreeLiegezeitHoles } = await import("./session-plan.server");
-    const { subtractHoles } = await import("./session-plan");
+    const { subtractHoles, parsePlan, planBlockingRanges, berlinDateKey } = await import("./session-plan");
     const otherHoles = await loadFreeLiegezeitHoles(requestedStart.getTime(), requestedEnd.getTime());
+    // Hat der Termin schon einen gespeicherten Ablauf, zählen nur dessen blockierende Teile.
+    const ownPlan = parsePlan((booking as { admin_note?: string | null }).admin_note);
     const ownRanges = data.blocking_ranges?.length
       ? data.blocking_ranges.map((r) => ({ s: new Date(r.start).getTime(), e: new Date(r.end).getTime() }))
-      : [{ s: requestedStart.getTime(), e: requestedEnd.getTime() }];
+      : ownPlan
+        ? planBlockingRanges(berlinDateKey(requestedStart), ownPlan)
+        : [{ s: requestedStart.getTime(), e: requestedEnd.getTime() }];
     const conflicts = (blockers ?? []).some((blocked) => {
       if (!isBlockingBooking(blocked)) return false;
       if (!blocked.requested_start || !blocked.duration_minutes) return false;
