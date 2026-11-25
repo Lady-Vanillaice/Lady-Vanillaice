@@ -7,11 +7,24 @@ import { createAdvertisingExpense, createCashBookEntry, createOtherExpense, crea
 const today = () => new Date().toISOString().slice(0, 10);
 const METHODS = ["Bar", "PayPal", "Überweisung", "Karte", "Sonstige"] as const;
 type IncomeKind = "external" | "financial_slave" | "custom" | "phone" | "cam" | "longterm";
-const LONGTERM_PACKAGES = [
+const LONGTERM_PACKAGES: ReadonlyArray<{ name: string; amount: number | null }> = [
   { name: "Basis", amount: 300 },
   { name: "Intensiv", amount: 500 },
   { name: "Premium", amount: 750 },
-] as const;
+  { name: "Individuell", amount: null },
+];
+function addOneMonth(isoDate: string) {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  if (!y || !m || !d) return isoDate;
+  const target = new Date(Date.UTC(y, m, d));
+  // z. B. 31.01. → 28./29.02. statt 03.03.
+  if (target.getUTCDate() !== d) target.setUTCDate(0);
+  return target.toISOString().slice(0, 10);
+}
+function formatDe(isoDate: string) {
+  const [y, m, d] = isoDate.split("-");
+  return y && m && d ? `${d}.${m}.${y}` : isoDate;
+}
 type ExpenseKind = "studio" | "advertising" | "other";
 const parseAmount = (value: string) => Number(value.trim().replace(/\s/g, "").replace(",", "."));
 
@@ -33,9 +46,10 @@ export function CashbookEntryOrganizer() {
   const [purpose, setPurpose] = useState("");
   const [minutes, setMinutes] = useState("");
   const [pkg, setPkg] = useState("");
+  const [until, setUntil] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
 
-  const reset = () => { setDate(today()); setName(""); setPlace(""); setValue(""); setMethod(""); setNote(""); setPurpose(""); setMinutes(""); setPkg(""); };
+  const reset = () => { setDate(today()); setName(""); setPlace(""); setValue(""); setMethod(""); setNote(""); setPurpose(""); setMinutes(""); setPkg(""); setUntil(""); };
 
   // Direkt aus dem Admin-Start öffnen, z. B. /admin/kassenbuch?neu=camsession
   useEffect(() => {
@@ -65,8 +79,9 @@ export function CashbookEntryOrganizer() {
           return createIncome({ data: { studio: "Camsession", datum: date, kunde: name.trim(), anzahlung: parsed, anzahlung_method: method.trim(), anzahlung_datum: date, bar: 0, restzahlung_method: null, restzahlung_datum: null, notiz: camNote } });
         }
         if (incomeKind === "longterm") {
-          if (!pkg) throw new Error("Bitte das Paket auswählen (Basis, Intensiv oder Premium).");
-          const longtermNote = [`Paket ${pkg}`, note.trim() || null].filter(Boolean).join(" · ");
+          const endDate = until || addOneMonth(date);
+          if (endDate < date) throw new Error("„Laufzeit bis“ darf nicht vor dem Zahlungsdatum liegen.");
+          const longtermNote = [`Paket ${pkg || "Individuell"}`, `Laufzeit bis ${formatDe(endDate)}`, note.trim() || null].filter(Boolean).join(" · ");
           return createIncome({ data: { studio: "Langzeiterziehung", datum: date, kunde: name.trim(), anzahlung: parsed, anzahlung_method: method.trim(), anzahlung_datum: date, bar: 0, restzahlung_method: null, restzahlung_datum: null, notiz: longtermNote } });
         }
         const studio = incomeKind === "phone" ? "Telefon-Session" : incomeKind === "financial_slave" ? "Zahlsklave" : incomeKind === "custom" ? "Custom Content" : place.trim() || "Externer Termin";
@@ -88,7 +103,7 @@ export function CashbookEntryOrganizer() {
       }
       throw new Error("Bitte eine Kategorie auswählen.");
     },
-    onSuccess: async () => { reset(); await qc.invalidateQueries({ queryKey: ["cashbook"] }); },
+    onSuccess: async () => { reset(); await Promise.all([qc.invalidateQueries({ queryKey: ["cashbook"] }), qc.invalidateQueries({ queryKey: ["longterm-clients"] })]); },
   });
 
   return <>
@@ -114,7 +129,14 @@ export function CashbookEntryOrganizer() {
         </div>
         {incomeKind === "longterm" && <div>
           <div className="eyebrow mb-1.5 text-[0.6rem]">Paket</div>
-          <div className="grid grid-cols-3 gap-1.5">{LONGTERM_PACKAGES.map(p => <button key={p.name} type="button" onClick={() => { setPkg(p.name); setValue(String(p.amount)); }} className={`border px-2 py-2 text-xs ${pkg === p.name ? "border-champagne bg-champagne/10 text-champagne" : "border-champagne/25 text-vanilla/75"}`}>{p.name}<span className="block text-[0.65rem] text-vanilla/50">{p.amount} € / Monat</span></button>)}</div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">{LONGTERM_PACKAGES.map(p => <button key={p.name} type="button" onClick={() => { setPkg(p.name); if (p.amount != null) setValue(String(p.amount)); mutation.reset(); }} className={`border px-2 py-2 text-xs ${pkg === p.name ? "border-champagne bg-champagne/10 text-champagne" : "border-champagne/25 text-vanilla/75"}`}>{p.name}<span className="block text-[0.65rem] text-vanilla/50">{p.amount != null ? `${p.amount} € / Monat` : "Preis frei"}</span></button>)}</div>
+          <label className="mt-3 block">
+            <span className="eyebrow mb-1.5 block text-[0.6rem]">Laufzeit bis (optional)</span>
+            <input type="date" value={until} min={date} onChange={(e) => { setUntil(e.target.value); mutation.reset(); }} className="luxe-input w-full" />
+            <span className="mt-1 block text-[0.65rem] text-vanilla/50">
+              {until ? `Läuft bis ${formatDe(until)}.` : `Leer lassen = genau 1 Monat (bis ${formatDe(addOneMonth(date))}).`} Den Betrag kannst du unten frei ändern, z. B. zum Reinschnuppern.
+            </span>
+          </label>
         </div>}
         {incomeKind && <EntryForm fixedAmounts={incomeKind === "phone" ? [50, 75, 100] : undefined} mode="income" title={title} date={date} setDate={setDate} name={name} setName={setName} place={place} setPlace={setPlace} value={value} setValue={setValue} method={method} setMethod={setMethod} note={note} setNote={setNote} showPlace={incomeKind === "external"} placeLabel="Studio / Ort" showMinutes={incomeKind === "cam"} minutes={minutes} setMinutes={setMinutes} pending={mutation.isPending} error={mutation.error} onSubmit={() => mutation.mutate()} />}
       </div>}

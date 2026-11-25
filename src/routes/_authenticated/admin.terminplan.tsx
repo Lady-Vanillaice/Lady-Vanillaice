@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { listLongtermClients } from "@/lib/longterm.functions";
 import { parseSessionType } from "@/lib/session-type";
 import { currentPartStart, isFreePhase, parsePlan, phaseDisplay, planPhaseTimes } from "@/lib/session-plan";
 import { realLocation } from "@/lib/slot-location";
@@ -194,6 +195,7 @@ function TerminplanPage() {
       />
       <section className="py-16">
         <div className="container-luxe max-w-3xl">
+          <LongtermOverview />
           <div className="mb-8">
             <Link to="/admin" className="btn-outline-gold !py-2 !px-4 !text-[0.65rem]">
               <ArrowLeft size={12} /> Zum Admin-Bereich
@@ -562,6 +564,43 @@ function EntryCard({ e, closure }: { e: Entry; closure?: { report_decision: stri
       </div>
     </Link>
     <SessionClosureControls bookingId={e.id} completed={isCompleted} reportDecision={closure?.report_decision ?? (isLegacyCompleted ? "without_report" : undefined)} amount={e.bar ?? 0} paidAt={e.cash_received_at} guestEmail={e.guest_email} sessionStart={e.start} sessionPlace={e.location} isDuo={e.is_duo} duoPartner={e.duo_partner} />
+    </div>
+  );
+}
+
+
+/** Ganz oben im Terminplan: laufende Langzeiterziehungen mit Laufzeit-Ende. */
+function LongtermOverview() {
+  const listFn = useServerFn(listLongtermClients);
+  const q = useQuery({ queryKey: ["longterm-clients"], queryFn: () => listFn(), refetchInterval: 5 * 60_000 });
+  const todayKey = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Berlin" }).format(new Date());
+  const daysLeft = (bis: string) => Math.round((Date.parse(`${bis}T00:00:00Z`) - Date.parse(`${todayKey}T00:00:00Z`)) / 86_400_000);
+  const fmt = (iso: string) => iso.split("-").reverse().join(".");
+  // Abgelaufene nur noch 14 Tage lang zeigen, damit man ans Verlängern denkt.
+  const rows = (q.data ?? []).filter((c) => daysLeft(c.bis) >= -14);
+  if (q.isLoading || rows.length === 0) return null;
+  return (
+    <div className="mb-8 border border-champagne/40 bg-champagne/[0.06] p-4">
+      <div className="eyebrow mb-3 text-champagne">Langzeiterziehung</div>
+      <div className="space-y-2">
+        {rows.map((c) => {
+          const left = daysLeft(c.bis);
+          const tone = left < 0 ? "text-bordeaux" : left <= 3 ? "text-amber-200" : "text-vanilla/70";
+          return (
+            <div key={c.id} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-champagne/10 pb-2 last:border-0 last:pb-0">
+              <div>
+                <span className="font-medium text-vanilla">{c.kunde}</span>
+                <span className="ml-2 text-xs uppercase tracking-[0.14em] text-champagne">{c.paket}</span>
+                <span className="ml-2 text-xs text-vanilla/50">{c.betrag.toLocaleString("de-DE")} €</span>
+              </div>
+              <div className={`text-sm ${tone}`}>
+                bis {fmt(c.bis)}
+                {left < 0 ? " · abgelaufen" : left === 0 ? " · endet heute" : ` · noch ${left} ${left === 1 ? "Tag" : "Tage"}`}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
