@@ -444,7 +444,7 @@ function AdminKalenderPage() {
                             </span>
                             {s.is_duo && (
                               <span className="text-champagne uppercase tracking-[0.2em]">
-                                {s.duo_partner?.startsWith("OPTIONAL_DUO::") ? "Single oder Duo" : "Nur Duo"}
+                                {s.duo_partner?.startsWith("OPTIONAL_DUO::") ? "Flex" : "Nur Duo"}
                                 {s.duo_partner?.replace("OPTIONAL_DUO::", "") ? ` · ${s.duo_partner.replace("OPTIONAL_DUO::", "")}` : ""}
                               </span>
                             )}
@@ -1329,7 +1329,7 @@ function DayTypeEditor({
         className="input-luxe !w-auto !py-1 !px-2 text-xs"
       >
         <option value="single">Single</option>
-        <option value="single_or_duo">Single oder Duo</option>
+        <option value="single_or_duo">Flex (Single oder Duo)</option>
         <option value="duo">Nur Duo</option>
       </select>
       {mode !== "single" && (

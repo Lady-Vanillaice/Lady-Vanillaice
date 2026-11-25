@@ -336,7 +336,7 @@ function KalenderPage() {
                           )}
                           {slot?.is_duo && !isFullyBooked && (
                             <span className="text-[0.48rem] uppercase tracking-[0.12em] text-champagne">
-                              Duo
+                              {slot.duo_partner?.startsWith("OPTIONAL_DUO::") ? "Single/Duo" : "Duo"}
                             </span>
                           )}
                           {slot?.is_content_shoot && !isFullyBooked && (
@@ -912,7 +912,7 @@ function BookingPanel({
     <>
       <div className="eyebrow mb-2">{tr("Buchungsanfrage", "Booking request")}</div>
       <h3 className="font-display text-2xl text-vanilla mb-1">
-        {slot.is_duo && <span className="mr-2 align-middle text-[0.6rem] uppercase tracking-[0.22em] text-champagne border border-champagne/40 px-2 py-1">Duo</span>}
+        {slot.is_duo && <span className="mr-2 align-middle text-[0.6rem] uppercase tracking-[0.22em] text-champagne border border-champagne/40 px-2 py-1">{duoIsOptional ? tr("Single verfügbar – Duo verfügbar", "Single available – Duo available") : "Duo"}</span>}
         {slot.is_content_shoot && <span className="mr-2 align-middle text-[0.6rem] uppercase tracking-[0.22em] text-champagne border border-champagne/40 px-2 py-1">Content</span>}
         {formatMunichDate(slot.starts_at, lang)}
         {slot.is_duo && slot.duo_partner && (
