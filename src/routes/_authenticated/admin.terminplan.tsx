@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { listLongtermClients } from "@/lib/longterm.functions";
+import { useState } from "react";
+import { listLongtermClients, updateLongtermEntry, type LongtermClient } from "@/lib/longterm.functions";
 import { parseSessionType } from "@/lib/session-type";
 import { currentPartStart, isFreePhase, parsePlan, phaseDisplay, planPhaseTimes } from "@/lib/session-plan";
 import { realLocation } from "@/lib/slot-location";
@@ -571,6 +572,7 @@ function EntryCard({ e, closure }: { e: Entry; closure?: { report_decision: stri
 
 /** Ganz oben im Terminplan: laufende Langzeiterziehungen mit Laufzeit-Ende. */
 function LongtermOverview() {
+  const [editingId, setEditingId] = useState<string | null>(null);
   const listFn = useServerFn(listLongtermClients);
   const q = useQuery({ queryKey: ["longterm-clients"], queryFn: () => listFn(), refetchInterval: 5 * 60_000 });
   const todayKey = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Berlin" }).format(new Date());
@@ -589,7 +591,13 @@ function LongtermOverview() {
           return (
             <div key={c.id} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-champagne/10 pb-2 last:border-0 last:pb-0">
               <div>
-                <span className="font-medium text-vanilla">{c.kunde}</span>
+                <button
+                  type="button"
+                  onClick={() => setEditingId(editingId === c.id ? null : c.id)}
+                  className="font-medium text-vanilla underline decoration-champagne/40 underline-offset-4 hover:text-champagne"
+                >
+                  {c.kunde}
+                </button>
                 <span className="ml-2 text-xs uppercase tracking-[0.14em] text-champagne">{c.paket}</span>
                 <span className="ml-2 text-xs text-vanilla/50">{c.betrag.toLocaleString("de-DE")} €</span>
               </div>
@@ -597,9 +605,66 @@ function LongtermOverview() {
                 bis {fmt(c.bis)}
                 {left < 0 ? " · abgelaufen" : left === 0 ? " · endet heute" : ` · noch ${left} ${left === 1 ? "Tag" : "Tage"}`}
               </div>
+              {editingId === c.id && <LongtermEditForm client={c} onDone={() => setEditingId(null)} />}
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function LongtermEditForm({ client, onDone }: { client: LongtermClient; onDone: () => void }) {
+  const qc = useQueryClient();
+  const updateFn = useServerFn(updateLongtermEntry);
+  const [kunde, setKunde] = useState(client.kunde);
+  const [paket, setPaket] = useState(client.paket);
+  const [betrag, setBetrag] = useState(String(client.betrag).replace(".", ","));
+  const [zahlungsart, setZahlungsart] = useState(client.zahlungsart ?? "");
+  const [bis, setBis] = useState(client.bis);
+  const [notiz, setNotiz] = useState(client.notiz);
+  const mut = useMutation({
+    mutationFn: () => {
+      const amount = Number(betrag.replace(/\s|€/g, "").replace(",", "."));
+      if (!Number.isFinite(amount) || amount < 0) throw new Error("Bitte einen gültigen Betrag eingeben.");
+      if (!kunde.trim()) throw new Error("Bitte einen Namen eingeben.");
+      if (!bis) throw new Error("Bitte „Laufzeit bis“ eintragen.");
+      return updateFn({ data: { id: client.id, kunde: kunde.trim(), paket, betrag: amount, zahlungsart: zahlungsart || null, bis, notiz } });
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["longterm-clients"] }),
+        qc.invalidateQueries({ queryKey: ["cashbook"] }),
+      ]);
+      onDone();
+    },
+  });
+  const field = "text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45";
+  return (
+    <div className="mt-2 w-full grid grid-cols-2 gap-2 border border-champagne/25 bg-card p-3">
+      <label className={`${field} col-span-2`}>Name<input value={kunde} onChange={(e) => setKunde(e.target.value)} className="input-luxe w-full mt-1 normal-case tracking-normal" /></label>
+      <label className={field}>Paket
+        <select value={paket} onChange={(e) => setPaket(e.target.value)} className="input-luxe w-full mt-1 normal-case tracking-normal">
+          {["Basis", "Intensiv", "Premium", "Individuell"].map((p) => <option key={p}>{p}</option>)}
+          {!["Basis", "Intensiv", "Premium", "Individuell"].includes(paket) && <option>{paket}</option>}
+        </select>
+      </label>
+      <label className={field}>Betrag (€)<input inputMode="decimal" value={betrag} onChange={(e) => setBetrag(e.target.value)} className="input-luxe w-full mt-1" /></label>
+      <label className={field}>Zahlungsart
+        <select value={zahlungsart} onChange={(e) => setZahlungsart(e.target.value)} className="input-luxe w-full mt-1 normal-case tracking-normal">
+          <option value="">—</option>
+          {["Bar", "PayPal", "Überweisung", "Karte", "Sonstige"].map((m) => <option key={m}>{m}</option>)}
+          {zahlungsart && !["Bar", "PayPal", "Überweisung", "Karte", "Sonstige"].includes(zahlungsart) && <option>{zahlungsart}</option>}
+        </select>
+      </label>
+      <label className={field}>Laufzeit bis<input type="date" value={bis} onChange={(e) => setBis(e.target.value)} className="input-luxe w-full mt-1" /></label>
+      <label className={`${field} col-span-2`}>Notiz<input value={notiz} onChange={(e) => setNotiz(e.target.value)} maxLength={500} className="input-luxe w-full mt-1 normal-case tracking-normal" /></label>
+      <div className="col-span-2 flex flex-wrap items-center gap-2">
+        <button type="button" disabled={mut.isPending} onClick={() => mut.mutate()} className="btn-outline-gold !py-2 !px-4 !text-[0.65rem] disabled:opacity-40">
+          {mut.isPending ? "Speichere…" : "Speichern"}
+        </button>
+        <button type="button" onClick={onDone} className="text-xs text-vanilla/50 underline">Abbrechen</button>
+        {mut.error && <span className="text-xs text-bordeaux">{(mut.error as Error).message}</span>}
       </div>
     </div>
   );
