@@ -9,13 +9,32 @@ export type CalendarSpecial = {
   title: string;
   description: string;
   outfit?: string | null;
+  /** Bedingung: Mindestdauer der Session in Stunden (optional) */
+  minHours?: number | null;
 };
+
+/** Text der Bedingung, z. B. „Mindestens 2 Stunden Session“. Leer, wenn keine Bedingung gesetzt ist. */
+export function formatSpecialCondition(minHours: number | null | undefined, lang: "de" | "en") {
+  if (minHours == null || !Number.isFinite(minHours) || minHours <= 0) return "";
+  const amount = minHours.toLocaleString(lang === "de" ? "de-DE" : "en-US", { maximumFractionDigits: 2 });
+  if (lang === "de") return `Mindestens ${amount} ${minHours === 1 ? "Stunde" : "Stunden"} Session`;
+  return `Minimum ${amount} ${minHours === 1 ? "hour" : "hours"} session`;
+}
+
+/** Liest „2“, „1,5“ oder „1.5“ ein. Gibt null bei leerem Feld zurück, NaN bei ungültiger Eingabe. */
+export function parseSpecialMinHours(input: string): number | null {
+  const trimmed = input.trim().replace(",", ".");
+  if (!trimmed) return null;
+  if (!/^\d+(\.\d+)?$/.test(trimmed)) return Number.NaN;
+  return Number(trimmed);
+}
 
 const specialSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   title: z.string().trim().min(1).max(80),
   description: z.string().trim().min(1).max(1200),
   outfit: z.string().trim().max(200).optional().nullable(),
+  minHours: z.number().min(0.5).max(24).optional().nullable(),
 });
 
 function normalizeSpecials(value: unknown): CalendarSpecial[] {

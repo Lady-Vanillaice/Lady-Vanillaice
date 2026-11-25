@@ -4,7 +4,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { Gift, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import {
   deleteCalendarSpecial,
+  formatSpecialCondition,
   listCalendarSpecials,
+  parseSpecialMinHours,
   saveCalendarSpecial,
 } from "@/lib/calendar-special.functions";
 
@@ -21,6 +23,7 @@ export function CalendarSpecialsAdmin() {
   const [title, setTitle] = useState("SPECIAL");
   const [description, setDescription] = useState("");
   const [outfit, setOutfit] = useState("");
+  const [minHoursInput, setMinHoursInput] = useState("");
   const [editingDate, setEditingDate] = useState<string | null>(null);
 
   const resetForm = () => {
@@ -28,6 +31,7 @@ export function CalendarSpecialsAdmin() {
     setTitle("SPECIAL");
     setDescription("");
     setOutfit("");
+    setMinHoursInput("");
     setEditingDate(null);
   };
 
@@ -36,8 +40,13 @@ export function CalendarSpecialsAdmin() {
     [specialsQ.data],
   );
 
+  const minHours = parseSpecialMinHours(minHoursInput);
+  const minHoursInvalid = minHours !== null && (Number.isNaN(minHours) || minHours < 0.5 || minHours > 24);
+  const conditionPreview = minHoursInvalid ? "" : formatSpecialCondition(minHours, "de");
+
   const saveMut = useMutation({
     mutationFn: async () => {
+      if (minHoursInvalid) throw new Error("Bitte bei der Bedingung eine Zahl zwischen 0,5 und 24 eingeben.");
       if (editingDate && editingDate !== date) {
         await deleteFn({ data: { date: editingDate } });
       }
@@ -47,6 +56,7 @@ export function CalendarSpecialsAdmin() {
           title: title.trim() || "SPECIAL",
           description: description.trim(),
           outfit: outfit.trim() || null,
+          minHours: minHours ?? null,
         },
       });
     },
@@ -79,7 +89,7 @@ export function CalendarSpecialsAdmin() {
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          if (!date || !description.trim()) return;
+          if (!date || !description.trim() || minHoursInvalid) return;
           saveMut.mutate();
         }}
         className="grid gap-3"
@@ -106,6 +116,24 @@ export function CalendarSpecialsAdmin() {
           />
         </label>
         <label className="grid gap-1 text-xs text-vanilla/65">
+          Bedingung: Mindestdauer in Stunden (optional)
+          <input
+            inputMode="decimal"
+            value={minHoursInput}
+            onChange={(event) => setMinHoursInput(event.target.value)}
+            placeholder="z. B. 2 oder 1,5"
+            className="luxe-input"
+            aria-invalid={minHoursInvalid}
+          />
+          {minHoursInvalid ? (
+            <span className="text-bordeaux">Bitte eine Zahl zwischen 0,5 und 24 eingeben.</span>
+          ) : conditionPreview ? (
+            <span className="text-champagne/80">Öffentlich: Bedingung: {conditionPreview}</span>
+          ) : (
+            <span className="text-vanilla/40">Leer lassen, wenn es keine Mindestdauer gibt.</span>
+          )}
+        </label>
+        <label className="grid gap-1 text-xs text-vanilla/65">
           Outfit (optional)
           <input
             maxLength={200}
@@ -130,7 +158,7 @@ export function CalendarSpecialsAdmin() {
         <div className="flex flex-wrap gap-2">
           <button
             type="submit"
-            disabled={saveMut.isPending || !date || !description.trim()}
+            disabled={saveMut.isPending || !date || !description.trim() || minHoursInvalid}
             className="btn-gold inline-flex w-fit items-center gap-2 disabled:opacity-40"
           >
             {saveMut.isPending ? <Save size={15} /> : editingDate ? <Save size={15} /> : <Plus size={15} />}
@@ -171,6 +199,11 @@ export function CalendarSpecialsAdmin() {
                   {" · "}
                   {special.title}
                 </div>
+                {special.minHours != null && (
+                  <p className="mt-1 text-xs text-champagne/80">
+                    Bedingung: {formatSpecialCondition(special.minHours, "de")}
+                  </p>
+                )}
                 {special.outfit && (
                   <p className="mt-1 text-xs text-champagne/80">
                     Outfit: {special.outfit}
@@ -188,6 +221,7 @@ export function CalendarSpecialsAdmin() {
                     setDate(special.date);
                     setTitle(special.title);
                     setOutfit(special.outfit ?? "");
+                    setMinHoursInput(special.minHours != null ? String(special.minHours).replace(".", ",") : "");
                     setDescription(special.description);
                   }}
                   disabled={saveMut.isPending || deleteMut.isPending}

@@ -19,7 +19,7 @@ import {
 import { de, enUS } from "date-fns/locale";
 import { useTr, useLang } from "@/i18n";
 import { getTimelineLabelTicks } from "@/lib/calendar-timeline";
-import { listCalendarSpecials, type CalendarSpecial } from "@/lib/calendar-special.functions";
+import { formatSpecialCondition, listCalendarSpecials, type CalendarSpecial } from "@/lib/calendar-special.functions";
 import { joinCalendarWaitlist } from "@/lib/calendar-waitlist.functions";
 
 type Slot = {
@@ -399,6 +399,12 @@ function KalenderPage() {
                     <span className="eyebrow">SPECIAL</span>
                   </div>
                   <h3 className="font-display text-xl text-vanilla">{selectedSpecial.title}</h3>
+                  {selectedSpecial.minHours != null && (
+                    <p className="mt-2 text-sm text-champagne">
+                      <span className="font-medium">{tr("Bedingung", "Condition")}:</span>{" "}
+                      {tr(formatSpecialCondition(selectedSpecial.minHours, "de"), formatSpecialCondition(selectedSpecial.minHours, "en"))}
+                    </p>
+                  )}
                   {selectedSpecial.outfit && (
                     <p className="mt-2 text-sm text-champagne">
                       <span className="font-medium">{tr("Outfit", "Outfit")}:</span>{" "}
