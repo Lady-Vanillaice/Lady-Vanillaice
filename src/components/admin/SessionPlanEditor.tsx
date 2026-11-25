@@ -4,7 +4,7 @@ import {
   isFreePhase,
   isValidTime,
   parsePlan,
-  phaseLabel,
+  phaseDisplay,
   planToOffsets,
   planTotalMinutes,
   type PlanPhase,
@@ -101,6 +101,19 @@ export function SessionPlanEditor({
             Bis
             <input type="time" value={p.to} onChange={(e) => update(index, { to: e.target.value })} className="input-luxe w-full mt-1" />
           </label>
+          {(p.kind === "kollegin" || p.kind === "duo") && (
+            <label className="col-span-2 sm:col-span-4 sm:order-last text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45">
+              {p.kind === "kollegin" ? "Welche Kollegin übernimmt?" : "Duo-Session mit welcher Kollegin?"}
+              <input
+                type="text"
+                value={p.colleague ?? ""}
+                maxLength={60}
+                onChange={(e) => update(index, { colleague: e.target.value })}
+                placeholder="Name der Kollegin"
+                className="input-luxe w-full mt-1 normal-case tracking-normal"
+              />
+            </label>
+          )}
           <button
             type="button"
             onClick={() => setPhases((cur) => cur.filter((_, i) => i !== index))}
@@ -131,7 +144,7 @@ export function SessionPlanEditor({
         <div className="border border-champagne/20 bg-anthracite/30 p-3 text-sm space-y-1">
           {phases.map((p, i) => (
             <div key={i} className={isFreePhase(p) ? "text-purple-200" : "text-vanilla/85"}>
-              {p.from}–{p.to} Uhr · {phaseLabel(p)}
+              {p.from}–{p.to} Uhr · {phaseDisplay(p)}
             </div>
           ))}
           <div className="pt-1 text-xs text-champagne">

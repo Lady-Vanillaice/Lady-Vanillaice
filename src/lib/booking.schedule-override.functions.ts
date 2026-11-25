@@ -28,6 +28,11 @@ export const updateBookingSchedule = createServerFn({ method: "POST" })
       id: z.string().uuid(),
       requested_start: z.string().datetime().nullable(),
       duration_minutes: z.number().int().min(15).max(24 * 60).nullable(),
+      // Bei einem Ablauf (Session/Liegezeit/Kollegin …): nur diese Teile blockieren.
+      blocking_ranges: z
+        .array(z.object({ start: z.string().datetime(), end: z.string().datetime() }))
+        .max(20)
+        .optional(),
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
@@ -89,12 +94,20 @@ export const updateBookingSchedule = createServerFn({ method: "POST" })
       .not("duration_minutes", "is", null);
     if (blockersErr) throw new Error(blockersErr.message);
 
+    // Freie Teile anderer Abläufe (unbeaufsichtigte Liegezeit, Kollegin, Pausen) blockieren nicht.
+    const { loadFreeLiegezeitHoles } = await import("./session-plan.server");
+    const { subtractHoles } = await import("./session-plan");
+    const otherHoles = await loadFreeLiegezeitHoles(requestedStart.getTime(), requestedEnd.getTime());
+    const ownRanges = data.blocking_ranges?.length
+      ? data.blocking_ranges.map((r) => ({ s: new Date(r.start).getTime(), e: new Date(r.end).getTime() }))
+      : [{ s: requestedStart.getTime(), e: requestedEnd.getTime() }];
     const conflicts = (blockers ?? []).some((blocked) => {
       if (!isBlockingBooking(blocked)) return false;
       if (!blocked.requested_start || !blocked.duration_minutes) return false;
       const blockedStart = new Date(blocked.requested_start).getTime();
       const blockedEnd = blockedStart + blocked.duration_minutes * 60_000;
-      return requestedStart.getTime() < blockedEnd && requestedEnd.getTime() > blockedStart;
+      const blockedParts = subtractHoles([{ s: blockedStart, e: blockedEnd }], otherHoles, 0);
+      return blockedParts.some((b) => ownRanges.some((own) => own.s < b.e && own.e > b.s));
     });
     if (conflicts) {
       throw new Error("Diese Uhrzeit überschneidet sich mit einem anderen Termin. Bitte wähle eine andere Uhrzeit.");

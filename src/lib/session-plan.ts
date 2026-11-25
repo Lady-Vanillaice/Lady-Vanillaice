@@ -12,11 +12,12 @@ export type PlanPhase = {
   from: string; // HH:MM
   to: string; // HH:MM
   supervised?: boolean; // nur bei Liegezeit
+  colleague?: string; // bei „Kollegin übernimmt“ und Duo-Session
 };
 
 const PLAN_LINE_RE = /(?:^|\n)Ablauf:[^\n]*/g;
 const PLAN_CAPTURE_RE = /(?:^|\n)Ablauf:\s*([^\n]+)/;
-const PHASE_RE = /^(\d{1,2}:\d{2})\s*[–-]\s*(\d{1,2}:\d{2})\s+(Session|Liegezeit|Kollegin übernimmt|Duo-Session)(?:\s+(beaufsichtigt|unbeaufsichtigt))?$/i;
+const PHASE_RE = /^(\d{1,2}:\d{2})\s*[–-]\s*(\d{1,2}:\d{2})\s+(Session|Liegezeit|Kollegin übernimmt|Duo-Session)(?:\s+(beaufsichtigt|unbeaufsichtigt))?(?:\s+mit\s+(.+))?$/i;
 
 const pad = (hm: string) => {
   const [h, m] = hm.split(":");
@@ -35,7 +36,22 @@ export function phaseLabel(p: PlanPhase) {
 }
 
 export function serializePlan(phases: PlanPhase[]) {
-  return `Ablauf: ${phases.map((p) => `${pad(p.from)}–${pad(p.to)} ${phaseLabel(p)}`).join(" | ")}`;
+  return `Ablauf: ${phases
+    .map((p) => {
+      const colleague = (p.kind === "kollegin" || p.kind === "duo") && p.colleague?.trim()
+        ? ` mit ${p.colleague.trim().replace(/[|\n]/g, " ")}`
+        : "";
+      return `${pad(p.from)}–${pad(p.to)} ${phaseLabel(p)}${colleague}`;
+    })
+    .join(" | ")}`;
+}
+
+/** Anzeige inkl. Kollegin, z. B. „Kollegin übernimmt: Milla“ oder „Duo-Session mit Milla“. */
+export function phaseDisplay(p: PlanPhase) {
+  const name = p.colleague?.trim();
+  if (p.kind === "kollegin") return name ? `Kollegin übernimmt: ${name}` : "Kollegin übernimmt";
+  if (p.kind === "duo") return name ? `Duo-Session mit ${name}` : "Duo-Session";
+  return phaseLabel(p);
 }
 
 export function parsePlan(note: string | null | undefined): PlanPhase[] | null {
@@ -52,6 +68,7 @@ export function parsePlan(note: string | null | undefined): PlanPhase[] | null {
       from: pad(m[1]),
       to: pad(m[2]),
       supervised: kind === "liegezeit" ? m[4]?.toLowerCase() === "beaufsichtigt" : undefined,
+      colleague: (kind === "kollegin" || kind === "duo") && m[5] ? m[5].trim() : undefined,
     });
   }
   return phases.length ? phases : null;
@@ -146,6 +163,13 @@ export function currentPartStart(startIso: string, note: string | null | undefin
   const times = planPhaseTimes(startIso, plan);
   const next = times.find((p) => p.e > now);
   return next && next.s > times[0].s ? next : null;
+}
+
+/** Blockierende Teile eines Ablaufs (Session, beaufsichtigte Liegezeit, Duo) als absolute Zeiten. */
+export function planBlockingRanges(dateKey: string, phases: PlanPhase[]) {
+  return planToOffsets(phases)
+    .filter((p) => !isFreePhase(p))
+    .map((p) => ({ s: berlinMinutesToMs(dateKey, p.start), e: berlinMinutesToMs(dateKey, p.end) }));
 }
 
 export type PlanHole = { s: number; e: number; ownerS: number; ownerE: number };

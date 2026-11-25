@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useRouter, useNavigate } from "@tanstack/react-router";
 import { SessionPlanEditor } from "@/components/admin/SessionPlanEditor";
-import { berlinMinutesToMs, planToOffsets, planTotalMinutes, setPlanInNote, type PlanPhase } from "@/lib/session-plan";
+import { berlinMinutesToMs, planBlockingRanges, planToOffsets, planTotalMinutes, setPlanInNote, type PlanPhase } from "@/lib/session-plan";
 import { formatEuro, parseEuroInput, parseLatexSurcharge, setLatexSurchargeInNote } from "@/lib/latex-surcharge";
 import { realLocation } from "@/lib/slot-location";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -23,7 +23,6 @@ import {
   previewPersonalMessage,
   retryEmail,
 } from "@/lib/booking.functions";
-import { BookingRestTime } from "@/components/admin/BookingRestTime";
 import { PrivateBookingLocation } from "@/components/admin/PrivateBookingLocation";
 import { PageHeader } from "../../components/site/PageHeader";
 import {
@@ -297,7 +296,11 @@ setDuoPartner(b.availability_slots?.duo_partner ?? "");
         const startIso = new Date(berlinMinutesToMs(dateKey, offsets[0].start)).toISOString();
         const total = planTotalMinutes(phases);
         if (total < 15 || total > 1440) throw new Error("Der gesamte Ablauf muss zwischen 15 Minuten und 24 Stunden lang sein.");
-        await saveSchedule({ data: { id, requested_start: startIso, duration_minutes: total } });
+        const blocking_ranges = planBlockingRanges(dateKey, phases).map((r) => ({
+          start: new Date(r.s).toISOString(),
+          end: new Date(r.e).toISOString(),
+        }));
+        await saveSchedule({ data: { id, requested_start: startIso, duration_minutes: total, blocking_ranges } });
       }
       await saveNote({ data: { id, admin_note: nextNote } });
       setNote(nextNote);
@@ -1611,7 +1614,6 @@ const depositDateMut = useMutation({
               error={planMut.error ? (planMut.error as Error).message : null}
               onSave={(phases) => planMut.mutate(phases)}
             />
-            <BookingRestTime key={id} bookingId={id} startsAt={booking.requested_start || slot?.starts_at || null} durationMinutes={Number(booking.duration_minutes || 0)} />
             {scheduleMut.error && (
               <p className="mt-3 text-xs text-bordeaux">
                 {(scheduleMut.error as Error).message}

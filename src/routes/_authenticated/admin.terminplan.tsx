@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { currentPartStart, isFreePhase, parsePlan, phaseLabel, planPhaseTimes } from "@/lib/session-plan";
+import { currentPartStart, isFreePhase, parsePlan, phaseDisplay, planPhaseTimes } from "@/lib/session-plan";
 import { realLocation } from "@/lib/slot-location";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -531,7 +531,7 @@ function EntryCard({ e, closure }: { e: Entry; closure?: { report_decision: stri
             <div className="border-l-2 border-champagne/50 pl-3 space-y-1 text-sm">
               {next && (
                 <div className="mb-1 inline-block bg-champagne px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-background">
-                  {next.s <= now ? "Jetzt" : "Weiter um"} {next.from} Uhr · {phaseLabel(next)}
+                  {next.s <= now ? "Jetzt" : "Weiter um"} {next.from} Uhr · {phaseDisplay(next)}
                 </div>
               )}
               {times.map((p, i) => (
@@ -539,7 +539,7 @@ function EntryCard({ e, closure }: { e: Entry; closure?: { report_decision: stri
                   key={i}
                   className={`${p.e <= now ? "line-through opacity-45 " : ""}${isFreePhase(p) ? "text-purple-200" : p.kind === "session" ? "text-vanilla/85" : "text-champagne"}`}
                 >
-                  {p.from}–{p.to} Uhr · {phaseLabel(p)}
+                  {p.from}–{p.to} Uhr · {phaseDisplay(p)}
                 </div>
               ))}
             </div>
