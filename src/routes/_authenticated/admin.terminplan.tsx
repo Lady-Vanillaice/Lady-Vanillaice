@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { parseSessionType } from "@/lib/session-type";
 import { currentPartStart, isFreePhase, parsePlan, phaseDisplay, planPhaseTimes } from "@/lib/session-plan";
 import { realLocation } from "@/lib/slot-location";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -140,8 +141,10 @@ function TerminplanPage() {
           is_liegezeit_only: isLiegezeitOnly,
           location: b.studio_override?.trim() || realLocation(slot?.location) || null,
           location_address: b.studio_address_override?.trim() || slot?.location_address || null,
-          is_duo: slot?.is_duo ?? false,
-          duo_partner: slot?.duo_partner ?? null,
+          is_duo: parseSessionType(b.admin_note)?.isDuo ?? slot?.is_duo ?? false,
+          duo_partner: parseSessionType(b.admin_note)
+            ? parseSessionType(b.admin_note)?.partner ?? null
+            : slot?.duo_partner?.replace("OPTIONAL_DUO::", "") ?? null,
           is_content_shoot: slot?.is_content_shoot ?? false,
           admin_note: b.admin_note,
           guest_wish: b.message,

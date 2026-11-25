@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { parseSessionType } from "@/lib/session-type";
 import { formatEuro, parseLatexSurcharge } from "@/lib/latex-surcharge";
 import { realLocation } from "./slot-location";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -164,6 +165,8 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
         bar_datum: cashDate, durchgefuehrt_datum: dateOnly(b.completed_at),
         status, notiz: b.admin_note ?? null, created_at: b.created_at,
       };
+      const sessionType = parseSessionType(b.admin_note);
+      if (sessionType && /^(Duo|Single)/.test(common.art)) common.art = common.art.replace(/^(Duo|Single)/, sessionType.isDuo ? "Duo" : "Single");
       const latexSurcharge = parseLatexSurcharge(b.admin_note);
       if (latexSurcharge) common.art = `${common.art} + Latex ${formatEuro(latexSurcharge)}`;
       // For the cash book, the dated payment is the source of truth.

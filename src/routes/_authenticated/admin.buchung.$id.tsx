@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useRouter, useNavigate } from "@tanstack/react-router";
+import { parseSessionType } from "@/lib/session-type";
 import { SessionPlanEditor } from "@/components/admin/SessionPlanEditor";
 import { berlinMinutesToMs, planBlockingRanges, planToOffsets, planTotalMinutes, setPlanInNote, type PlanPhase } from "@/lib/session-plan";
 import { formatEuro, parseEuroInput, parseLatexSurcharge, setLatexSurchargeInNote } from "@/lib/latex-surcharge";
@@ -216,14 +217,14 @@ const [overrideDate, setOverrideDate] = useState("");
       { const latex = parseLatexSurcharge(b.admin_note); setLatexInput(latex ? String(latex).replace(".", ",") : ""); }
       setConfirmationNote(b.confirmation_note ?? "");
 setBookingType(
-  b.availability_slots?.is_duo ? "duo" : "single"
+  (parseSessionType(b.admin_note)?.isDuo ?? b.availability_slots?.is_duo) ? "duo" : "single"
 );
 
 setIsContentShoot(
   b.availability_slots?.is_content_shoot ?? false
 );
 
-setDuoPartner(b.availability_slots?.duo_partner ?? "");
+setDuoPartner(parseSessionType(b.admin_note) ? parseSessionType(b.admin_note)?.partner ?? "" : (b.availability_slots?.duo_partner ?? "").replace("OPTIONAL_DUO::", ""));
       if (b.requested_start) {
         const d = new Date(b.requested_start);
         const pad = (n: number) => String(n).padStart(2, "0");

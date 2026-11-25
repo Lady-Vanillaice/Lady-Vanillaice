@@ -993,12 +993,23 @@ export const updateBookingType = createServerFn({ method: "POST" })
 
     const { data: booking, error: bookingErr } = await context.supabase
       .from("bookings")
-      .select("id, slot_id, requested_start, duration_minutes")
+      .select("id, slot_id, requested_start, duration_minutes, admin_note")
       .eq("id", data.id)
       .maybeSingle();
 
     if (bookingErr) throw new Error(bookingErr.message);
     if (!booking) throw new Error("Buchung nicht gefunden.");
+
+    // Session-Art immer an der Buchung selbst merken (nicht nur am gemeinsamen Tages-Zeitfenster).
+    {
+      const { setSessionTypeInNote } = await import("./session-type");
+      const nextNote = setSessionTypeInNote((booking as { admin_note?: string | null }).admin_note, {
+        isDuo: data.booking_type === "duo",
+        partner: data.booking_type === "duo" ? data.duo_partner?.trim() || null : null,
+      });
+      const { error: noteErr } = await context.supabase.from("bookings").update({ admin_note: nextNote }).eq("id", booking.id);
+      if (noteErr) throw new Error(noteErr.message);
+    }
 
     const classification = {
       is_duo: data.booking_type === "duo",
@@ -1042,11 +1053,28 @@ export const updateBookingType = createServerFn({ method: "POST" })
         .eq("id", booking.id);
       if (linkErr) throw new Error(linkErr.message);
     } else {
-      const { error: slotErr } = await context.supabase
+      // Das Zeitfenster nur ändern, wenn es dem Termin allein gehört (eigener, versteckter Slot).
+      // Öffentliche Tages-Zeitfenster mit mehreren Gästen bleiben unverändert.
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: ownSlot } = await supabaseAdmin
         .from("availability_slots")
-        .update(classification)
-        .eq("id", slotId);
-      if (slotErr) throw new Error(slotErr.message);
+        .select("id, status, is_hidden")
+        .eq("id", slotId)
+        .maybeSingle();
+      const { data: sharing } = await supabaseAdmin
+        .from("bookings")
+        .select("id")
+        .eq("slot_id", slotId)
+        .neq("id", booking.id)
+        .in("status", ["pending", "waiting_deposit", "confirmed", "rescheduling"]);
+      const ownsSlot = ownSlot?.status === "booked" && ownSlot?.is_hidden && !(sharing ?? []).length;
+      if (ownsSlot) {
+        const { error: slotErr } = await context.supabase
+          .from("availability_slots")
+          .update(classification)
+          .eq("id", slotId);
+        if (slotErr) throw new Error(slotErr.message);
+      }
     }
 
     return { ok: true };
