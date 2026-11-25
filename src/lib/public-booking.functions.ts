@@ -346,7 +346,7 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
     const timelineSlotIds = [...new Set(dayTimelineSlots.map((entry) => entry.id))];
     const { data: bookings } = await supabaseAdmin
       .from("bookings")
-      .select("slot_id, requested_start, duration_minutes, status, updated_at, message")
+      .select("slot_id, requested_start, duration_minutes, status, updated_at, message, admin_note")
       // Assign overnight appointments to the calendar window they were booked
       // in, even when their actual start timestamp falls after midnight.
       .in("slot_id", timelineSlotIds)
@@ -387,12 +387,19 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
       }
     }
 
+    const { parsePlan: parseTimelinePlan, planBlockingRanges: timelineBlockingRanges, berlinDateKey: timelineDateKey } = await import("./session-plan");
     const busyFromBookings = activeBookings.flatMap((b) => {
       if (!b.requested_start || !b.duration_minutes) return [];
       const s = new Date(b.requested_start).getTime();
-      return [{
-        start: b.requested_start,
-        end: new Date(s + b.duration_minutes * 60_000).toISOString(),
+      // Bei einem Ablauf zeigt die Zeitleiste nur die blockierenden Teile;
+      // unbeaufsichtigte Liegezeit, „Kollegin übernimmt“ und Pausen bleiben frei.
+      const timelinePlan = parseTimelinePlan((b as { admin_note?: string | null }).admin_note);
+      const segments = timelinePlan
+        ? timelineBlockingRanges(timelineDateKey(b.requested_start), timelinePlan).map((r) => ({ start: new Date(r.s).toISOString(), end: new Date(r.e).toISOString() }))
+        : [{ start: b.requested_start, end: new Date(s + b.duration_minutes * 60_000).toISOString() }];
+      return segments.map((segment) => ({
+        start: segment.start,
+        end: segment.end,
         kind:
           b.status === "confirmed"
             ? (() => {
@@ -405,7 +412,7 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
               })()
             : "reserved" as const,
         buffer_minutes: b.slot_id ? (bufferBySlotId.get(b.slot_id) ?? 30) : 30,
-      }];
+      }));
     });
 
     const sortedOpen = [...timelineSlots]

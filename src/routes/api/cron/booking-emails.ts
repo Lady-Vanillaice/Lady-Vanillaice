@@ -123,7 +123,14 @@ export const Route = createFileRoute("/api/cron/booking-emails")({
           }
         }
 
-        return Response.json({ ok: failures.length === 0, scanned: bookings?.length ?? 0, reminders, followups, failures });
+        let longtermReminders = 0;
+        try {
+          const { sendLongtermExpiryReminders } = await import("@/lib/longterm-reminder.server");
+          longtermReminders = (await sendLongtermExpiryReminders(supabaseAdmin)).sent;
+        } catch (reminderError) {
+          console.error("Longterm reminder failed", reminderError);
+        }
+        return Response.json({ ok: failures.length === 0, scanned: bookings?.length ?? 0, reminders, followups, failures, longtermReminders });
       },
     },
   },

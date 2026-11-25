@@ -147,6 +147,53 @@ export function BusinessStatisticsDashboard() {
 
   const maxRevenue = Math.max(1, ...monthlyRevenue.map((row) => row.amount));
 
+  // Verteilung nach Wochentag und Startzeit (bestätigte Termine).
+  const weekdayOrder = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
+  const weekdayRows = weekdayOrder.map((day) => ({ label: day.slice(0, 2), count: weekdayCounts.get(day) ?? 0 }));
+  const hourBuckets = [
+    { label: "vor 12", from: 0, to: 12 },
+    { label: "12–15", from: 12, to: 15 },
+    { label: "15–18", from: 15, to: 18 },
+    { label: "18–21", from: 18, to: 21 },
+    { label: "ab 21", from: 21, to: 24 },
+  ].map((bucket) => ({ ...bucket, count: 0 }));
+  for (const booking of confirmed) {
+    if (!booking.requested_start) continue;
+    const hour = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Berlin", hour: "2-digit", hourCycle: "h23" }).format(new Date(booking.requested_start)));
+    const bucket = hourBuckets.find((b) => hour >= b.from && hour < b.to);
+    if (bucket) bucket.count += 1;
+  }
+  const maxWeekday = Math.max(1, ...weekdayRows.map((r) => r.count));
+  const maxHour = Math.max(1, ...hourBuckets.map((r) => r.count));
+
+  // Einnahmen nach Art (letzte 6 Monate, nach Zahlungseingang).
+  const firstMonthKey = monthlyRevenue[0]?.key ?? "0000-00";
+  const categoryOf = (entry: { source: string; studio: string; notiz: string | null; art: string }) => {
+    if (entry.source === "booking") return "Sessions";
+    if (entry.studio === "Langzeiterziehung") return "Langzeiterziehung";
+    if (entry.studio === "Camsession") return "Cam";
+    if (entry.studio === "Zahlsklave" || entry.notiz === "Zahlsklave") return "Zahlsklave";
+    if (entry.studio === "Custom Content" || entry.art === "Custom Content") return "Custom";
+    if (entry.studio === "Telefon-Session") return "Telefon";
+    return "Sonstiges";
+  };
+  const categoryTotals = new Map<string, number>();
+  for (const entry of cashbookQ.data ?? []) {
+    if (entry.entry_type !== "income") continue;
+    let amount = 0;
+    if (entry.source === "manual") {
+      if ((entry.payment_date ?? "").slice(0, 7) >= firstMonthKey) amount = Number(entry.gesamt ?? 0);
+    } else {
+      if ((entry.anzahlung_datum ?? "").slice(0, 7) >= firstMonthKey) amount += Number(entry.anzahlung ?? 0);
+      if ((entry.bar_datum ?? "").slice(0, 7) >= firstMonthKey) amount += Number(entry.bar ?? 0);
+    }
+    if (amount <= 0) continue;
+    const cat = categoryOf(entry as any);
+    categoryTotals.set(cat, (categoryTotals.get(cat) ?? 0) + amount);
+  }
+  const categoryRows = [...categoryTotals.entries()].map(([label, amount]) => ({ label, amount })).sort((a, b) => b.amount - a.amount);
+  const categorySum = categoryRows.reduce((sum, r) => sum + r.amount, 0);
+
   const specialsByDate = new Map(
     (specialsQ.data ?? []).map((special) => [special.date, special]),
   );
@@ -265,6 +312,48 @@ export function BusinessStatisticsDashboard() {
                 <span className="min-w-[78px] text-right text-xs text-vanilla">
                   {eur(row.amount)}
                 </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="eyebrow text-champagne">Einnahmen nach Art · 6 Monate</h3>
+            <span className="text-[0.6rem] text-vanilla/40">{eur(categorySum)}</span>
+          </div>
+          <div className="space-y-2 border border-champagne/15 p-3">
+            {categoryRows.length === 0 ? <p className="text-xs text-vanilla/45">Noch keine Einnahmen.</p> : categoryRows.map((row) => (
+              <div key={row.label} className="grid grid-cols-[110px_1fr_auto] items-center gap-2">
+                <span className="text-xs text-vanilla/70">{row.label}</span>
+                <div className="h-2 overflow-hidden bg-champagne/10"><div className="h-full bg-champagne/70" style={{ width: String(Math.max(4, (row.amount / Math.max(1, categorySum)) * 100)) + "%" }} /></div>
+                <span className="min-w-[78px] text-right text-xs text-vanilla">{eur(row.amount)} <span className="text-vanilla/40">· {Math.round((row.amount / Math.max(1, categorySum)) * 100)} %</span></span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h3 className="eyebrow mb-3 text-champagne">Termine nach Wochentag</h3>
+          <div className="flex h-32 items-end gap-2 border border-champagne/15 p-3">
+            {weekdayRows.map((row) => (
+              <div key={row.label} className="flex flex-1 flex-col items-center gap-1">
+                <span className="text-[0.6rem] text-vanilla/60">{row.count}</span>
+                <div className="w-full bg-champagne/70" style={{ height: String(Math.max(row.count > 0 ? 6 : 2, (row.count / maxWeekday) * 70)) + "px" }} />
+                <span className="text-[0.6rem] uppercase text-vanilla/50">{row.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h3 className="eyebrow mb-3 text-champagne">Termine nach Uhrzeit (Beginn)</h3>
+          <div className="flex h-32 items-end gap-2 border border-champagne/15 p-3">
+            {hourBuckets.map((row) => (
+              <div key={row.label} className="flex flex-1 flex-col items-center gap-1">
+                <span className="text-[0.6rem] text-vanilla/60">{row.count}</span>
+                <div className="w-full bg-champagne/70" style={{ height: String(Math.max(row.count > 0 ? 6 : 2, (row.count / maxHour) * 70)) + "px" }} />
+                <span className="text-[0.6rem] text-vanilla/50">{row.label}</span>
               </div>
             ))}
           </div>

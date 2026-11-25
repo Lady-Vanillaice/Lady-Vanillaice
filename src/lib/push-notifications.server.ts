@@ -60,3 +60,34 @@ export async function sendNewBookingPush(data: NewBookingPush) {
   );
 }
 
+
+/** Allgemeine Admin-Push-Nachricht (z. B. Erinnerungen). */
+export async function sendAdminPush(message: { title: string; body: string; url: string; tag: string }) {
+  const publicKey = process.env.VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  const subject = process.env.VAPID_SUBJECT ?? "mailto:info@herzblutmadl.com";
+  if (!publicKey || !privateKey) {
+    console.warn("Push notification skipped: VAPID keys are not configured.");
+    return 0;
+  }
+  webpush.setVapidDetails(subject, publicKey, privateKey);
+  const { data: subscriptions, error } = await (supabaseAdmin as any)
+    .from("admin_push_subscriptions")
+    .select("endpoint, p256dh, auth");
+  if (error) throw error;
+  const payload = JSON.stringify(message);
+  const results = await Promise.allSettled(
+    (subscriptions ?? []).map(async (row: any) => {
+      try {
+        await webpush.sendNotification({ endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } }, payload);
+      } catch (err: any) {
+        if (err?.statusCode === 404 || err?.statusCode === 410) {
+          await (supabaseAdmin as any).from("admin_push_subscriptions").delete().eq("endpoint", row.endpoint);
+          return;
+        }
+        throw err;
+      }
+    }),
+  );
+  return results.filter((r) => r.status === "fulfilled").length;
+}

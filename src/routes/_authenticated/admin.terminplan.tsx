@@ -17,7 +17,7 @@ import { saveCanvasAsPng } from "@/lib/download-image.client";
 import { createManualBooking } from "@/lib/booking.functions";
 import { listBookingSessionClosures } from "@/lib/booking-session-closure.functions";
 import { SessionClosureControls } from "@/components/admin/SessionClosureControls";
-import { listCustomers } from "@/lib/customers.functions";
+import { listCustomers, type CustomerRow } from "@/lib/customers.functions";
 import { listStudios } from "@/lib/studio.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/terminplan")({
@@ -564,6 +564,7 @@ function EntryCard({ e, closure }: { e: Entry; closure?: { report_decision: stri
         </div>
       </div>
     </Link>
+    <CustomerQuickInfo email={e.guest_email} />
     <SessionClosureControls bookingId={e.id} completed={isCompleted} reportDecision={closure?.report_decision ?? (isLegacyCompleted ? "without_report" : undefined)} amount={e.bar ?? 0} paidAt={e.cash_received_at} guestEmail={e.guest_email} sessionStart={e.start} sessionPlace={e.location} isDuo={e.is_duo} duoPartner={e.duo_partner} />
     </div>
   );
@@ -571,6 +572,42 @@ function EntryCard({ e, closure }: { e: Entry; closure?: { report_decision: stri
 
 
 /** Ganz oben im Terminplan: laufende Langzeiterziehungen mit Laufzeit-Ende. */
+function CustomerQuickInfo({ email }: { email: string | null }) {
+  const listCustomersFn = useServerFn(listCustomers);
+  const q = useQuery({ queryKey: ["customers"], queryFn: () => listCustomersFn(), staleTime: 5 * 60_000 });
+  const key = (email ?? "").trim().toLowerCase();
+  if (!key) return null;
+  const customer = (q.data as CustomerRow[] | undefined)?.find((c) => c.email?.toLowerCase() === key);
+  if (!customer) return null;
+  const pick = (field: "tabus" | "safeword" | "vorlieben" | "gesundheit") => customer.note?.[field]?.trim() || customer.booking_profile?.[field]?.trim() || null;
+  const items: Array<[string, string | null, boolean]> = [
+    ["Safeword", pick("safeword"), true],
+    ["Tabus", pick("tabus"), true],
+    ["Sonderregeln", customer.note?.special_rules?.trim() || null, true],
+    ["Gesundheit", pick("gesundheit"), false],
+    ["Vorlieben", pick("vorlieben"), false],
+    ["Notiz", customer.note?.admin_note?.trim() || null, false],
+  ];
+  const filled = items.filter(([, v]) => v);
+  if (!filled.length) return null;
+  return (
+    <details className="mt-3 border border-champagne/25 bg-background/40">
+      <summary className="cursor-pointer px-3 py-2 text-[0.65rem] uppercase tracking-[0.16em] text-champagne">
+        Kunden-Info{pick("safeword") ? ` · Safeword: ${pick("safeword")}` : ""}
+      </summary>
+      <div className="space-y-2 px-3 pb-3 text-sm">
+        {filled.map(([label, value, important]) => (
+          <div key={label}>
+            <div className={`text-[0.6rem] uppercase tracking-[0.16em] ${important ? "text-bordeaux" : "text-vanilla/50"}`}>{label}</div>
+            <div className="whitespace-pre-wrap text-vanilla/85">{value}</div>
+          </div>
+        ))}
+        <Link to="/admin/kunden" className="inline-block text-[0.65rem] uppercase tracking-[0.14em] text-champagne/80 hover:text-champagne">Kundenkartei öffnen →</Link>
+      </div>
+    </details>
+  );
+}
+
 function LongtermOverview() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const listFn = useServerFn(listLongtermClients);
