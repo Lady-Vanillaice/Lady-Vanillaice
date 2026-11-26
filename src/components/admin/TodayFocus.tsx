@@ -55,7 +55,9 @@ export function TodayFocus() {
 
   const upcoming = (bookingsQ.data ?? []).filter((b) => b.requested_start && Date.parse(b.requested_start) >= Date.now() - 2 * 60 * 60 * 1000);
   const todays = upcoming.filter((b) => berlinDay(b.requested_start!) === todayKey);
-  const nextOnes = (todays.length ? todays : upcoming).slice(0, 4);
+  // Immer den kompletten nächsten Tag zeigen: heute, sonst den nächsten Tag mit Terminen.
+  const nextDayKey = todays.length ? todayKey : upcoming[0]?.requested_start ? berlinDay(upcoming[0].requested_start) : null;
+  const nextOnes = nextDayKey ? upcoming.filter((b) => berlinDay(b.requested_start!) === nextDayKey) : [];
   const depositOpen = upcoming.filter((b) => !b.anzahlung_paid && !b.deposit_exemption_reason && Number(b.anzahlung ?? 0) > 0);
 
   const openRest = (cashbookQ.data ?? []).filter(
@@ -79,7 +81,9 @@ export function TodayFocus() {
     <div className="mb-6 grid gap-3 sm:grid-cols-2">
       <Link to="/admin/terminplan" className={`${tile} border-champagne/40 sm:col-span-2`}>
         <div className="flex items-center gap-2 text-[0.65rem] uppercase tracking-[0.18em] text-champagne">
-          <CalendarClock size={16} /> {todays.length ? `Heute · ${todays.length} Termin${todays.length === 1 ? "" : "e"}` : "Nächste Termine"}
+          <CalendarClock size={16} /> {nextDayKey
+            ? `${nextDayKey === todayKey ? "Heute" : shortDay(nextDayKey)} · ${nextOnes.length} Termin${nextOnes.length === 1 ? "" : "e"}`
+            : "Nächste Termine"}
         </div>
         {bookingsQ.isLoading ? (
           <p className="mt-2 text-sm text-vanilla/50">Lade…</p>
@@ -89,7 +93,6 @@ export function TodayFocus() {
               <li key={b.id} className="flex justify-between gap-3">
                 <span className="text-vanilla">{b.guest_name}</span>
                 <span className="text-vanilla/60">
-                  {berlinDay(b.requested_start!) === todayKey ? "" : `${shortDay(berlinDay(b.requested_start!))} · `}
                   {berlinTime(b.requested_start!)} Uhr
                 </span>
               </li>
