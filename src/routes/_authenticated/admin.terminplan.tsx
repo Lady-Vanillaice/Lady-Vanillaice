@@ -104,7 +104,8 @@ function TerminplanPage() {
       // Aus „wartet auf Anzahlung“ nur selbst eingetragene Termine mit
       // „Anzahlung fehlt noch“ zeigen (noch ohne Kalender-Slot).
       const visibleBookings = (data ?? []).filter((b: any) =>
-        b.status !== "waiting_deposit" || (!b.slot_id && /Manuell durch Admin eingetragen/.test(b.message ?? "")),
+        // Auch wenn später Single/Duo geändert wurde (dabei bekommt der Termin einen Slot).
+        b.status !== "waiting_deposit" || /Manuell durch Admin eingetragen/.test(b.message ?? ""),
       );
       const rows = visibleBookings.map((b) => {
         const slot = Array.isArray(b.availability_slots)
