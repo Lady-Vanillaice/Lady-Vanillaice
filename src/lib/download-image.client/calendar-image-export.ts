@@ -155,7 +155,8 @@ function mergeBusy(ranges: BusyRange[]) {
 }
 
 function drawCrown(ctx: CanvasRenderingContext2D, centerX: number) {
-  const crownY = 100;
+  // Krone mit Abstand zum Rahmen (oberste Spitze bei y=88, Rahmen bei 52/65).
+  const crownY = 128;
   ctx.strokeStyle = COLORS.gold;
   // Core's legacy crown adjustment only targets lineWidth 5. Using 4 keeps
   // this new export header exactly where it is drawn.
@@ -336,7 +337,7 @@ export async function exportCalendarImage(mode: CalendarExportMode) {
   const { slots, availabilityByDay, vacations } = await loadData(mode);
   const width = 1080;
   const outer = 52;
-  const headerHeight = 285;
+  const headerHeight = 296;
   const legendHeight = 78;
   const timelineRowHeight = 104;
   const appointmentRowHeight = 150;
@@ -377,10 +378,10 @@ export async function exportCalendarImage(mode: CalendarExportMode) {
   ctx.textAlign = "center";
   ctx.fillStyle = COLORS.gold;
   ctx.font = '44px Georgia, "Times New Roman", serif';
-  ctx.fillText("LADY VANILLA ICE", width / 2, 207);
+  ctx.fillText("LADY VANILLA ICE", width / 2, 220);
   ctx.fillStyle = COLORS.vanilla;
   ctx.font = '22px Arial, sans-serif';
-  ctx.fillText("F R E I E   T E R M I N E", width / 2, 251);
+  ctx.fillText("F R E I E   T E R M I N E", width / 2, 262);
 
   let y = headerHeight;
   ctx.textAlign = "left";
