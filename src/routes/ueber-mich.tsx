@@ -1,4 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { PageHeader } from "../components/site/PageHeader";
 import aboutImage from "@/assets/about.jpg";
 import { useTr } from "@/i18n";
@@ -23,6 +25,128 @@ export const Route = createFileRoute("/ueber-mich")({
   }),
   component: UeberMich,
 });
+
+const GALLERY = [
+  { src: "/galerie/galerie-01.jpg", w: 1120, h: 1400 },
+  { src: "/galerie/galerie-02.jpg", w: 933, h: 1400 },
+  { src: "/galerie/galerie-03.jpg", w: 1119, h: 1400 },
+  { src: "/galerie/galerie-04.jpg", w: 933, h: 1400 },
+  { src: "/galerie/galerie-05.jpg", w: 933, h: 1400 },
+  { src: "/galerie/galerie-06.jpg", w: 933, h: 1400 },
+  { src: "/galerie/galerie-07.jpg", w: 933, h: 1400 },
+  { src: "/galerie/galerie-08.jpg", w: 933, h: 1400 },
+  { src: "/galerie/galerie-09.jpg", w: 933, h: 1400 },
+  { src: "/galerie/galerie-10.jpg", w: 933, h: 1400 },
+  { src: "/galerie/galerie-11.jpg", w: 1050, h: 1400 },
+  { src: "/galerie/galerie-12.jpg", w: 1050, h: 1400 },
+  { src: "/galerie/galerie-13.jpg", w: 1050, h: 1400 },
+];
+
+function Gallery() {
+  const tr = useTr();
+  const [open, setOpen] = useState<number | null>(null);
+  const count = GALLERY.length;
+
+  useEffect(() => {
+    if (open === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(null);
+      if (e.key === "ArrowRight") setOpen((i) => (i === null ? i : (i + 1) % count));
+      if (e.key === "ArrowLeft") setOpen((i) => (i === null ? i : (i - 1 + count) % count));
+    };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [open, count]);
+
+  return (
+    <section className="py-24 border-t border-champagne/15">
+      <div className="container-luxe">
+        <div className="text-center mb-12">
+          <div className="eyebrow mb-4">{tr("Galerie", "Gallery")}</div>
+          <h2 className="font-display text-4xl md:text-5xl gold-text">
+            {tr("Einblicke in meine Welt", "Glimpses into my world")}
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
+          {GALLERY.map((img, i) => (
+            <button
+              key={img.src}
+              type="button"
+              onClick={() => setOpen(i)}
+              className="group relative aspect-[3/4] overflow-hidden border border-champagne/15 focus:outline-none focus-visible:ring-1 focus-visible:ring-champagne"
+              aria-label={tr(`Bild ${i + 1} groß ansehen`, `View image ${i + 1}`)}
+            >
+              <img
+                src={img.src}
+                alt={`Lady Vanilla Ice – ${tr("Bild", "Image")} ${i + 1}`}
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                loading="lazy"
+                decoding="async"
+                width={img.w}
+                height={img.h}
+              />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {open !== null && (
+        <div
+          className="fixed inset-0 z-50 bg-anthracite/95 backdrop-blur-sm flex items-center justify-center"
+          onClick={() => setOpen(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <img
+            src={GALLERY[open].src}
+            alt={`Lady Vanilla Ice – ${tr("Bild", "Image")} ${open + 1}`}
+            className="max-h-[90svh] max-w-[92vw] object-contain border border-champagne/20"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            type="button"
+            onClick={() => setOpen(null)}
+            className="absolute top-4 right-4 p-2 text-vanilla/80 hover:text-champagne"
+            aria-label={tr("Schließen", "Close")}
+          >
+            <X size={28} />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen((open - 1 + count) % count);
+            }}
+            className="absolute left-2 md:left-6 top-1/2 -translate-y-1/2 p-2 text-vanilla/80 hover:text-champagne"
+            aria-label={tr("Vorheriges Bild", "Previous image")}
+          >
+            <ChevronLeft size={36} />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen((open + 1) % count);
+            }}
+            className="absolute right-2 md:right-6 top-1/2 -translate-y-1/2 p-2 text-vanilla/80 hover:text-champagne"
+            aria-label={tr("Nächstes Bild", "Next image")}
+          >
+            <ChevronRight size={36} />
+          </button>
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-xs tracking-[0.2em] text-vanilla/60">
+            {open + 1} / {count}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
 
 function UeberMich() {
   const tr = useTr();
@@ -132,6 +256,8 @@ function UeberMich() {
           </div>
         </div>
       </section>
+
+      <Gallery />
     </>
   );
 }
