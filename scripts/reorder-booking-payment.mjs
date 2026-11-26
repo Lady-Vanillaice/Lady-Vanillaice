@@ -110,7 +110,13 @@ const layout = `            <div data-payment-layout="split" className="space-y-
 
               {/* RESTZAHLUNG */}
               <div className="border border-champagne/25 bg-anthracite/30 p-4 space-y-3">
-                <div className="eyebrow text-champagne">2 · Restzahlung</div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="eyebrow text-champagne">2 · Restzahlung</div>
+                  {booking.cash_received_at ? (
+                    <span className="text-[0.6rem] uppercase tracking-[0.14em] bg-green-700/30 text-green-200 px-2 py-1">✓ bezahlt am {format(new Date(booking.cash_received_at), "dd.MM.yyyy", { locale: de })}</span>
+                  ) : null}
+                </div>
+                <p className="text-[0.65rem] text-vanilla/45">Kann auch schon vor dem Termin bezahlt werden – einfach Datum eintragen und speichern.</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="${label}">Betrag (€)</label>

@@ -734,7 +734,9 @@ const depositDateMut = useMutation({
                     </span>
                   ) : null}
                   {restAmount > 0 && (
-                    <span className="px-2 py-1 bg-champagne/10 text-champagne">Rest {restAmount.toLocaleString("de-DE")} €</span>
+                    <span className={`px-2 py-1 ${booking.cash_received_at ? "bg-green-700/30 text-green-200" : "bg-champagne/10 text-champagne"}`}>
+                      Rest {restAmount.toLocaleString("de-DE")} € {booking.cash_received_at ? `✓ bezahlt ${format(new Date(booking.cash_received_at), "dd.MM.", { locale: de })}` : "offen"}
+                    </span>
                   )}
                 </div>
                 {(() => {

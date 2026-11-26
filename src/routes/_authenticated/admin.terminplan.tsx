@@ -559,8 +559,9 @@ function EntryCard({ e, closure }: { e: Entry; closure?: { report_decision: stri
           {(e.anzahlung ?? 0).toLocaleString("de-DE")} €
         </div>
         <div className="text-sm text-vanilla/75">
-          <span className="text-vanilla/50">Bar:</span>{" "}
+          <span className="text-vanilla/50">Restzahlung:</span>{" "}
           {(e.bar ?? 0).toLocaleString("de-DE")} €
+          {e.cash_received_at && (e.bar ?? 0) > 0 ? <span className="ml-2 text-green-300">✓ bezahlt {format(new Date(e.cash_received_at), "dd.MM.")}</span> : null}
         </div>
       </div>
     </Link>
