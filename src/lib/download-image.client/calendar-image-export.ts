@@ -477,7 +477,8 @@ export async function exportCalendarImage(mode: CalendarExportMode) {
 // Mindestbuchung (Extra-Zeit) für die Bildkarten. Export-Fenster heißen
 // „<slotId>-export-free-<n>“; die echte Slot-ID steht davor.
 let exportMinDurationsCache: { at: number; promise: Promise<SlotMinDurations> } | null = null;
-async function exportMinTag(daySlots: Array<{ id: string }>): Promise<string> {
+async function exportMinTag(daySlots: Array<{ id: string; is_content_shoot?: boolean | null }>): Promise<string> {
+  const contentTag = daySlots.some((slot) => slot.is_content_shoot) ? "CONTENT-DREH" : "";
   // Kurz zwischenspeichern: ein Bild-Export lädt die Liste nur einmal.
   if (!exportMinDurationsCache || Date.now() - exportMinDurationsCache.at > 15_000) {
     exportMinDurationsCache = { at: Date.now(), promise: listSlotMinDurations().catch(() => ({} as SlotMinDurations)) };
@@ -486,8 +487,9 @@ async function exportMinTag(daySlots: Array<{ id: string }>): Promise<string> {
   const values = daySlots
     .map((slot) => minMinutesForSlotId(map, slot.id.split("-export-free-")[0]))
     .filter((value): value is number => value != null);
-  if (!values.length) return "";
-  const hours = Math.max(...values) / 60;
-  return `EXTRA · MIND. ${hours.toLocaleString("de-DE", { maximumFractionDigits: 1 })} STD.`;
+  const extraTag = values.length
+    ? `EXTRA · MIND. ${(Math.max(...values) / 60).toLocaleString("de-DE", { maximumFractionDigits: 1 })} STD.`
+    : "";
+  return [contentTag, extraTag].filter(Boolean).join(" · ");
 }
 void exportMinTag;

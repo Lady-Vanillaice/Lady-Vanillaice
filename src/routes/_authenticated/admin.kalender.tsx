@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AdminTabBar, AdminTabPanel, useAdminTab } from "@/components/admin/AdminTabs";
 import { setSlotDayType } from "@/lib/slot-day-type.functions";
 import { formatMinHours, listSlotMinDurations, minMinutesForDay, setSlotMinDuration } from "@/lib/slot-min-duration.functions";
+import { listCalendarSpecials } from "@/lib/calendar-special.functions";
 import { listManualBookedSlotIds, setSlotManualBooked } from "@/lib/slot-manual-booked.functions";
 import { isPrivateLocation, realLocation } from "@/lib/slot-location";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -840,6 +841,9 @@ function FreeSlotImageExport({
   const publicCalendarQ = useQuery({ queryKey: ["public-slots", "admin-image-export"], queryFn: () => listPublicSlots(), enabled: choice === "calendar" });
   const listMinDurationsForImage = useServerFn(listSlotMinDurations);
   const imageMinDurationsQ = useQuery({ queryKey: ["slot-min-durations"], queryFn: () => listMinDurationsForImage() });
+  const listSpecialsForImage = useServerFn(listCalendarSpecials);
+  const imageSpecialsQ = useQuery({ queryKey: ["calendar-specials"], queryFn: () => listSpecialsForImage() });
+  const imageSpecialDays = new Set((imageSpecialsQ.data ?? []).map((special) => special.date));
 
   const activeMonth = monthsForYear.includes(monthKey)
     ? monthKey
@@ -898,8 +902,24 @@ function FreeSlotImageExport({
         ctx.font = "18px Arial, sans-serif";
         ctx.fillText(vacation ? "URLAUB" : "BELEGT", x + 68, y + 100);
       } else if (!past && available) {
-        if (daySlot?.is_duo) { ctx.font = "15px Arial, sans-serif"; ctx.fillStyle = "#e5c48c"; ctx.fillText("DUO", x + 105, y + 28); }
-        if (daySlot?.is_content_shoot) { ctx.font = "14px Arial, sans-serif"; ctx.fillStyle = "#e5c48c"; ctx.fillText("CONTENT", x + 53, y + 28); }
+        // Markierungen oben im Tag wie im öffentlichen Kalender (Schrift passt sich der Breite an).
+        const dayLabels = [
+          imageSpecialDays.has(key) ? "SPECIAL" : "",
+          daySlot?.is_duo ? (daySlot.duo_partner?.startsWith("OPTIONAL_DUO::") ? "FLEX" : "DUO") : "",
+          daySlot?.is_content_shoot ? "CONTENT" : "",
+        ].filter(Boolean);
+        if (dayLabels.length) {
+          ctx.textAlign = "center";
+          ctx.fillStyle = "#e5c48c";
+          const labelText = dayLabels.join(" · ");
+          let labelSize = 14;
+          ctx.font = `bold ${labelSize}px Arial, sans-serif`;
+          while (labelSize > 9 && ctx.measureText(labelText).width > 116) {
+            labelSize -= 1;
+            ctx.font = `bold ${labelSize}px Arial, sans-serif`;
+          }
+          ctx.fillText(labelText, x + 68, y + 27);
+        }
         const dayMinMinutes = minMinutesForDay(imageMinDurationsQ.data, daySlot as any);
         if (dayMinMinutes != null) {
           // Extra-Zeit mit Mindestbuchung unten im Tag, z. B. „EXTRA · ab 3h“.

@@ -140,11 +140,13 @@ source = source.replace(
 
       ctx.fillStyle = COLORS.vanilla;
       ctx.font = '23px Georgia, "Times New Roman", serif';
-      const isDuoDay = daySlots.some((entry) => entry.is_duo);
       daySlots.forEach((openSlot, index) => {
-        const suffix = isDuoDay
-          ? " — " + (openSlot.is_duo ? "Duo verfügbar" : "Nur Einzel verfügbar")
+        // Wie im Kalender: Flex (Single oder Duo) → „Single verfügbar – Duo verfügbar“,
+        // nur Duo → „Duo verfügbar“, nur Single → kein Zusatz.
+        const availability = openSlot.is_duo
+          ? (openSlot.duo_partner?.startsWith("OPTIONAL_DUO::") ? "Single verfügbar – Duo verfügbar" : "Duo verfügbar")
           : "";
+        const suffix = availability ? " — " + availability : "";
         const line = timeLabel(openSlot.starts_at) + " – " + timeLabel(openSlot.ends_at) + " Uhr" + suffix;
         ctx.fillText(line, cardX + 30, y + 104 + index * 30);
       });
@@ -157,6 +159,15 @@ source = source.replace(
         ctx.fillText("SPECIAL · " + special.title, cardX + 30, specialY);
 
         let textY = specialY + 28;
+        const specialCondition = (special as { minHours?: number | null }).minHours
+          ? "Mindestens " + Number((special as { minHours?: number | null }).minHours).toLocaleString("de-DE", { maximumFractionDigits: 2 }) + " " + ((special as { minHours?: number | null }).minHours === 1 ? "Stunde" : "Stunden") + " Session"
+          : "";
+        if (specialCondition) {
+          ctx.fillStyle = COLORS.gold;
+          ctx.font = 'bold 16px Arial, sans-serif';
+          ctx.fillText(specialCondition, cardX + 30, textY);
+          textY += 26;
+        }
         if (special.outfit) {
           ctx.fillStyle = COLORS.gold;
           ctx.font = '16px Arial, sans-serif';
@@ -166,7 +177,7 @@ source = source.replace(
 
         ctx.fillStyle = COLORS.vanilla;
         ctx.font = '16px Arial, sans-serif';
-        const lines = wrapCanvasLines(ctx, special.description, cardWidth - 60).slice(0, 4);
+        const lines = wrapCanvasLines(ctx, special.description, cardWidth - 60).slice(0, specialCondition && special.outfit ? 2 : specialCondition || special.outfit ? 3 : 4);
         lines.forEach((line, index) => {
           ctx.fillText(line, cardX + 30, textY + index * 23);
         });
@@ -198,7 +209,7 @@ if (!source.includes("statusByDay, vacations, specialsByDay")) {
 if (!source.includes('ctx.fillText("SPECIAL · " + special.title')) {
   throw new Error("Export special text patch could not be applied");
 }
-if (!source.includes("const isDuoDay = daySlots.some")) {
+if (!source.includes("const availability = openSlot.is_duo")) {
   throw new Error("Export duo-day label condition could not be applied");
 }
 if (!source.includes("new Set(monthSlots.map")) {
