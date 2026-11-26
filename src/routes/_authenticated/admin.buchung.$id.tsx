@@ -170,7 +170,7 @@ const [overrideDate, setOverrideDate] = useState("");
   const [cdrDeposit, setCdrDeposit] = useState("");
   const [cdrMessage, setCdrMessage] = useState("");
 
-  const [activeTab, setActiveTab] = useState<"overview" | "communication" | "schedule" | "history">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "communication" | "schedule" | "notes" | "payment" | "history">("overview");
 
   function preparationDone(item: string) {
     return note.split("\n").some((line) => line.trim() === `[x] ${item}`);
@@ -615,7 +615,9 @@ const depositDateMut = useMutation({
 
   const TABS = [
     { id: "overview" as const, label: "Übersicht" },
-    { id: "schedule" as const, label: "Termin & Geld" },
+    { id: "schedule" as const, label: "Termin" },
+    { id: "payment" as const, label: "Zahlung" },
+    { id: "notes" as const, label: "Notizen" },
     { id: "communication" as const, label: "Nachricht" },
     { id: "history" as const, label: "Verlauf" },
   ];
@@ -765,7 +767,7 @@ const depositDateMut = useMutation({
           )}
 
           {/* TABS NAV */}
-          <div className="sticky top-0 z-30 -mx-4 px-4 bg-background/95 backdrop-blur grid grid-cols-4 border-b border-champagne/15 mb-5">
+          <div className="sticky top-0 z-30 -mx-4 px-4 bg-background/95 backdrop-blur grid grid-cols-3 sm:grid-cols-6 border-b border-champagne/15 mb-5">
             {TABS.map((t) => (
               <button
                 key={t.id}
@@ -931,6 +933,8 @@ const depositDateMut = useMutation({
 
           </div>
 
+          </>)}
+          {activeTab === "schedule" && (<>
           {/* KONTAKT + TERMIN */}
           <div className="grid md:grid-cols-2 gap-6 mb-6">
             <div className="bg-card border border-champagne/15 p-6">
@@ -1060,6 +1064,8 @@ const depositDateMut = useMutation({
               </div>
           </PrivateBookingLocation>
 
+          </>)}
+          {activeTab === "overview" && (<>
           {/* NACHRICHT / VORLIEBEN DES GASTS */}
           <div className="bg-card border border-champagne/15 p-6 mb-6">
             <div className="eyebrow mb-3 flex items-center gap-2">
@@ -1430,7 +1436,7 @@ const depositDateMut = useMutation({
           )}
           </>)}
 
-          {activeTab === "schedule" && (<>
+          {activeTab === "notes" && (<>
           {/* INTERNE NOTIZ — editierbar */}
 
           <div className="bg-card border border-champagne/30 p-6 mb-6">
@@ -1502,6 +1508,8 @@ const depositDateMut = useMutation({
               </p>
             )}
           </div>
+          </>)}
+          {activeTab === "schedule" && (<>
 {/* TERMINART */}
 <div className="bg-card border border-champagne/15 p-6 mb-6">
   <div className="eyebrow mb-3 flex items-center justify-between gap-2">
@@ -1657,6 +1665,8 @@ const depositDateMut = useMutation({
             )}
           </div>
 
+          </>)}
+          {activeTab === "payment" && (<>
           {/* ZAHLUNG — freie Beträge */}
           <div className="bg-card border border-champagne/15 p-6 mb-6">
             <div className="eyebrow mb-3 flex items-center justify-between gap-2">

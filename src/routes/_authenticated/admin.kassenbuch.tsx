@@ -475,32 +475,37 @@ function KassenbuchPage() {
     <section className="py-8 md:py-12"><div data-cashbook-tab={cashbookView} className="container-luxe max-w-[1500px] space-y-6">
       <Link to="/admin" className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-vanilla/60 hover:text-champagne"><ArrowLeft size={14} /> Zurück zum Admin</Link>
       <AdminTabBar tabs={cashbookTabs} active={cashbookView} onChange={setCashbookView} />
-      <style>{`[data-cashbook-tab]:not([data-cashbook-tab="eintragen"]) .cashbook-organizer{display:none}[data-cashbook-tab]:not([data-cashbook-tab="ausgaben"]) > .border-bordeaux\\/40{display:none}`}</style>
+      <style>{`.cashbook-filters .luxe-input{padding:.45rem .6rem;font-size:.85rem}.cashbook-filters label,.cashbook-filters .eyebrow{font-size:.55rem}.cashbook-exports .export-btn{padding:.5rem .4rem;white-space:nowrap}[data-cashbook-tab]:not([data-cashbook-tab="eintragen"]) .cashbook-organizer{display:none}[data-cashbook-tab]:not([data-cashbook-tab="ausgaben"]) > .border-bordeaux\\/40{display:none}`}</style>
       {cashbookView !== "gifts" ? <>
       {error && <div className="border border-bordeaux bg-bordeaux/10 p-4 text-bordeaux">Kassenbuchdaten konnten nicht geladen werden: {(error as Error).message}</div>}
       {cashbookView === "uebersicht" && <>
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3"><Stat label="Anzahlungen" value={eur(totals.anzahlung)} /><Stat label="Restzahlung" value={eur(totals.bar)} /><Stat label="Geschenke" value={eur(giftIncomeForMonth)} /><Stat label="Ausgaben inkl. Geschenkkäufe" value={eur(totalExpenses)} /><Stat label="Saldo" value={eur(balance)} gold /><Stat label="Erledigte Termine" value={String(completedAppointments)} /></div>
-      <div className="bg-card border border-champagne/30 p-4 flex flex-col sm:flex-row sm:items-end gap-4">
-        <div className="sm:w-64"><Field label="Tag für Bareinzahlung"><input type="date" value={cashDay} onChange={e => setCashDay(e.target.value)} className="luxe-input" /></Field></div>
-        <div className="flex-1 border border-champagne/20 px-4 py-3 min-h-[54px] flex items-center justify-between gap-4"><span className="eyebrow">Bar erhalten an diesem Tag</span><strong className="text-xl text-champagne whitespace-nowrap">{eur(dailyCash)}</strong></div>
+      <div className="bg-card border border-champagne/30 p-3 grid grid-cols-2 items-center gap-3">
+        <label className="block"><span className="block text-[0.55rem] uppercase tracking-[0.14em] text-vanilla/50 mb-1">Bar erhalten am</span><input type="date" value={cashDay} onChange={e => setCashDay(e.target.value)} className="luxe-input !py-2 text-sm" /></label>
+        <strong className="text-right text-xl text-champagne whitespace-nowrap">{eur(dailyCash)}</strong>
       </div>
       </>}
       {cashbookView !== "eintragen" && cashbookView !== "offen" && (
       <div className="bg-card border border-champagne/20 p-4 space-y-4">
-        <div className="grid sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 items-end">
+        <div className="cashbook-filters grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2 items-end">
           <Field label="Monat"><input type="month" value={month} onChange={e => setMonth(e.target.value)} className="luxe-input" /></Field>
           <Field label="Studio"><select value={studioFilter} onChange={e => setStudioFilter(e.target.value)} className="luxe-input"><option value="">Alle</option>{studios.map(v => <option key={v}>{v}</option>)}</select></Field>
           <Field label="Zahlungsart"><select value={methodFilter} onChange={e => setMethodFilter(e.target.value)} className="luxe-input"><option value="">Alle</option>{methods.map(v => <option key={v}>{v}</option>)}</select></Field>
           <Field label="Status"><select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="luxe-input"><option value="">Alle</option><option value="open">Offen</option><option value="completed">Erledigt</option><option value="cancelled">Storniert</option><option value="rescheduling">Umplanen</option></select></Field>
-          <Field label="Suchen"><div className="relative"><Search size={14} className="absolute left-3 top-3 text-vanilla/40" /><input value={search} onChange={e => setSearch(e.target.value)} className="luxe-input pl-9" /></div></Field>
+          <div className="col-span-2 md:col-span-1"><Field label="Suchen"><div className="relative"><Search size={14} className="absolute left-3 top-3 text-vanilla/40" /><input value={search} onChange={e => setSearch(e.target.value)} className="luxe-input pl-9" /></div></Field></div>
         </div>
-        <div className="border-t border-champagne/15 pt-4 flex gap-2 flex-wrap">
-          <button onClick={exportMonthPackage} className="export-btn !border-champagne !bg-champagne/10"><FileDown size={14} /> Monatsabschluss (PDF + Excel + Fahrtenbuch)</button>
-          <button onClick={exportTravelLog} disabled={travelLogPending} className="export-btn !border-champagne !bg-champagne/10"><Car size={14} /> {travelLogPending ? "Berechne…" : "Fahrtenbuch PDF"}</button>
-          <button onClick={() => exportPdf(false)} className="export-btn"><FileDown size={14} /> PDF</button>
-          <button onClick={() => exportPdf(true)} className="export-btn"><Smartphone size={14} /> PDF Handy</button>
-          <button onClick={exportCsv} className="export-btn"><FileSpreadsheet size={14} /> CSV</button>
-          <button onClick={exportExcel} className="export-btn"><FileSpreadsheet size={14} /> Excel</button>
+        <div className="cashbook-exports border-t border-champagne/15 pt-3 space-y-2">
+          <button onClick={exportMonthPackage} className="export-btn !w-full !justify-center !border-champagne !bg-champagne/10"><FileDown size={14} /> Monatsabschluss · alle Dateien</button>
+          <details>
+            <summary className="cursor-pointer text-[0.6rem] uppercase tracking-[0.16em] text-vanilla/50">Einzelne Dateien</summary>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              <button onClick={() => exportPdf(false)} className="export-btn !justify-center"><FileDown size={13} /> PDF</button>
+              <button onClick={() => exportPdf(true)} className="export-btn !justify-center"><Smartphone size={13} /> Handy</button>
+              <button onClick={exportTravelLog} disabled={travelLogPending} className="export-btn !justify-center"><Car size={13} /> {travelLogPending ? "…" : "Fahrten"}</button>
+              <button onClick={exportCsv} className="export-btn !justify-center"><FileSpreadsheet size={13} /> CSV</button>
+              <button onClick={exportExcel} className="export-btn !justify-center"><FileSpreadsheet size={13} /> Excel</button>
+            </div>
+          </details>
         </div>
       </div>
       )}
