@@ -59,7 +59,7 @@ export function TodayFocus() {
   const depositOpen = upcoming.filter((b) => !b.anzahlung_paid && !b.deposit_exemption_reason && Number(b.anzahlung ?? 0) > 0);
 
   const openRest = (cashbookQ.data ?? []).filter(
-    (e) => e.entry_type === "income" && e.source === "booking" && e.status !== "cancelled" && e.termin_datum <= todayKey && Math.max(0, e.restbetrag_vorgemerkt - e.bar) > 0,
+    (e) => e.entry_type === "income" && e.source === "booking" && e.booking_status === "confirmed" && e.status !== "cancelled" && e.status !== "rescheduling" && e.termin_datum <= todayKey && Math.max(0, e.restbetrag_vorgemerkt - e.bar) > 0,
   );
   const openRestSum = openRest.reduce((sum, e) => sum + Math.max(0, e.restbetrag_vorgemerkt - e.bar), 0);
 

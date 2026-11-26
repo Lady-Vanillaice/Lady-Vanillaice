@@ -37,6 +37,8 @@ export type CashBookEntry = {
   durchgefuehrt_datum: string | null;
   gesamt: number;
   status: "open" | "completed" | "cancelled" | "rescheduling";
+  /** Status der zugehörigen Buchung (z. B. confirmed, rescheduling, declined). */
+  booking_status?: string | null;
   notiz: string | null;
   created_at: string;
   payment_kind: "booking" | "manual";
@@ -163,7 +165,7 @@ export const listCashBookEntries = createServerFn({ method: "GET" })
         deposit_exemption_reason: exemptionFromNote, deposit_guarantor: b.deposit_guarantor ?? null,
         restbetrag_vorgemerkt: plannedCash, restzahlung_method: onsiteMethodFromNote ?? (b.deposit_exemption_reason || plannedDeposit === 0 ? b.anzahlung_method ?? null : plannedCash > 0 ? "Bar" : null),
         bar_datum: cashDate, durchgefuehrt_datum: dateOnly(b.completed_at),
-        status, notiz: b.admin_note ?? null, created_at: b.created_at,
+        status, booking_status: b.status ?? null, notiz: b.admin_note ?? null, created_at: b.created_at,
       };
       const sessionType = parseSessionType(b.admin_note);
       if (sessionType && /^(Duo|Single)/.test(common.art)) common.art = common.art.replace(/^(Duo|Single)/, sessionType.isDuo ? "Duo" : "Single");

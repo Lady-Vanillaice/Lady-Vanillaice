@@ -544,7 +544,8 @@ function KassenbuchPage() {
       {cashbookView === "offen" && (() => {
         const todayKey = today();
         const openEntries = data
-          .filter(e => e.entry_type === "income" && e.source === "booking" && e.status !== "cancelled" && openBalance(e) > 0)
+          // Nur feste (bestätigte) Termine – nicht Umplanen, Anfragen, Abgesagte oder „wartet auf Anzahlung“.
+          .filter(e => e.entry_type === "income" && e.source === "booking" && e.booking_status === "confirmed" && e.status !== "cancelled" && e.status !== "rescheduling" && openBalance(e) > 0)
           .sort((a, b) => a.termin_datum.localeCompare(b.termin_datum));
         const overdue = openEntries.filter(e => e.termin_datum <= todayKey);
         const upcoming = openEntries.filter(e => e.termin_datum > todayKey);
