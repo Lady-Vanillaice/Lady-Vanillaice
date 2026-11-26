@@ -564,7 +564,7 @@ function EntryCard({ e, closure }: { e: Entry; closure?: { report_decision: stri
         </div>
       </div>
     </Link>
-    <CustomerQuickInfo email={e.guest_email} />
+    <CustomerQuickInfo email={e.guest_email} name={e.guest_name} />
     <SessionClosureControls bookingId={e.id} completed={isCompleted} reportDecision={closure?.report_decision ?? (isLegacyCompleted ? "without_report" : undefined)} amount={e.bar ?? 0} paidAt={e.cash_received_at} guestEmail={e.guest_email} sessionStart={e.start} sessionPlace={e.location} isDuo={e.is_duo} duoPartner={e.duo_partner} />
     </div>
   );
@@ -572,12 +572,18 @@ function EntryCard({ e, closure }: { e: Entry; closure?: { report_decision: stri
 
 
 /** Ganz oben im Terminplan: laufende Langzeiterziehungen mit Laufzeit-Ende. */
-function CustomerQuickInfo({ email }: { email: string | null }) {
+function CustomerQuickInfo({ email, name }: { email: string | null; name?: string | null }) {
   const listCustomersFn = useServerFn(listCustomers);
   const q = useQuery({ queryKey: ["customers"], queryFn: () => listCustomersFn(), staleTime: 5 * 60_000 });
   const key = (email ?? "").trim().toLowerCase();
-  if (!key) return null;
-  const customer = (q.data as CustomerRow[] | undefined)?.find((c) => c.email?.toLowerCase() === key);
+  const nameKey = (name ?? "").trim().toLowerCase();
+  const list = (q.data as CustomerRow[] | undefined) ?? [];
+  const hasInfo = (c: CustomerRow) => Boolean(c.note || c.booking_profile?.tabus || c.booking_profile?.safeword);
+  const customer =
+    (key ? list.find((c) => c.email?.toLowerCase() === key && hasInfo(c)) : undefined) ??
+    (nameKey.length >= 2
+      ? list.find((c) => hasInfo(c) && (c.note?.pseudonym?.trim().toLowerCase() === nameKey || c.names.some((n) => n.trim().toLowerCase() === nameKey)))
+      : undefined);
   if (!customer) return null;
   const pick = (field: "tabus" | "safeword" | "vorlieben" | "gesundheit") => customer.note?.[field]?.trim() || customer.booking_profile?.[field]?.trim() || null;
   const items: Array<[string, string | null, boolean]> = [

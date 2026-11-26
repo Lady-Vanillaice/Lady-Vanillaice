@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useRouter, useNavigate } from "@tanstack/react-router";
 import { parseSessionType } from "@/lib/session-type";
 import { SessionPlanEditor } from "@/components/admin/SessionPlanEditor";
-import { berlinMinutesToMs, planBlockingRanges, planToOffsets, planTotalMinutes, setPlanInNote, type PlanPhase } from "@/lib/session-plan";
+import { berlinMinutesToMs, isFreePhase, parsePlan, phaseDisplay, planBlockingRanges, planPhaseTimes, planToOffsets, planTotalMinutes, setPlanInNote, type PlanPhase } from "@/lib/session-plan";
 import { formatEuro, parseEuroInput, parseLatexSurcharge, setLatexSurchargeInNote } from "@/lib/latex-surcharge";
 import { realLocation } from "@/lib/slot-location";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -587,6 +587,7 @@ const depositDateMut = useMutation({
   if (!detailQ.data) return null;
 
   const { booking, emails, photoUrl, photoPath, customerSpecialRules } = detailQ.data;
+  const customerProfile = (detailQ.data as { customerProfile?: { email: string; name: string | null; vorlieben: string | null; tabus: string | null; gesundheit: string | null; safeword: string | null; adminNote: string | null; matchedBy: string } | null }).customerProfile ?? null;
  const slot = booking.availability_slots as
   | {
       starts_at: string;
@@ -736,6 +737,44 @@ const depositDateMut = useMutation({
                     <span className="px-2 py-1 bg-champagne/10 text-champagne">Rest {restAmount.toLocaleString("de-DE")} €</span>
                   )}
                 </div>
+                {(() => {
+                  const plan = startIso ? parsePlan(booking.admin_note) : null;
+                  if (!plan || !startIso) return null;
+                  const now = Date.now();
+                  return (
+                    <div className="border-l-2 border-champagne/50 pl-3 space-y-0.5 text-sm">
+                      {planPhaseTimes(startIso, plan).map((p, i) => (
+                        <div key={i} className={`${p.e <= now ? "line-through opacity-45 " : ""}${isFreePhase(p) ? "text-purple-200" : p.kind === "session" ? "text-vanilla/90" : "text-champagne"}`}>
+                          <span className="tabular-nums">{p.from}–{p.to}</span> · {phaseDisplay(p)}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+                {customerProfile && (customerProfile.safeword || customerProfile.tabus || customerProfile.gesundheit || customerProfile.vorlieben || customerProfile.adminNote) && (
+                  <details className="border border-bordeaux/40 bg-bordeaux/5">
+                    <summary className="cursor-pointer px-3 py-2 text-[0.62rem] uppercase tracking-[0.16em] text-champagne">
+                      Kunden-Info (CRM){customerProfile.safeword ? ` · Safeword: ${customerProfile.safeword}` : ""}
+                    </summary>
+                    <div className="space-y-2 px-3 pb-3 text-sm">
+                      {customerProfile.matchedBy === "name" && (
+                        <p className="text-[0.65rem] text-vanilla/45">Über den Namen gefunden{customerProfile.name ? ` („${customerProfile.name}“)` : ""}.</p>
+                      )}
+                      {([
+                        ["Safeword", customerProfile.safeword, true],
+                        ["Tabus", customerProfile.tabus, true],
+                        ["Gesundheit", customerProfile.gesundheit, false],
+                        ["Vorlieben", customerProfile.vorlieben, false],
+                        ["Notiz", customerProfile.adminNote, false],
+                      ] as Array<[string, string | null, boolean]>).filter(([, v]) => v?.trim()).map(([label, value, important]) => (
+                        <div key={label}>
+                          <div className={`text-[0.58rem] uppercase tracking-[0.16em] ${important ? "text-bordeaux" : "text-vanilla/50"}`}>{label}</div>
+                          <div className="whitespace-pre-wrap text-vanilla/85">{value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
                 {(phoneDigits || hasEmail) && (
                   <div className="grid grid-cols-3 gap-2 pt-1">
                     {phoneDigits ? (

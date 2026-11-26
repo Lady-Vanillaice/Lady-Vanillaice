@@ -1694,16 +1694,57 @@ export const getBookingDetail = createServerFn({ method: "GET" })
     if (!booking) throw new Error("Buchung nicht gefunden.");
 
     let customerSpecialRules = "";
-    if (booking.guest_email) {
-      const escapedEmail = String(booking.guest_email).replace(/[%_]/g, "\\$&");
-      const { data: customerNote, error: customerNoteError } = await context.supabase
+    // CRM-Eintrag finden: zuerst über die E-Mail, sonst über den Namen
+    // (z. B. bei manuell eingetragenen Terminen ohne echte E-Mail).
+    type CrmNote = { email: string; pseudonym: string | null; vorlieben: string | null; tabus: string | null; gesundheit?: string | null; safeword?: string | null; admin_note: string | null };
+    let crmNote: CrmNote | null = null;
+    const escapeLike = (value: string) => value.replace(/[%_\\]/g, "\\$&");
+    const loadNote = async (column: "email" | "pseudonym", value: string) => {
+      const full = await context.supabase
         .from("customer_notes")
-        .select("admin_note")
-        .ilike("email", escapedEmail)
-        .maybeSingle();
-      if (customerNoteError) throw new Error(customerNoteError.message);
-      customerSpecialRules = splitCustomerAdminNote(customerNote?.admin_note).specialRules;
+        .select("email, pseudonym, vorlieben, tabus, gesundheit, safeword, admin_note")
+        .ilike(column, escapeLike(value))
+        .limit(1);
+      if (!full.error) return (full.data?.[0] ?? null) as CrmNote | null;
+      const legacy = await context.supabase
+        .from("customer_notes")
+        .select("email, pseudonym, vorlieben, tabus, admin_note")
+        .ilike(column, escapeLike(value))
+        .limit(1);
+      if (legacy.error) throw new Error(legacy.error.message);
+      return (legacy.data?.[0] ?? null) as CrmNote | null;
+    };
+    if (booking.guest_email) crmNote = await loadNote("email", String(booking.guest_email).trim());
+    const guestName = String(booking.guest_name ?? "").trim();
+    if (!crmNote && guestName.length >= 2) {
+      crmNote = await loadNote("pseudonym", guestName);
+      if (!crmNote) {
+        const { data: sameName } = await context.supabase
+          .from("bookings")
+          .select("guest_email")
+          .ilike("guest_name", escapeLike(guestName))
+          .not("guest_email", "is", null)
+          .limit(20);
+        const otherEmail = (sameName ?? [])
+          .map((row: { guest_email: string | null }) => (row.guest_email ?? "").trim())
+          .find((email: string) => email && !/@intern\.local$/i.test(email) && email.toLowerCase() !== String(booking.guest_email ?? "").toLowerCase());
+        if (otherEmail) crmNote = await loadNote("email", otherEmail);
+      }
     }
+    const crmSplit = splitCustomerAdminNote(crmNote?.admin_note);
+    customerSpecialRules = crmSplit.specialRules;
+    const customerProfile = crmNote
+      ? {
+          email: crmNote.email,
+          name: crmNote.pseudonym,
+          vorlieben: crmNote.vorlieben,
+          tabus: crmNote.tabus,
+          gesundheit: crmNote.gesundheit ?? null,
+          safeword: crmNote.safeword ?? null,
+          adminNote: crmSplit.adminNote || null,
+          matchedBy: booking.guest_email && crmNote.email?.toLowerCase() === String(booking.guest_email).toLowerCase() ? "email" : "name",
+        }
+      : null;
 
     // Load email log entries related to this booking. We match by suffix on
     // message_id (idempotency keys end with the booking id) and recipient.
@@ -1751,7 +1792,7 @@ export const getBookingDetail = createServerFn({ method: "GET" })
       photoUrl = signed?.signedUrl ?? null;
     }
 
-    return { booking, emails: dedupedEmails, photoUrl, photoPath, customerSpecialRules };
+    return { booking, emails: dedupedEmails, photoUrl, photoPath, customerSpecialRules, customerProfile };
   });
 
 
