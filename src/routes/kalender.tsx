@@ -356,14 +356,15 @@ function KalenderPage() {
                           )}
                         </span>
                       )}
-                      {!isPast && !isVacation && !isFullyBooked && dayMinMinutes != null && (
-                        <span className="absolute -top-1.5 -right-1 z-10 rounded-sm bg-champagne px-1 py-[1px] text-[0.5rem] font-semibold leading-none text-background shadow-[0_0_8px_rgba(216,182,118,0.6)] pointer-events-none">
-                          {tr(`ab ${(dayMinMinutes / 60).toLocaleString("de-DE", { maximumFractionDigits: 1 })}h`, `${(dayMinMinutes / 60).toLocaleString("en-US", { maximumFractionDigits: 1 })}h+`)}
-                        </span>
-                      )}
                       {!isPast && !isVacation && ((has && !isFullyBooked) || cams) && (
                         <span className="absolute bottom-1 flex items-center gap-1 pointer-events-none">
                           {has && !isFullyBooked && <span className="w-1 h-1 rounded-full bg-champagne" />}
+                          {has && !isFullyBooked && dayMinMinutes != null && (
+                            // Mindestbuchung unten neben dem Punkt – getrennt vom „Extra“ oben.
+                            <span className="text-[0.5rem] font-semibold leading-none text-champagne">
+                              {tr(`ab ${(dayMinMinutes / 60).toLocaleString("de-DE", { maximumFractionDigits: 1 })}h`, `${(dayMinMinutes / 60).toLocaleString("en-US", { maximumFractionDigits: 1 })}h+`)}
+                            </span>
+                          )}
                           {cams && <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_6px_rgba(192,132,252,0.8)]" />}
                         </span>
                       )}

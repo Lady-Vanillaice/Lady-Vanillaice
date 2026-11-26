@@ -183,8 +183,11 @@ const oldTag = `      const tag = [
         slot.is_content_shoot ? "CONTENT" : "",
       ].filter(Boolean).join(" · ");`;
 const oldPatchedTag = `      const tag = slot.is_duo ? "DUO VERFÜGBAR" : "NUR EINZEL VERFÜGBAR";`;
-source = source.replace(oldTag, "      const tag = \"\";");
-source = source.replace(oldPatchedTag, "      const tag = \"\";");
+// Rechts unten auf der Karte: Extra-Zeit mit Mindestbuchung (z. B. „EXTRA · MIND. 3 STD.“).
+const minTag = "      const tag = await exportMinTag(daySlots);";
+source = source.replace(oldTag, minTag);
+source = source.replace(oldPatchedTag, minTag);
+source = source.replace("      const tag = \"\";", minTag);
 
 if (!source.includes("const statusByDay = new Map<string, string>()")) {
   throw new Error("Export day-status patch could not be applied");

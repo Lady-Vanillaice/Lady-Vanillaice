@@ -3,6 +3,7 @@ import { isPrivateLocation } from "@/lib/slot-location";
 import { getSlotAvailability } from "@/lib/public-booking.functions";
 import { listCalendarSpecials, type CalendarSpecial } from "@/lib/calendar-special.functions";
 import { saveCanvasAsPng } from "./core";
+import { listSlotMinDurations, minMinutesForSlotId, type SlotMinDurations } from "@/lib/slot-min-duration.functions";
 
 type SlotRow = {
   id: string;
@@ -472,3 +473,21 @@ export async function exportCalendarImage(mode: CalendarExportMode) {
     : "alle-offenen-termine";
   await saveCanvasAsPng(canvas, `lady-vanilla-ice-kalender-${suffix}.png`);
 }
+
+// Mindestbuchung (Extra-Zeit) für die Bildkarten. Export-Fenster heißen
+// „<slotId>-export-free-<n>“; die echte Slot-ID steht davor.
+let exportMinDurationsCache: { at: number; promise: Promise<SlotMinDurations> } | null = null;
+async function exportMinTag(daySlots: Array<{ id: string }>): Promise<string> {
+  // Kurz zwischenspeichern: ein Bild-Export lädt die Liste nur einmal.
+  if (!exportMinDurationsCache || Date.now() - exportMinDurationsCache.at > 15_000) {
+    exportMinDurationsCache = { at: Date.now(), promise: listSlotMinDurations().catch(() => ({} as SlotMinDurations)) };
+  }
+  const map = await exportMinDurationsCache.promise;
+  const values = daySlots
+    .map((slot) => minMinutesForSlotId(map, slot.id.split("-export-free-")[0]))
+    .filter((value): value is number => value != null);
+  if (!values.length) return "";
+  const hours = Math.max(...values) / 60;
+  return `EXTRA · MIND. ${hours.toLocaleString("de-DE", { maximumFractionDigits: 1 })} STD.`;
+}
+void exportMinTag;
