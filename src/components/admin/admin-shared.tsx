@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { formatMinHours, setSlotMinDuration } from "@/lib/slot-min-duration.functions";
+import { useServerFn } from "@tanstack/react-start";
+import { useQueryClient } from "@tanstack/react-query";
 import { formatEuro, latexSurchargeLine, parseEuroInput } from "@/lib/latex-surcharge";
 import { Link } from "@tanstack/react-router";
 import {
@@ -337,6 +340,9 @@ export function NewSlotForm({
   const [note, setNote] = useState("");
   const [buffer, setBuffer] = useState(30);
   const [isHidden, setIsHidden] = useState(true);
+  const [minMinutes, setMinMinutes] = useState("");
+  const setMinDurationFn = useServerFn(setSlotMinDuration);
+  const minDurationQc = useQueryClient();
   const [err, setErr] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
@@ -373,19 +379,28 @@ export function NewSlotForm({
         buffer_minutes: buffer,
         is_hidden: isHidden,
       };
-      await onCreate({
+      const created: unknown[] = [];
+      created.push(await onCreate({
         starts_at: starts_at.toISOString(),
         ends_at: ends_at.toISOString(),
         ...sharedValues,
-      });
+      }));
       if (hasSecondWindow) {
-        await onCreate({
+        created.push(await onCreate({
           starts_at: secondStartsAt.toISOString(),
           ends_at: secondEndsAt.toISOString(),
           ...sharedValues,
-        });
+        }));
       }
-      setDate(""); setRoom(""); setHideLocation(false); setNote(""); setIsDuo(false); setIsDuoOptional(false); setDuoPartner(""); setIsContentShoot(false); setBuffer(30); setIsHidden(true); setHasSecondWindow(false);
+      // Extra-Zeit: Mindestbuchung direkt für die neuen Zeitfenster speichern.
+      if (minMinutes) {
+        for (const row of created) {
+          const id = (row as { id?: string } | null)?.id;
+          if (id) await setMinDurationFn({ data: { id, minutes: Number(minMinutes) } });
+        }
+        await minDurationQc.invalidateQueries({ queryKey: ["slot-min-durations"] });
+      }
+      setDate(""); setRoom(""); setHideLocation(false); setNote(""); setIsDuo(false); setIsDuoOptional(false); setDuoPartner(""); setIsContentShoot(false); setBuffer(30); setIsHidden(true); setHasSecondWindow(false); setMinMinutes("");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Fehler");
     }
@@ -470,6 +485,16 @@ export function NewSlotForm({
         <p className="text-[0.65rem] text-vanilla/45 mt-1">Optional — muss nicht angegeben werden, um den Termin im Kalender anzuzeigen.</p>
       </div>
       <div>
+        <label className="eyebrow block mb-1">Mindestbuchung (Extra-Zeit)</label>
+        <select value={minMinutes} onChange={(e) => setMinMinutes(e.target.value)} className="input-luxe">
+          <option value="">Keine – normales Zeitfenster</option>
+          {[60, 90, 120, 150, 180, 240, 300, 360].map((m) => (
+            <option key={m} value={m}>mind. {formatMinHours(m)} – im Kalender als „Extra“</option>
+          ))}
+        </select>
+        <p className="mt-1 mb-4 text-[0.65rem] text-vanilla/50">
+          Für einzelne Stunden, die du zusätzlich anbietest: Der Tag erscheint öffentlich mit „Extra“, der freien Zeit und der Mindestbuchung. Kürzere Buchungen sind nicht möglich.
+        </p>
         <label className="eyebrow block mb-1">Pause zwischen Terminen</label>
         <select
           value={buffer}

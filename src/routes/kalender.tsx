@@ -349,6 +349,11 @@ function KalenderPage() {
                               Cam
                             </span>
                           )}
+                          {dayMinMinutes != null && !isFullyBooked && !isVacation && (
+                            <span className="text-[0.48rem] uppercase tracking-[0.12em] text-champagne">
+                              Extra
+                            </span>
+                          )}
                         </span>
                       )}
                       {!isPast && !isVacation && !isFullyBooked && dayMinMinutes != null && (
@@ -408,7 +413,16 @@ function KalenderPage() {
 
               {selectedDay && selectedMinMinutes != null && !selectedIsFullyBooked && (
                 <div className="mb-5 border-2 border-champagne bg-champagne/15 p-4">
-                  <div className="eyebrow mb-1 text-champagne">{tr("Mindestbuchung", "Minimum booking")}</div>
+                  <div className="eyebrow mb-1 text-champagne">{tr("Extra-Zeit · Mindestbuchung", "Extra time · minimum booking")}</div>
+                  {selectedDaySlot && (
+                    <p className="mb-1 text-sm text-vanilla/85">
+                      {tr("Frei", "Free")}{" "}
+                      {((selectedDaySlot as any).windows?.length ? (selectedDaySlot as any).windows : [selectedDaySlot])
+                        .map((w: { starts_at: string; ends_at: string }) => `${formatMunichTime(w.starts_at)}–${formatMunichTime(w.ends_at)}`)
+                        .join(", ")}
+                      {lang === "en" ? "" : " Uhr"}
+                    </p>
+                  )}
                   <p className="font-display text-xl text-vanilla">
                     {tr(`Mindestens ${formatMinHours(selectedMinMinutes, "de")} Session`, `Minimum ${formatMinHours(selectedMinMinutes, "en")} session`)}
                   </p>
