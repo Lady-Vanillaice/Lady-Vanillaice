@@ -756,7 +756,7 @@ const depositDateMut = useMutation({
                 {customerProfile && (customerProfile.safeword || customerProfile.tabus || customerProfile.gesundheit || customerProfile.vorlieben || customerProfile.adminNote) && (
                   <details className="border border-bordeaux/40 bg-bordeaux/5">
                     <summary className="cursor-pointer px-3 py-2 text-[0.62rem] uppercase tracking-[0.16em] text-champagne">
-                      Kunden-Info (CRM){customerProfile.safeword ? ` · Safeword: ${customerProfile.safeword}` : ""}
+                      Kunden-Info
                     </summary>
                     <div className="space-y-2 px-3 pb-3 text-sm">
                       {customerProfile.matchedBy === "name" && (

@@ -125,7 +125,8 @@ export const listCustomers = createServerFn({ method: "GET" })
       const match = message.match(
         new RegExp(`(?:^|\\n)(?:${escaped.join("|")}):\\s*\\n([^]*?)(?=\\n\\n(?:[^\\n]+):\\s*\\n|\\n\\n—|$)`, "i"),
       );
-      return match?.[1]?.trim() || null;
+      // Technische Buchungsdaten (Start, Dauer, WhatsApp …) gehören nicht dazu.
+      return match?.[1]?.split(/\s*[—-]+\s*Technische Buchungsdaten/i)[0]?.trim() || null;
     };
     for (const b of bookings ?? []) {
       // Die Kundenliste enthält ausschließlich tatsächlich abgeschlossene

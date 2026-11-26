@@ -586,7 +586,9 @@ function CustomerQuickInfo({ email, name }: { email: string | null; name?: strin
       ? list.find((c) => hasInfo(c) && (c.note?.pseudonym?.trim().toLowerCase() === nameKey || c.names.some((n) => n.trim().toLowerCase() === nameKey)))
       : undefined);
   if (!customer) return null;
-  const pick = (field: "tabus" | "safeword" | "vorlieben" | "gesundheit") => customer.note?.[field]?.trim() || customer.booking_profile?.[field]?.trim() || null;
+  // Technische Zusatzdaten aus der Buchungsnachricht abschneiden.
+  const clean = (value: string | null | undefined) => (value ?? "").split(/\s*[—-]+\s*Technische Buchungsdaten/i)[0].trim() || null;
+  const pick = (field: "tabus" | "safeword" | "vorlieben" | "gesundheit") => clean(customer.note?.[field]) || clean(customer.booking_profile?.[field]) || null;
   const items: Array<[string, string | null, boolean]> = [
     ["Safeword", pick("safeword"), true],
     ["Tabus", pick("tabus"), true],
@@ -600,7 +602,7 @@ function CustomerQuickInfo({ email, name }: { email: string | null; name?: strin
   return (
     <details className="mt-3 border border-champagne/25 bg-background/40">
       <summary className="cursor-pointer px-3 py-2 text-[0.65rem] uppercase tracking-[0.16em] text-champagne">
-        Kunden-Info{pick("safeword") ? ` · Safeword: ${pick("safeword")}` : ""}
+        Kunden-Info
       </summary>
       <div className="space-y-2 px-3 pb-3 text-sm">
         {filled.map(([label, value, important]) => (
