@@ -96,7 +96,7 @@ source = source.replace("  const appointmentRowHeight = 150;", "  const appointm
 source = source.replace(
   "    (total, [, monthSlots]) => total + monthHeaderHeight + monthSlots.length * appointmentRowHeight,",
   `    (total, [, monthSlots]) => total + monthHeaderHeight + [...new Set(monthSlots.map((slot) => dateParts(slot.starts_at).dayKey))].reduce(
-      (dayTotal, dayKey) => dayTotal + appointmentRowHeight + (specialsByDay.has(dayKey) ? 170 : 0),
+      (dayTotal, dayKey) => dayTotal + appointmentRowHeight + (specialsByDay.has(dayKey) ? 290 : 0),
       0,
     ),`,
 );
@@ -122,7 +122,7 @@ source = source.replace(
   `      const cardX = outer + 28;
       const cardWidth = width - cardX * 2;
       const special = specialsByDay.get(dayKey);
-      const specialExtraHeight = special ? 170 : 0;
+      const specialExtraHeight = special ? 290 : 0;
       const cardHeight = appointmentRowHeight + specialExtraHeight - 18;
       ctx.fillStyle = COLORS.card;
       ctx.fillRect(cardX, y, cardWidth, cardHeight);
@@ -154,32 +154,36 @@ source = source.replace(
       if (special) {
         const specialY = y + 112 + daySlots.length * 30;
         ctx.fillStyle = COLORS.gold;
-        ctx.font = 'bold 18px Arial, sans-serif';
+        // Größere Schrift, damit das Special auf dem Handy gut lesbar ist.
+        ctx.font = 'bold 28px Arial, sans-serif';
         ctx.textAlign = "left";
-        ctx.fillText("SPECIAL · " + special.title, cardX + 30, specialY);
+        ctx.fillText("SPECIAL · " + special.title, cardX + 30, specialY + 8);
 
-        let textY = specialY + 28;
+        let textY = specialY + 50;
         const specialCondition = (special as { minHours?: number | null }).minHours
           ? "Mindestens " + Number((special as { minHours?: number | null }).minHours).toLocaleString("de-DE", { maximumFractionDigits: 2 }) + " " + ((special as { minHours?: number | null }).minHours === 1 ? "Stunde" : "Stunden") + " Session"
           : "";
         if (specialCondition) {
           ctx.fillStyle = COLORS.gold;
-          ctx.font = 'bold 16px Arial, sans-serif';
+          ctx.font = 'bold 24px Arial, sans-serif';
           ctx.fillText(specialCondition, cardX + 30, textY);
-          textY += 26;
+          textY += 38;
         }
         if (special.outfit) {
           ctx.fillStyle = COLORS.gold;
-          ctx.font = '16px Arial, sans-serif';
-          ctx.fillText("Outfit: " + special.outfit, cardX + 30, textY);
-          textY += 26;
+          ctx.font = '23px Arial, sans-serif';
+          wrapCanvasLines(ctx, "Outfit: " + special.outfit, cardWidth - 60).slice(0, 2).forEach((line) => {
+            ctx.fillText(line, cardX + 30, textY);
+            textY += 32;
+          });
+          textY += 6;
         }
 
         ctx.fillStyle = COLORS.vanilla;
-        ctx.font = '16px Arial, sans-serif';
-        const lines = wrapCanvasLines(ctx, special.description, cardWidth - 60).slice(0, specialCondition && special.outfit ? 2 : specialCondition || special.outfit ? 3 : 4);
+        ctx.font = '23px Arial, sans-serif';
+        const lines = wrapCanvasLines(ctx, special.description, cardWidth - 60).slice(0, 4);
         lines.forEach((line, index) => {
-          ctx.fillText(line, cardX + 30, textY + index * 23);
+          ctx.fillText(line, cardX + 30, textY + index * 32);
         });
       }`,
 );
