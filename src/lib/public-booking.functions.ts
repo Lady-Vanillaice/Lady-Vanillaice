@@ -387,16 +387,22 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
       }
     }
 
-    const { parsePlan: parseTimelinePlan, planBlockingRanges: timelineBlockingRanges, berlinDateKey: timelineDateKey } = await import("./session-plan");
+    const { parsePlan: parseTimelinePlan, planPhaseTimes: timelinePhaseTimes, isFreePhase: isTimelineFreePhase } = await import("./session-plan");
+    const { parseSessionType: parseTimelineSessionType } = await import("./session-type");
     const busyFromBookings = activeBookings.flatMap((b) => {
       if (!b.requested_start || !b.duration_minutes) return [];
       const s = new Date(b.requested_start).getTime();
       // Bei einem Ablauf zeigt die Zeitleiste nur die blockierenden Teile;
       // unbeaufsichtigte Liegezeit, „Kollegin übernimmt“ und Pausen bleiben frei.
       const timelinePlan = parseTimelinePlan((b as { admin_note?: string | null }).admin_note);
-      const segments = timelinePlan
-        ? timelineBlockingRanges(timelineDateKey(b.requested_start), timelinePlan).map((r) => ({ start: new Date(r.s).toISOString(), end: new Date(r.e).toISOString() }))
+      const segments: Array<{ start: string; end: string; phaseDuo?: boolean }> = timelinePlan
+        ? timelinePhaseTimes(b.requested_start, timelinePlan)
+            .filter((p) => !isTimelineFreePhase(p))
+            .map((p) => ({ start: new Date(p.s).toISOString(), end: new Date(p.e).toISOString(), phaseDuo: p.kind === "duo" }))
         : [{ start: b.requested_start, end: new Date(s + b.duration_minutes * 60_000).toISOString() }];
+      // Single/Duo wie im Terminplan: zuerst die Session-Art der Buchung (Admin-Notiz),
+      // dann die Auswahl des Gastes, zuletzt das Tages-Zeitfenster.
+      const noteSessionType = parseTimelineSessionType((b as { admin_note?: string | null }).admin_note);
       return segments.map((segment) => ({
         start: segment.start,
         end: segment.end,
@@ -405,9 +411,12 @@ export const getSlotAvailability = createServerFn({ method: "POST" })
             ? (() => {
                 const bookingSlot = b.slot_id ? slotById.get(b.slot_id) : null;
                 const isExplicitSingle = /^— Session-Art —\s*Single Session(?:\s|$)/i.test(b.message ?? "");
-                const isSingleOnly =
-                  isExplicitSingle ||
-                  Boolean(bookingSlot && !bookingSlot.is_duo && !bookingSlot.is_content_shoot);
+                const isSingleOnly = segment.phaseDuo
+                  ? false
+                  : noteSessionType
+                  ? !noteSessionType.isDuo
+                  : isExplicitSingle ||
+                    Boolean(bookingSlot && !bookingSlot.is_duo && !bookingSlot.is_content_shoot);
                 return isSingleOnly ? "single_only" as const : "booked" as const;
               })()
             : "reserved" as const,
