@@ -164,6 +164,7 @@ function KassenbuchPage() {
     finally { setTravelSaving(false); }
   }
   const [cashDay, setCashDay] = useState(today());
+  const [cashDayEnd, setCashDayEnd] = useState(today());
   const hiddenBookingSet = useMemo(() => new Set(hiddenBookingIds), [hiddenBookingIds]);
 
   const restMethodFor = (e: CashBookEntry) => {
@@ -206,13 +207,23 @@ function KassenbuchPage() {
   const balance = totalIncomeWithGifts - totalExpenses;
   const totalNet = totals.gesamt / 1.19;
   const totalVat = totals.gesamt - totalNet;
-  const dailyCash = data.filter(e => e.entry_type === "income")
+  // Bargeld im gewählten Zeitraum (von–bis), mit Einzelposten zum Abgleich der Bankeinzahlung.
+  // Restzahlungen, die schon vor dem Termin bar bezahlt wurden, werden extra markiert.
+  const cashRangeEnd = cashDayEnd && cashDayEnd >= cashDay ? cashDayEnd : cashDay;
+  const inCashRange = (d: string | null | undefined) => Boolean(d && d >= cashDay && d <= cashRangeEnd);
+  const dailyCashItems = data.filter(e => e.entry_type === "income")
     .filter(e => !(e.source === "booking" && e.booking_id && hiddenBookingSet.has(e.booking_id)))
-    .reduce((sum, e) => {
-      const depositCash = e.anzahlung_datum === cashDay && e.anzahlung > 0 && e.anzahlung_method?.trim().toLowerCase() === "bar" ? e.anzahlung : 0;
-      const onsiteCash = e.bar_datum === cashDay && e.bar > 0 && restMethodFor(e)?.trim().toLowerCase() === "bar" ? e.bar : 0;
-      return sum + depositCash + onsiteCash;
-    }, 0);
+    .flatMap(e => {
+      const items: { key: string; date: string; customer: string; kind: string; amount: number; prepaidFor: string | null }[] = [];
+      if (inCashRange(e.anzahlung_datum) && e.anzahlung > 0 && e.anzahlung_method?.trim().toLowerCase() === "bar")
+        items.push({ key: `${e.id}:anz`, date: e.anzahlung_datum!, customer: e.kunde, kind: "Anzahlung", amount: e.anzahlung, prepaidFor: null });
+      if (inCashRange(e.bar_datum) && e.bar > 0 && restMethodFor(e)?.trim().toLowerCase() === "bar")
+        items.push({ key: `${e.id}:rest`, date: e.bar_datum!, customer: e.kunde, kind: "Restzahlung", amount: e.bar, prepaidFor: e.source === "booking" && e.termin_datum > e.bar_datum! ? e.termin_datum : null });
+      return items;
+    })
+    .sort((a, b) => a.date.localeCompare(b.date) || a.customer.localeCompare(b.customer));
+  const dailyCash = dailyCashItems.reduce((sum, item) => sum + item.amount, 0);
+  const dailyCashPrepaid = dailyCashItems.filter(item => item.prepaidFor).reduce((sum, item) => sum + item.amount, 0);
   const studios = [...new Set(data.map(e => e.studio))].sort();
   const methods = [...new Set(data.flatMap(e => [e.anzahlung_method, e.restzahlung_method, e.payment_method, restMethodFor(e)]).filter(Boolean) as string[])].sort();
   const depositText = (e: CashBookEntry) => e.deposit_exemption_reason ? exemptionLabel[e.deposit_exemption_reason] : e.anzahlung_method ?? "—";
@@ -480,9 +491,20 @@ function KassenbuchPage() {
       {error && <div className="border border-bordeaux bg-bordeaux/10 p-4 text-bordeaux">Kassenbuchdaten konnten nicht geladen werden: {(error as Error).message}</div>}
       {cashbookView === "uebersicht" && <>
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3"><Stat label="Anzahlungen" value={eur(totals.anzahlung)} /><Stat label="Restzahlung" value={eur(totals.bar)} /><Stat label="Geschenke" value={eur(giftIncomeForMonth)} /><Stat label="Ausgaben inkl. Geschenkkäufe" value={eur(totalExpenses)} /><Stat label="Saldo" value={eur(balance)} gold /><Stat label="Erledigte Termine" value={String(completedAppointments)} /></div>
-      <div className="bg-card border border-champagne/30 p-3 grid grid-cols-2 items-center gap-3">
-        <label className="block"><span className="block text-[0.55rem] uppercase tracking-[0.14em] text-vanilla/50 mb-1">Bar erhalten am</span><input type="date" value={cashDay} onChange={e => setCashDay(e.target.value)} className="luxe-input !py-2 text-sm" /></label>
-        <strong className="text-right text-xl text-champagne whitespace-nowrap">{eur(dailyCash)}</strong>
+      <div className="bg-card border border-champagne/30 p-3">
+        <div className="grid grid-cols-[1fr_1fr_auto] items-end gap-3">
+          <label className="block"><span className="block text-[0.55rem] uppercase tracking-[0.14em] text-vanilla/50 mb-1">Bar erhalten von</span><input type="date" value={cashDay} onChange={e => { setCashDay(e.target.value); if (!cashDayEnd || cashDayEnd < e.target.value) setCashDayEnd(e.target.value); }} className="luxe-input !py-2 text-sm" /></label>
+          <label className="block"><span className="block text-[0.55rem] uppercase tracking-[0.14em] text-vanilla/50 mb-1">bis</span><input type="date" value={cashRangeEnd} min={cashDay} onChange={e => setCashDayEnd(e.target.value)} className="luxe-input !py-2 text-sm" /></label>
+          <strong className="text-right text-xl text-champagne whitespace-nowrap pb-1">{eur(dailyCash)}</strong>
+        </div>
+        {dailyCashPrepaid > 0 && <p className="mt-2 text-xs text-champagne">Davon {eur(dailyCashPrepaid)} vorab bezahlt für spätere Termine. Ohne diese: {eur(dailyCash - dailyCashPrepaid)}.</p>}
+        <details className="mt-2">
+          <summary className="cursor-pointer text-[0.6rem] uppercase tracking-[0.14em] text-vanilla/60">Einzelposten anzeigen ({dailyCashItems.length})</summary>
+          <div className="mt-2 border-t border-champagne/15 pt-2 space-y-1 text-sm">
+            {dailyCashItems.length === 0 && <p className="text-vanilla/50">Kein Bargeld in diesem Zeitraum.</p>}
+            {dailyCashItems.map(item => <div key={item.key} className="flex justify-between gap-3"><span className="text-vanilla/80">{dateLabel(item.date)} · {item.customer} · {item.kind}{item.prepaidFor && <span className="text-champagne"> · vorab für Termin {dateLabel(item.prepaidFor)}</span>}</span><span className="whitespace-nowrap">{eur(item.amount)}</span></div>)}
+          </div>
+        </details>
       </div>
       </>}
       {cashbookView !== "eintragen" && cashbookView !== "offen" && (
