@@ -50,11 +50,14 @@ export const updateBookingAccounting = createServerFn({ method: "POST" })
     const dbExemptionReason = data.deposit_exemption_reason === "spontaneous" ? "exception" : data.deposit_exemption_reason ?? null;
     const cleanNote = (data.note ?? "")
       .replace(/(?:^|\n)Vor Ort Zahlungsmethode:\s*[^\n]*/g, "")
+      .replace(/(?:^|\n)\[RESTZAHLUNG:\s*[^\]]+\]\s*/gi, "")
       .replace(/(?:^|\n)Anzahlungsregel: Spontaner Termin/g, "")
       .trim();
     const noteLines = [
       cleanNote || null,
       data.bar > 0 && data.restzahlung_method ? `Vor Ort Zahlungsmethode: ${data.restzahlung_method.trim()}` : null,
+      // Gleiche Markierung wie bei „Session abschließen“, damit das Kassenbuch die neue Zahlungsart sicher übernimmt.
+      data.bar > 0 && data.restzahlung_method ? `[RESTZAHLUNG: ${data.restzahlung_method.trim()}]` : null,
       data.deposit_exemption_reason === "spontaneous" ? "Anzahlungsregel: Spontaner Termin" : null,
     ].filter(Boolean);
     const savedNote = noteLines.join("\n") || null;

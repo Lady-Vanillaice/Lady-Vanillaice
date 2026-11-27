@@ -567,7 +567,7 @@ function EntryCard({ e, closure }: { e: Entry; closure?: { report_decision: stri
       </div>
     </Link>
     <CustomerQuickInfo email={e.guest_email} name={e.guest_name} />
-    <SessionClosureControls bookingId={e.id} completed={isCompleted} reportDecision={closure?.report_decision ?? (isLegacyCompleted ? "without_report" : undefined)} amount={e.bar ?? 0} paidAt={e.cash_received_at} guestEmail={e.guest_email} sessionStart={e.start} sessionPlace={e.location} isDuo={e.is_duo} duoPartner={e.duo_partner} />
+    <SessionClosureControls bookingId={e.id} completed={isCompleted} reportDecision={closure?.report_decision ?? (isLegacyCompleted ? "without_report" : undefined)} amount={e.bar ?? 0} paidAt={e.cash_received_at} paymentMethod={e.admin_note?.match(/\[RESTZAHLUNG:\s*([^\]]+)\]/i)?.[1]?.trim() ?? e.admin_note?.match(/(?:^|\n)Vor Ort Zahlungsmethode:\s*([^\n]+)/)?.[1]?.trim() ?? null} guestEmail={e.guest_email} sessionStart={e.start} sessionPlace={e.location} isDuo={e.is_duo} duoPartner={e.duo_partner} />
     </div>
   );
 }

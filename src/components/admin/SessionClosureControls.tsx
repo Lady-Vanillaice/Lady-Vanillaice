@@ -6,12 +6,13 @@ import { useServerFn } from "@tanstack/react-start";
 import { saveBookingSessionCrm } from "@/lib/booking-session-closure.functions";
 import { updateBookingOnsitePayment } from "@/lib/rest-payment.functions";
 
-export function SessionClosureControls({ bookingId, completed, reportDecision, amount = 0, paidAt, crmNotes = "", guestEmail, sessionStart, sessionPlace, isDuo = false, duoPartner }: {
+export function SessionClosureControls({ bookingId, completed, reportDecision, amount = 0, paidAt, paymentMethod, crmNotes = "", guestEmail, sessionStart, sessionPlace, isDuo = false, duoPartner }: {
   bookingId: string;
   completed: boolean;
   reportDecision?: string;
   amount?: number;
   paidAt?: string | null;
+  paymentMethod?: string | null;
   crmNotes?: string;
   guestEmail?: string | null;
   sessionStart?: string;
@@ -26,7 +27,7 @@ export function SessionClosureControls({ bookingId, completed, reportDecision, a
   const saveSession = useServerFn(saveCustomerSession);
   const [value, setValue] = useState(String(amount));
   const [date, setDate] = useState(paidAt ? paidAt.slice(0, 10) : new Date().toLocaleDateString("sv-SE"));
-  const [method, setMethod] = useState("Bar");
+  const [method, setMethod] = useState(paymentMethod?.trim() || "Bar");
   const [paymentSaved, setPaymentSaved] = useState(Boolean(paidAt));
   const [notes, setNotes] = useState(crmNotes);
   const [crmSaved, setCrmSaved] = useState(Boolean(crmNotes));
