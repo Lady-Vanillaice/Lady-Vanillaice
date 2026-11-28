@@ -11,6 +11,8 @@ export type LongtermClient = {
   bis: string; // YYYY-MM-DD
   zahlungsart: string | null;
   notiz: string; // freie Notiz ohne Paket/Laufzeit
+  /** Alle Zahlungen für dieselbe Laufzeit zusammen (z. B. Basis + Upgrade-Nachzahlung). */
+  summe: number;
 };
 
 /** Trennt die sichtbare Notiz von den internen [[LVI_…]]-Zeilen. */
@@ -64,7 +66,7 @@ export const listLongtermClients = createServerFn({ method: "GET" })
       const paket = note.match(/Paket\s+([^·\n]+)/)?.[1]?.trim() ?? "Individuell";
       const bisMatch = note.match(/Laufzeit bis\s+(\d{2})\.(\d{2})\.(\d{4})/);
       const bis = bisMatch ? `${bisMatch[3]}-${bisMatch[2]}-${bisMatch[1]}` : addOneMonth(row.datum);
-      return { id: row.id, kunde: row.kunde ?? "—", paket, betrag: Number(row.gesamt ?? 0), bezahltAm: row.datum, bis, zahlungsart: row.anzahlung_method, notiz: freeNote(note) };
+      return { id: row.id, kunde: row.kunde ?? "—", paket, betrag: Number(row.gesamt ?? 0), bezahltAm: row.datum, bis, zahlungsart: row.anzahlung_method, notiz: freeNote(note), summe: Number(row.gesamt ?? 0) };
     });
     // Pro Kunde nur die neueste Zahlung (spätestes Laufzeit-Ende) zeigen.
     const latest = new Map<string, LongtermClient>();
@@ -72,6 +74,11 @@ export const listLongtermClients = createServerFn({ method: "GET" })
       const key = c.kunde.trim().toLowerCase();
       const prev = latest.get(key);
       if (!prev || c.bis > prev.bis) latest.set(key, c);
+    }
+    // Nachzahlungen (z. B. Upgrade) für dieselbe Laufzeit zusammenrechnen.
+    for (const c of latest.values()) {
+      const key = c.kunde.trim().toLowerCase();
+      c.summe = clients.filter((o) => o.kunde.trim().toLowerCase() === key && o.bis === c.bis).reduce((sum, o) => sum + o.betrag, 0);
     }
     return [...latest.values()].sort((a, b) => a.bis.localeCompare(b.bis));
   });

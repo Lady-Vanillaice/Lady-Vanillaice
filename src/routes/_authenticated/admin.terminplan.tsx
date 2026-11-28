@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { listLongtermClients, updateLongtermEntry, type LongtermClient } from "@/lib/longterm.functions";
+import { createCashBookEntry } from "@/lib/cashbook.functions";
 import { parseSessionType } from "@/lib/session-type";
 import { currentPartStart, isFreePhase, parsePlan, phaseDisplay, planPhaseTimes } from "@/lib/session-plan";
 import { realLocation } from "@/lib/slot-location";
@@ -646,7 +647,7 @@ function LongtermOverview() {
                   {c.kunde}
                 </button>
                 <span className="ml-2 text-xs uppercase tracking-[0.14em] text-champagne">{c.paket}</span>
-                <span className="ml-2 text-xs text-vanilla/50">{c.betrag.toLocaleString("de-DE")} €</span>
+                <span className="ml-2 text-xs text-vanilla/50">{c.summe.toLocaleString("de-DE")} €{c.summe !== c.betrag ? " gesamt" : ""}</span>
               </div>
               <div className={`text-sm ${tone}`}>
                 bis {fmt(c.bis)}
@@ -711,6 +712,69 @@ function LongtermEditForm({ client, onDone }: { client: LongtermClient; onDone: 
           {mut.isPending ? "Speichere…" : "Speichern"}
         </button>
         <button type="button" onClick={onDone} className="text-xs text-vanilla/50 underline">Abbrechen</button>
+        {mut.error && <span className="text-xs text-bordeaux">{(mut.error as Error).message}</span>}
+      </div>
+      <LongtermTopUpForm client={client} onDone={onDone} />
+    </div>
+  );
+}
+
+/** Upgrade / Nachzahlung: eigene Kassenbuch-Zahlung mit eigenem Datum, gleiche Laufzeit. */
+function LongtermTopUpForm({ client, onDone }: { client: LongtermClient; onDone: () => void }) {
+  const qc = useQueryClient();
+  const createFn = useServerFn(createCashBookEntry);
+  const packages = ["Basis", "Intensiv", "Premium", "Individuell"];
+  const tierIndex = ["Basis", "Intensiv", "Premium"].indexOf(client.paket);
+  const [paket, setPaket] = useState(tierIndex >= 0 && tierIndex < 2 ? packages[tierIndex + 1] : client.paket);
+  const [betrag, setBetrag] = useState("");
+  const [datum, setDatum] = useState(new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Berlin" }).format(new Date()));
+  const [zahlungsart, setZahlungsart] = useState(client.zahlungsart ?? "");
+  const [bis, setBis] = useState(client.bis);
+  const mut = useMutation({
+    mutationFn: () => {
+      const amount = Number(betrag.replace(/\s|€/g, "").replace(",", "."));
+      if (!Number.isFinite(amount) || amount <= 0) throw new Error("Bitte den nachgezahlten Betrag eingeben.");
+      if (!zahlungsart) throw new Error("Bitte eine Zahlungsart auswählen.");
+      if (!datum) throw new Error("Bitte das Zahlungsdatum eintragen.");
+      if (!bis || bis < datum) throw new Error("„Laufzeit bis“ darf nicht vor dem Zahlungsdatum liegen.");
+      const [y, m, d] = bis.split("-");
+      const what = paket !== client.paket ? `Upgrade ${client.paket} → ${paket}` : "Nachzahlung";
+      const notiz = [`Paket ${paket}`, `Laufzeit bis ${d}.${m}.${y}`, what].join(" · ");
+      return createFn({ data: { studio: "Langzeiterziehung", datum, kunde: client.kunde, anzahlung: amount, anzahlung_method: zahlungsart, anzahlung_datum: datum, bar: 0, restzahlung_method: null, restzahlung_datum: null, notiz } });
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["longterm-clients"] }),
+        qc.invalidateQueries({ queryKey: ["cashbook"] }),
+      ]);
+      onDone();
+    },
+  });
+  const field = "text-[0.6rem] uppercase tracking-[0.2em] text-vanilla/45";
+  return (
+    <div className="col-span-2 mt-2 grid grid-cols-2 gap-2 border-t border-champagne/20 pt-3">
+      <div className="col-span-2 eyebrow text-champagne">Upgrade / Nachzahlung</div>
+      <p className="col-span-2 text-[0.7rem] text-vanilla/55">Für eine zusätzliche Zahlung, z. B. wenn auf ein höheres Paket gewechselt wird. Sie erscheint im Kassenbuch mit eigenem Datum. Die alte Zahlung bleibt unverändert.</p>
+      <label className={field}>Neues Paket
+        <select value={paket} onChange={(e) => setPaket(e.target.value)} className="input-luxe w-full mt-1 normal-case tracking-normal">
+          {packages.map((p) => <option key={p}>{p}</option>)}
+          {!packages.includes(paket) && <option>{paket}</option>}
+        </select>
+      </label>
+      <label className={field}>Nachgezahlt (€)<input inputMode="decimal" placeholder="z. B. 100" value={betrag} onChange={(e) => setBetrag(e.target.value)} className="input-luxe w-full mt-1" /></label>
+      <label className={field}>Bezahlt am<input type="date" value={datum} onChange={(e) => setDatum(e.target.value)} className="input-luxe w-full mt-1" /></label>
+      <label className={field}>Zahlungsart
+        <select value={zahlungsart} onChange={(e) => setZahlungsart(e.target.value)} className="input-luxe w-full mt-1 normal-case tracking-normal">
+          <option value="">—</option>
+          {["Bar", "PayPal", "Überweisung", "Karte", "Sonstige"].map((m) => <option key={m}>{m}</option>)}
+          {zahlungsart && !["Bar", "PayPal", "Überweisung", "Karte", "Sonstige"].includes(zahlungsart) && <option>{zahlungsart}</option>}
+        </select>
+      </label>
+      <label className={`${field} col-span-2`}>Laufzeit bis<input type="date" value={bis} onChange={(e) => setBis(e.target.value)} className="input-luxe w-full mt-1" /></label>
+      <div className="col-span-2 flex flex-wrap items-center gap-2">
+        <button type="button" disabled={mut.isPending} onClick={() => mut.mutate()} className="btn-outline-gold !py-2 !px-4 !text-[0.65rem] disabled:opacity-40">
+          {mut.isPending ? "Speichere…" : "Nachzahlung speichern"}
+        </button>
         {mut.error && <span className="text-xs text-bordeaux">{(mut.error as Error).message}</span>}
       </div>
     </div>
